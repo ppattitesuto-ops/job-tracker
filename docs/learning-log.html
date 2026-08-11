@@ -1,0 +1,1193 @@
+<title>就活管理トラッカー 開発学習ログ</title>
+
+<style>
+  :root {
+    --paper:        #EFF2F4;
+    --surface:      #FFFFFF;
+    --surface-2:    #F7F9FA;
+    --ink:          #12191F;
+    --ink-2:        #3D4A55;
+    --muted:        #6B7A87;
+    --rule:         #D6DEE3;
+    --rule-strong:  #B4C3CC;
+    --accent:       #0E5A6B;
+    --accent-soft:  #DFEDF0;
+    --correct:      #8A5200;
+    --correct-soft: #FAEEDC;
+    --danger:       #9E2436;
+    --danger-soft:  #F9E3E6;
+    --ok:           #1D6448;
+    --ok-soft:      #DEEFE7;
+    --code-bg:      #E8EDF0;
+
+    --serif: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Songti SC", serif;
+    --sans: "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Roboto Mono", monospace;
+
+    --measure: 44rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:        #0D1317;
+      --surface:      #141C22;
+      --surface-2:    #1A242B;
+      --ink:          #E4EBEF;
+      --ink-2:        #B4C2CB;
+      --muted:        #8496A2;
+      --rule:         #29343D;
+      --rule-strong:  #3B4A55;
+      --accent:       #64C9DD;
+      --accent-soft:  #0F323B;
+      --correct:      #E3A857;
+      --correct-soft: #362713;
+      --danger:       #F0909D;
+      --danger-soft:  #38181E;
+      --ok:           #6FD0A5;
+      --ok-soft:      #113024;
+      --code-bg:      #1C272F;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:        #0D1317;
+    --surface:      #141C22;
+    --surface-2:    #1A242B;
+    --ink:          #E4EBEF;
+    --ink-2:        #B4C2CB;
+    --muted:        #8496A2;
+    --rule:         #29343D;
+    --rule-strong:  #3B4A55;
+    --accent:       #64C9DD;
+    --accent-soft:  #0F323B;
+    --correct:      #E3A857;
+    --correct-soft: #362713;
+    --danger:       #F0909D;
+    --danger-soft:  #38181E;
+    --ok:           #6FD0A5;
+    --ok-soft:      #113024;
+    --code-bg:      #1C272F;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 1rem;
+    line-height: 1.9;
+    margin: 0;
+    padding: 0 1.25rem 6rem;
+    -webkit-font-smoothing: antialiased;
+    text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: var(--measure);
+    margin: 0 auto;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 3.5rem 0 1.75rem;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    line-height: 1.4;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.75rem, 5vw, 2.375rem);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+    line-height: 1.85;
+    margin: 0;
+    max-width: 34rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.6;
+  }
+
+  .meta b {
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+
+  /* ---------- contents ---------- */
+
+  .contents {
+    margin: 2.5rem 0 0;
+    padding: 1.25rem 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+  }
+
+  .contents h2 {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    line-height: 1.4;
+  }
+
+  .contents ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+    counter-reset: toc;
+  }
+
+  .contents li {
+    counter-increment: toc;
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  .contents li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .contents a {
+    color: var(--ink-2);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+
+  .contents a:hover,
+  .contents a:focus-visible {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ---------- entries ---------- */
+
+  .entry {
+    display: grid;
+    grid-template-columns: 3.25rem 1fr;
+    gap: 0 1.25rem;
+    padding: 2.75rem 0;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 1.5rem;
+  }
+
+  .entry-no {
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.75;
+    padding-top: 0.15rem;
+  }
+
+  .entry-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    min-width: 0;
+  }
+
+  .entry h2 {
+    font-family: var(--serif);
+    font-size: 1.375rem;
+    font-weight: 600;
+    line-height: 1.55;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .entry h3 {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0.5rem 0 -0.4rem;
+    line-height: 1.4;
+  }
+
+  .entry p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+
+  .entry ul,
+  .entry ol {
+    margin: 0;
+    padding-left: 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--ink-2);
+  }
+
+  .entry li::marker { color: var(--muted); }
+
+  strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- inline bits ---------- */
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.8125em;
+    background: var(--code-bg);
+    padding: 0.1em 0.35em;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  pre {
+    margin: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.75;
+    color: var(--ink);
+    tab-size: 2;
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* ---------- note blocks ---------- */
+
+  .note {
+    border-top: 2px solid var(--note-key);
+    background: var(--note-bg);
+    padding: 1rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    font-size: 0.9375rem;
+    line-height: 1.85;
+  }
+
+  .note-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--note-key);
+    line-height: 1.4;
+  }
+
+  .note p { color: var(--ink-2); margin: 0; }
+  .note ul { color: var(--ink-2); }
+
+  .fix   { --note-key: var(--correct); --note-bg: var(--correct-soft); }
+  .warn  { --note-key: var(--danger);  --note-bg: var(--danger-soft); }
+  .check { --note-key: var(--ok);      --note-bg: var(--ok-soft); }
+  .talk  { --note-key: var(--accent);  --note-bg: var(--accent-soft); }
+
+  .wrong-right {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .wrong-right dt,
+  .wrong-right dd {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    display: grid;
+    grid-template-columns: 1.5rem 1fr;
+    gap: 0.35rem;
+  }
+
+  .wrong-right dt { color: var(--ink-2); }
+  .wrong-right dd { color: var(--ink); }
+  .wrong-right dt::before { content: "✗"; color: var(--danger); font-family: var(--mono); }
+  .wrong-right dd::before { content: "→"; color: var(--ok); font-family: var(--mono); }
+
+  /* ---------- table ---------- */
+
+  .table-scroll { overflow-x: auto; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 0.6rem 0.9rem 0.6rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom-color: var(--rule-strong);
+    white-space: nowrap;
+  }
+
+  td { color: var(--ink-2); }
+  tbody tr:last-child th,
+  tbody tr:last-child td { border-bottom: none; }
+
+  /* ---------- open questions ---------- */
+
+  .open {
+    margin-top: 2.75rem;
+    padding: 1.75rem 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--rule-strong);
+  }
+
+  .open h2 {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 0.9rem;
+    line-height: 1.5;
+  }
+
+  .open ol {
+    margin: 0;
+    padding-left: 1.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    color: var(--ink-2);
+    font-size: 0.9375rem;
+  }
+
+  .open li::marker { color: var(--accent); font-family: var(--mono); }
+
+  /* ---------- glossary ---------- */
+
+  .colophon {
+    margin-top: 2.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.8125rem;
+    line-height: 1.8;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .colophon p { margin: 0; }
+
+  .colophon ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .colophon strong { color: var(--ink-2); }
+  .colophon li::marker { color: var(--rule-strong); }
+
+  a { color: var(--accent); }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 34rem) {
+    .entry {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+    .entry-no { padding-top: 0; }
+    .contents { padding: 1rem 1.1rem; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">就活管理トラッカー ／ 開発学習ログ</div>
+    <h1>フェーズ1：土台づくり</h1>
+    <p class="standfirst">
+      Next.js と Tailwind CSS の習得を目的に開発している就活管理トラッカーの、学習記録。
+      確定した理解だけでなく、<strong>自分が誤解していた内容とその訂正</strong>を対で残す。
+      誤解の記録こそが、後から見返したときに最も価値を持つため。
+    </p>
+    <div class="meta">
+      <span>最終更新 <b>2026-08-11</b></span>
+      <span>エントリ <b>11</b></span>
+      <span>進捗 <b>フェーズ1 ステップ2 完了 → ステップ3 へ</b></span>
+    </div>
+  </header>
+
+  <nav class="contents" aria-label="目次">
+    <h2>この時点までに学んだこと</h2>
+    <ol>
+      <li><a href="#e01">環境変数はビルド時に「置換」される</a></li>
+      <li><a href="#e02">NEXT_PUBLIC_ は安全装置ではなく、公開スイッチである</a></li>
+      <li><a href="#e03">Firebase の apiKey と AI の APIキーは、性質がまったく違う</a></li>
+      <li><a href="#e04">データを守っているのはセキュリティルールだけである</a></li>
+      <li><a href="#e05">環境変数の命名は UPPER_SNAKE_CASE で統一する</a></li>
+      <li><a href="#e06">なぜ window ではなく process.env を置換するのか</a></li>
+      <li><a href="#e07">Firebase の初期化は「ブラウザでしか動かない」わけではない</a></li>
+      <li><a href="#e08">IndexedDB と、認証状態が3つある理由</a></li>
+      <li><a href="#e09">npm install は、他人のコードを自分の権限で実行する操作でもある</a></li>
+      <li><a href="#e10">package-lock.json は再現性と改竄検知の両方を担う</a></li>
+      <li><a href="#e11">ブランチ名とコミットは、未来の自分への索引である</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- 01 -->
+    <article class="entry" id="e01">
+      <div class="entry-no">01</div>
+      <div class="entry-body">
+        <h2>環境変数はビルド時に「置換」される</h2>
+
+        <p>
+          <code>process</code> は <strong>Node.js が提供するグローバルオブジェクト</strong>であり、
+          ブラウザの実行環境には存在しない。DevTools のコンソールで <code>process</code> と打つと
+          <code>ReferenceError</code> になる。
+        </p>
+        <p>
+          それにもかかわらずクライアントコンポーネントで <code>process.env.NEXT_PUBLIC_〇〇</code> が動くのは、
+          <strong>Next.js のバンドラがビルド時にその文字列を値そのものへ置き換えている</strong>から。
+          実行時に値を読みに行っているのではなく、<strong>ソースコードを書き換えている</strong>。
+        </p>
+
+        <h3>ビルド前 / ビルド後</h3>
+<pre><code>// 自分が書くコード
+apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+
+// ブラウザに配信される .js の中身
+apiKey: "AIzaSyABCDEFG..."</code></pre>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>ブラウザがビルド時に、プレフィックスの付いたものを置換対象として定める</dt>
+            <dd>置換するのは Next.js のバンドラ。ブラウザはビルドに一切関与せず、置換済みの .js を受け取って実行するだけ。ブラウザは <code>NEXT_PUBLIC_</code> というプレフィックスの存在すら知らない</dd>
+          </dl>
+          <p>「誰が・いつ・何をするか」がズレると、サーバーコンポーネントの話で必ず混乱する。</p>
+        </div>
+
+        <h3>「置換」であることから導かれる帰結</h3>
+        <ul>
+          <li><strong>値はビルド時に凍結される。</strong>Vercel で環境変数を変えても、再デプロイしなければ反映されない。ローカルでも <code>.env.local</code> を編集したら開発サーバーの再起動が必要</li>
+          <li><strong>動的なアクセスは置換されない。</strong>置換はテキストのパターンマッチなので、<code>process.env[key]</code> のように変数経由で書くと Next.js は気づけない。<strong><code>process.env.XXX</code> はベタ書きが鉄則</strong></li>
+          <li><strong>ビルド時に確定するからこそ最適化できる。</strong>React は内部で <code>process.env.NODE_ENV !== 'production'</code> と書いており、置換後にこの条件が常に false と判明するため、開発用の警告コードごとバンドルから削除される（デッドコード削除）</li>
+          <li><strong>だから絶対に隠せない。</strong>「頑張れば見える」ではなく、配信される .js に平文で書いてある</li>
+        </ul>
+
+        <div class="note check">
+          <div class="note-label">自分の目で確認すること</div>
+          <p><code>lib/firebase.ts</code> を書き終えたら必ず実行し、ビルド成果物に apiKey が平文で入っていることを目視する。同時に、<code>NEXT_PUBLIC_</code> の付いていない変数は grep しても出てこないことも確認する。</p>
+<pre><code>npm run build
+grep -r "AIzaSy..." .next/static/</code></pre>
+        </div>
+      </div>
+    </article>
+
+    <!-- 02 -->
+    <article class="entry" id="e02">
+      <div class="entry-no">02</div>
+      <div class="entry-body">
+        <h2>NEXT_PUBLIC_ は安全装置ではなく、公開スイッチである</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>NEXT_PUBLIC_</code> を付けることで、公開用の apiKey にもセキュリティ対策を施せる</dt>
+            <dd>逆。<code>NEXT_PUBLIC_</code> は「この値をクライアント用バンドルに埋め込め」という指示であり、<strong>守る仕組みではなく公開する仕組み</strong></dd>
+          </dl>
+        </div>
+
+        <ul>
+          <li>付ける ＝ <strong>公開される</strong></li>
+          <li>付けない ＝ サーバー側にしか存在せず、ブラウザからは <code>undefined</code></li>
+        </ul>
+
+        <h3>正しい理由づけの順序</h3>
+        <p>
+          「付けても安全だから付ける」ではない。
+          <strong>「付けなければ動かない。そして付けても安全である」</strong>という順序で説明する。
+        </p>
+        <p>
+          このアプリは Google 認証とログイン状態の購読をブラウザで行うため、Firebase の初期化コードもブラウザで動く。
+          <code>NEXT_PUBLIC_</code> を付けなければ設定値はバンドルに埋め込まれず、ブラウザ側で <code>undefined</code> になってアプリが動かない。
+          その結果として値は公開されるが、<code>apiKey</code> は認可の権限を持たない公開前提の識別子なので問題にならない。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">面接で説明できるようにする</div>
+          <p>
+            <code>NEXT_PUBLIC_</code> は<strong>「印」であると同時に「スイッチ」</strong>である。
+            実際に動作を変える機能であり、かつ、その名前を選んだ時点で開発者が「これは公開されてよい」と判断したことの表明でもある。
+            どちらか一方に振り切ると、公開に伴う<strong>責任</strong>の側面が抜け落ちる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 03 -->
+    <article class="entry" id="e03">
+      <div class="entry-no">03</div>
+      <div class="entry-body">
+        <h2>Firebase の apiKey と AI の APIキーは、性質がまったく違う</h2>
+
+        <p>
+          名前が同じ「APIキー」でも、<strong>持っていることが何を意味するか</strong>が根本的に異なる。
+          この違いを理由から説明できることが重要。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">Firebase の apiKey</th>
+                <th scope="col">外部 AI の APIキー</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">正体</th>
+                <td>どのプロジェクト宛かを示す<strong>公開前提の識別子</strong></td>
+                <td>課金権限そのものを表す<strong>秘密の資格情報</strong></td>
+              </tr>
+              <tr>
+                <th scope="row">認可の権限</th>
+                <td>持たない</td>
+                <td>持つ</td>
+              </tr>
+              <tr>
+                <th scope="row">漏れたら</th>
+                <td>データは読めない（ルールが拒否する）</td>
+                <td><strong>不正利用され、高額請求に直結する</strong></td>
+              </tr>
+              <tr>
+                <th scope="row">命名</th>
+                <td><code>NEXT_PUBLIC_FIREBASE_API_KEY</code></td>
+                <td><code>ANTHROPIC_API_KEY</code>（プレフィックス無し）</td>
+              </tr>
+              <tr>
+                <th scope="row">使う場所</th>
+                <td>ブラウザ</td>
+                <td><strong>Route Handler（サーバー側）経由のみ</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">仕組みとして事故が防がれている</div>
+          <p>
+            プレフィックスを付けずに命名しておけば、うっかりクライアントコンポーネントに書いてしまっても
+            ブラウザには届かない。<strong>付け忘れたときに起きるのは「動かない」であって「漏れる」ではない</strong>。
+            9-1 章の AI 機能を実装する際は、この原則を必ず守る。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 04 -->
+    <article class="entry" id="e04">
+      <div class="entry-no">04</div>
+      <div class="entry-body">
+        <h2>データを守っているのはセキュリティルールだけである</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>コンソールで設定すれば、悪用に対して対策を取ることが「できる」</dt>
+            <dd>表現が弱すぎる。<strong>Firestore のセキュリティルールは、データを守っている唯一の認可の境界線</strong>。やってもやらなくてもよい追加オプションではない</dd>
+          </dl>
+        </div>
+
+        <p>
+          <code>apiKey</code> が公開されていて誰でもリクエストを投げられる以上、ルール以外に守っているものは何一つない。
+          クライアント側のコードで <code>if (user.uid === ...)</code> と書いても、<strong>攻撃者はそのコードを実行しない</strong>ので防御にならない。
+        </p>
+        <p>
+          <strong>「ルールを書けば安全になる」ではなく、「ルールを書かなければデータは丸裸である」</strong>と理解する。順序が逆。
+        </p>
+
+        <h3>Firestore を「本番環境モード」で作成した理由</h3>
+        <p>
+          テストモードを選ぶと「30日間、誰でも全データを読み書きできる」ルールが自動で入る。動くので気持ちがいいが、
+          仕様書5章の原則<strong>「デフォルトで拒否し、必要なものだけを明示的に許可する」</strong>の真逆になる。
+          本番環境モードなら初期状態は全アクセス拒否＝安全であり、同時に「アプリが動かない」状態でもある。
+          ここから <code>firestore.rules</code> を書いて必要な分だけ開けていく。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">補足：apiKey が公開でも「何をされても平気」ではない</div>
+          <p>
+            誰でもプロジェクトにサインアップリクエストを投げられるため、アカウントの大量作成のような悪用は原理的に可能。
+            それを防ぐのが Firebase App Check という仕組み（v1 では対象外）。
+            「ルールがあるから安全」で思考を止めないこと。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 05 -->
+    <article class="entry" id="e05">
+      <div class="entry-no">05</div>
+      <div class="entry-body">
+        <h2>環境変数の命名は UPPER_SNAKE_CASE で統一する</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>NEXT_PUBLIC_FIREBASE_apiKey</code> / <code>auth_Domain</code> / <code>messaging _SenderId</code></dt>
+            <dd>6行の中にキャメル・スネーク・混在の3種類が混ざっていた。さらにスペースが混入しており、これは読みにくいのではなく<strong>単純に読み込みに失敗する</strong></dd>
+          </dl>
+        </div>
+
+<pre><code>NEXT_PUBLIC_FIREBASE_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+NEXT_PUBLIC_FIREBASE_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
+
+        <ul>
+          <li>環境変数は OS・シェルの世界の値であり、<strong>UPPER_SNAKE_CASE が universal な慣習</strong></li>
+          <li>バラバラな命名はそれ自体がバグの温床になる（参照するたびに正しい綴りを思い出せない）</li>
+          <li>Vercel の管理画面にも同じ名前で登録するので、揺れると<strong>環境間の不一致</strong>という最もデバッグしづらい不具合を招く</li>
+        </ul>
+
+        <h3>書式の注意</h3>
+        <ul>
+          <li><code>=</code> の前後にスペースを入れない</li>
+          <li>値をクォートで囲む必要はない</li>
+          <li><code>.env.local</code> は起動時にしか読まれないので、変更したら開発サーバーを再起動する</li>
+        </ul>
+
+        <div class="note check">
+          <div class="note-label">.gitignore の否定パターンには順序がある</div>
+          <p>
+            <code>.env.local</code> はコミットされないため、リポジトリを clone した人には
+            どの環境変数が必要か分からない。値を空にした <code>.env.example</code> をコミットするのが実務での定石。
+            ただし <code>.gitignore</code> の <code>.env*</code> 指定は <code>.env.example</code> まで無視してしまうので、
+            否定パターン（<code>!</code>）で例外を作る。
+          </p>
+<pre><code>.env*
+!.env.example</code></pre>
+          <p>
+            <strong>この順序でなければ効かない。</strong>git は<strong>後に書かれたルールが勝つ</strong>ため、
+            <code>!.env.example</code> を先に書くと直後の <code>.env*</code> に打ち消される。
+          </p>
+          <p>確認は目視だけでなく <code>git check-ignore -v</code> で機械的に行える。</p>
+<pre><code>$ git check-ignore -v .env.local .env.example
+.gitignore:34:.env*         .env.local     ← 除外されている
+.gitignore:35:!.env.example .env.example   ← 否定ルールに一致</code></pre>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>.env.example</code> に変数名だけを並べた（<code>=</code> が無い）</dt>
+            <dd><code>.env</code> の書式は <code>KEY=VALUE</code> であり、<code>=</code> の無い行は定義として成立しない。<strong>変数名の「一覧」ではなく、そのままコピーして使える「テンプレート」であること</strong>が本質</dd>
+          </dl>
+          <p>
+            <code>cp .env.example .env.local</code> して値を埋めるだけ、という状態が正解。
+            ダミー値は入れない——本物か偽物かで迷いが生じるうえ、空なら「未設定」であることが一目で分かる。
+            先頭に <code>#</code> コメントで<strong>値の取得元</strong>を書いておくと、テンプレートとして完成する。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 06 -->
+    <article class="entry" id="e06">
+      <div class="entry-no">06</div>
+      <div class="entry-body">
+        <h2>なぜ window ではなく process.env を置換するのか</h2>
+
+        <p>
+          <strong>技術的には <code>window</code> を使う方式も可能で、実際に存在する。</strong>
+          サーバーが HTML を生成する際に <code>&lt;script&gt;window.__ENV__ = {...}&lt;/script&gt;</code> を埋め込む古典的な手法があり、
+          Next.js のドキュメントも、ビルド後に値を変えたい場合は自前で API を用意せよと書いている。
+          <code>process.env</code> 方式が唯一の道ではない。それでも標準に選ばれた理由は4つ。
+        </p>
+
+        <h3>① サーバーとクライアントで同じ書き方ができる（最大の理由）</h3>
+        <p>
+          Next.js の本質は、サーバーで動くコードとブラウザで動くコードが
+          <strong>同じ言語・同じファイルツリー・同じ import 文</strong>で書かれること。
+          もし読み方を書き分ける仕様だったら、コンポーネントをサーバー↔クライアント間で移動させるたびに書き換えが必要になる。
+          Next.js ではこの移動が日常的に起きるため、相当な負債になる。
+        </p>
+
+        <h3>② エコシステムがそれを前提に作られている</h3>
+        <p>
+          <code>process.env</code> から設定を読むのは Node.js 文化における20年来の業界標準。
+          象徴的な例が React 自身で、ブラウザで動くライブラリでありながら内部で <code>process.env.NODE_ENV</code> を参照している。
+          <strong>ブラウザ向けバンドルで <code>process.env</code> を置換する仕組みは Next.js の発明ではなく、webpack の時代からの既定路線。</strong>
+          （Vite は <code>import.meta.env</code> という別方式を使っており、「<code>process.env</code> でなければならない」わけではないことの証拠になる。）
+        </p>
+
+        <h3>③ ビルド時に確定するからこそ最適化ができる</h3>
+        <p>
+          <code>window.__ENV__</code> だと値は実行時にしか分からないため、React の開発用警告コードを削除できず、バンドルサイズが無駄に膨らむ。
+          <strong>「ビルド時に確定する」という制約は、不便さと引き換えに最適化を可能にしている。</strong>
+        </p>
+
+        <h3>④ デフォルトが安全側に倒れる</h3>
+        <p>
+          デフォルトでは環境変数はサーバー専用で、公開したければ <code>NEXT_PUBLIC_</code> を付けて<strong>明示的にオプトイン</strong>する。
+          <code>window.__ENV__</code> にまとめて流し込む方式では「うっかり全部入れてしまう」事故が起きる。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">同じ設計思想が別の場所にも現れている</div>
+          <p>
+            この「失敗が安全側に倒れる」「デフォルトで拒否し、必要なものだけ明示的に許可する」という原則は、
+            仕様書5章で Firestore のセキュリティルールをワイルドカードでまとめず
+            <strong>コレクションごとに個別記述する</strong>理由とまったく同じ。
+            <strong>優れた設計は、同じ原則が違う場所に繰り返し現れる。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 07 -->
+    <article class="entry" id="e07">
+      <div class="entry-no">07</div>
+      <div class="entry-body">
+        <h2>Firebase の初期化は「ブラウザでしか動かない」わけではない</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>Firebase の初期化コードは、そもそもブラウザでしか動かない</dt>
+            <dd>事実として誤り。Firebase の JavaScript SDK は Node.js 上でも動く。正しくは<strong>「このアプリの設計上、ブラウザで動かす必要がある」</strong></dd>
+          </dl>
+        </div>
+
+        <p>SDK の制約ではなく、<strong>このアプリが何をしたいか</strong>から来る要請である。理由は3つ。</p>
+        <ol>
+          <li><code>signInWithPopup</code>（Google 認証）は<strong>ブラウザの window を開く処理</strong>であり、サーバーには window がない</li>
+          <li><code>onAuthStateChanged</code> によるログイン状態の購読は、<strong>ブラウザ上で継続的に動き続ける</strong>必要がある</li>
+          <li>ログイン状態の永続化は<strong>ブラウザの IndexedDB</strong> に保存される。サーバーには保存先がない</li>
+        </ol>
+
+        <div class="note warn">
+          <div class="note-label">この区別が重要な理由</div>
+          <p>
+            「ブラウザでしか動かない」と覚えると、「Firebase を使う以上すべてクライアントコンポーネントにするしかない」
+            という誤った結論に飛ぶ。実際には<strong>どこで動かすべきかは自分で設計するもの</strong>。
+            9-1 章の AI 機能を実装する段階では「サーバー側で Firebase を扱う」選択肢を検討することになるが、
+            この誤解を持っていると選択肢自体が見えなくなる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 08 -->
+    <article class="entry" id="e08">
+      <div class="entry-no">08</div>
+      <div class="entry-body">
+        <h2>IndexedDB と、認証状態が3つある理由</h2>
+
+        <p>
+          <strong>IndexedDB はブラウザに標準で組み込まれたクライアントサイドのデータベース。</strong>
+          サーバーは一切関与せず、ユーザーのPCの中だけに存在する。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">容量</th>
+                <th scope="col">保存できる型</th>
+                <th scope="col">API</th>
+                <th scope="col">サーバーへ送信</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Cookie</th>
+                <td>4KB 程度</td>
+                <td>文字列</td>
+                <td>同期</td>
+                <td><strong>毎リクエスト自動送信</strong></td>
+              </tr>
+              <tr>
+                <th scope="row">localStorage</th>
+                <td>5MB 程度</td>
+                <td>文字列のみ</td>
+                <td><strong>同期</strong>（メインスレッドを止める）</td>
+                <td>されない</td>
+              </tr>
+              <tr>
+                <th scope="row">IndexedDB</th>
+                <td>数百MB〜</td>
+                <td><strong>オブジェクト・配列・Blob</strong></td>
+                <td><strong>非同期</strong></td>
+                <td>されない</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Firebase Auth はログイン時に受け取った<strong>ID トークンとリフレッシュトークン</strong>をここに保存する。
+          だからページをリロードしてもログイン状態が消えない。
+          localStorage ではなく IndexedDB なのは、内部状態をオブジェクトのまま保存でき、非同期で UI をブロックしないため。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">実装時に必ず効いてくる：認証状態は3つある</div>
+          <p>
+            IndexedDB は<strong>非同期</strong>。つまりページを開いた瞬間、Firebase はまだユーザーがログイン済みか知らない。
+            トークンを読み出して有効性を確認するまでの数十〜数百ミリ秒、状態は「不明」である。
+            そのため <code>onAuthStateChanged</code> は<strong>最初に必ず <code>null</code> を返しうる</strong>。
+            これを「未ログイン」と解釈すると、<strong>リロードのたびに一瞬ログイン画面が表示されてから切り替わる</strong>という素人臭い挙動になる。
+          </p>
+          <ol>
+            <li><strong>確認中</strong>（IndexedDB を読んでいる）→ ローディング表示</li>
+            <li><strong>未ログイン</strong>（確認した結果いなかった）→ ログイン画面</li>
+            <li><strong>ログイン済み</strong> → アプリ本体</li>
+          </ol>
+          <p>
+            仕様書6章で Context に <code>user</code> だけでなくローディング状態を持たせると書いたのは、これが理由。
+            <strong>2状態で作ると必ずバグる。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">面接で刺さる論点：トークンの置き場所</div>
+          <p>
+            IndexedDB は JavaScript から自由に読めるため、<strong>XSS を許すとトークンを盗まれる</strong>。
+            対して Cookie には <code>HttpOnly</code> 属性があり、これを付けると JavaScript から一切読めなくなる。
+            「トークンは HttpOnly Cookie に置くべきか、IndexedDB でよいか」は実務で頻繁に議論される論点であり、
+            Firebase は SDK の扱いやすさを優先して IndexedDB を選んでいる、というトレードオフの上に成り立っている。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 09 -->
+    <article class="entry" id="e09">
+      <div class="entry-no">09</div>
+      <div class="entry-body">
+        <h2>npm install は、他人のコードを自分の権限で実行する操作でもある</h2>
+
+        <p>
+          <code>package.json</code> の <code>scripts</code> には、<strong>npm が特定のタイミングで自動実行する予約された名前</strong>がある。
+          <code>dev</code> や <code>build</code> は <code>npm run</code> と打たないと動かないが、
+          <code>preinstall</code> / <code>install</code> / <code>postinstall</code> は<strong>打つ必要がない</strong>。
+        </p>
+
+<pre><code>// node_modules/@firebase/util/package.json
+"scripts": {
+  "postinstall": "node ./postinstall.js"   ← npm install した瞬間に走る
+}</code></pre>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>npm install</code> はダウンロードする処理<strong>ではない</strong></dt>
+            <dd>否定ではなく<strong>追加</strong>。ダウンロード<strong>だけではない</strong>。またすべてのパッケージがスクリプトを持つわけではなく、今回は439個中3個だけだった</dd>
+          </dl>
+        </div>
+
+        <p>
+          実行されるコードは<strong>あなたのユーザー権限</strong>で動く。つまりターミナルでできることは何でもできる——
+          <code>~/.ssh/id_rsa</code> を読む、<code>.env.local</code> を読む、読んだものを任意のサーバーへ送信する。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">規模の問題：4個選んで439個入る</div>
+          <p>
+            <code>package.json</code> に書いた依存は <strong>next / react / react-dom / firebase の4個</strong>。
+            実際に入ったのは <strong>439個</strong>。残りは依存の依存として自動的に付いてくる。
+          </p>
+<pre><code>firebase → @firebase/firestore → @grpc/proto-loader → protobufjs</code></pre>
+          <p>
+            <strong>この439個のうち1個でも postinstall に悪意あるコードを仕込まれたら実行される。</strong>
+            しかもその1個の存在すら知らない。攻撃者が狙うのは自分ではなく<strong>上流のパッケージ</strong>で、
+            メンテナのアカウント乗っ取り・タイポスクワッティング・メンテナ権限の引き継ぎといった手口がある。
+            <code>event-stream</code> や <code>ua-parser-js</code> で実際に被害が出ている。これを<strong>サプライチェーン攻撃</strong>と呼ぶ。
+          </p>
+        </div>
+
+        <p>
+          npm 11 からこれらはデフォルトでブロックされ、<code>npm warn allow-scripts</code> が出るようになった。
+          <strong>npm 10 以前は警告なしに黙って実行していた。</strong>
+          この防御はごく最近入ったものであり、「npm が止めてくれるから安全」と考えてはいけない。
+        </p>
+
+        <h3>判断手順（今後も同じことをする）</h3>
+        <ol>
+          <li>どのパッケージのどのスクリプトか特定する</li>
+          <li><code>node_modules/〇〇/</code> の該当ファイルを<strong>実際に開いて読む</strong></li>
+          <li>何をするか確認する（ファイルを書くか / 通信するか / 何もしないか）</li>
+          <li><strong>自分のアプリに必要な機能か</strong>を判断する</li>
+          <li>スキップして壊れないか、<strong>実際にビルド・lint を回して確認する</strong></li>
+        </ol>
+
+        <div class="note check">
+          <div class="note-label">今回の判断結果：3つとも承認不要</div>
+          <ul>
+            <li><strong>@firebase/util</strong> — <code>FIREBASE_WEBAPP_CONFIG</code> が未設定なら何もせず終了する。Firebase App Hosting 用の自動設定機能で、Vercel + <code>.env.local</code> で運用する本アプリには不要。設定されていた場合は apiKey を使って外部通信するので、なおさら動かさない方がよい</li>
+            <li><strong>protobufjs</strong> — バージョン表記の警告を出すだけ。ファイルも作らず通信もしない</li>
+            <li><strong>unrs-resolver</strong> — ESLint 関連。<code>npm run lint</code> を実際に実行し、問題なく動作することを確認済み</li>
+          </ul>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">仕様書の判断が、別の角度からも裏付けられた</div>
+          <p>
+            <strong>依存を増やすことは、それ自体がリスクを増やす行為である。</strong>
+            仕様書でカレンダーUIを外部ライブラリなしで自作すると決めたこと、Vite を併用しないと決めたことは、
+            学習目的だけでなくこの観点からも筋が通っている。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 10 -->
+    <article class="entry" id="e10">
+      <div class="entry-no">10</div>
+      <div class="entry-body">
+        <h2>package-lock.json は再現性と改竄検知の両方を担う</h2>
+
+        <div class="note warn">
+          <div class="note-label">前提：Vercel は自分の node_modules を見ていない</div>
+          <p>
+            Vercel がやるのは <strong>git リポジトリを clone してビルドすること</strong>。
+            <code>node_modules</code> の439個は <code>.gitignore</code> に入っており git の管理下にすらないので、
+            <strong>Vercel には一切送られない</strong>。リポジトリにあるファイルだけを手がかりに、439個を自力で揃え直す。
+          </p>
+        </div>
+
+        <h3>① 再現性：`^` の曖昧さを消す</h3>
+        <p>
+          <code>"firebase": "^12.17.1"</code> の <code>^</code> は「12.17.1 ちょうど」ではなく
+          <strong>「12 系なら新しくてもよい」という範囲指定</strong>。
+          今日は <code>12.17.1</code> でも、来月 Vercel がビルドすれば <code>12.30.0</code> が入りうる。
+          lock ファイルは<strong>参考情報ではなく命令書</strong>で、Vercel が判断する余地をなくす。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">怖いのは「必ず壊れる」わけではないこと</div>
+          <ul>
+            <li>今日デプロイしたら動いた。<strong>来月、コードを1行も変えずにデプロイしたら壊れた</strong></li>
+            <li><strong>ローカルでは再現しない。</strong>自分の <code>node_modules</code> には古いバージョンが残っているから</li>
+            <li><strong>原因がコードのどこにもない。</strong>自分の変更を疑って何時間も溶かす</li>
+          </ul>
+          <p>「何もしていないのに壊れた」——これが再現性のない環境の代償で、実務で最も嫌われる種類の不具合。</p>
+        </div>
+
+        <h3>② 改竄検知：整合性ハッシュ</h3>
+        <p>
+          lock ファイルには各パッケージの <code>integrity</code>（sha512 ハッシュ）が記録されている。
+          ダウンロードしたファイルがこれと一致しなければインストールは失敗する。
+          <strong>バージョン番号は同じなのに中身が違う</strong>——番号だけでは同一性を保証できないので、ハッシュで中身そのものを照合する。
+        </p>
+        <p>
+          つまり lock ファイルをコミットしないことは、<strong>再現性と改竄検知を同時に捨てる</strong>ことを意味する。
+          エントリ 09 のサプライチェーンの話と地続きである。
+        </p>
+
+        <h3>③ npm install と npm ci</h3>
+        <p>
+          <code>npm install</code> は、<code>package.json</code> と lock ファイルが食い違うと
+          <strong>lock ファイルの方を書き換えて</strong>解決してしまう。本番ビルドでそれが起きると固定した意味がない。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col"></th>
+                <th scope="col">npm install</th>
+                <th scope="col">npm ci</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">lock との不一致</th>
+                <td><strong>書き換えて解決</strong></td>
+                <td><strong>エラーで停止</strong></td>
+              </tr>
+              <tr>
+                <th scope="row">node_modules</th>
+                <td>差分更新</td>
+                <td><strong>削除して作り直す</strong></td>
+              </tr>
+              <tr>
+                <th scope="row">用途</th>
+                <td>開発中（パッケージ追加時）</td>
+                <td><strong>CI・本番ビルド</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Vercel は lock ファイルを検出すると自動的にこの厳密な方式でインストールする。手で打つ必要はない。</p>
+      </div>
+    </article>
+
+    <!-- 11 -->
+    <article class="entry" id="e11">
+      <div class="entry-no">11</div>
+      <div class="entry-body">
+        <h2>ブランチ名とコミットは、未来の自分への索引である</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>git branch -c "start-up-setting"</code> でブランチを作って移動する</dt>
+            <dd><code>git branch -c</code> は <strong>--copy＝ブランチの複製</strong>であり、<strong>移動しない</strong>。実行後も main にいるため、そのままコミットすると main に直接入る。正しくは <code>git switch -c chore/firebase-setup</code></dd>
+          </dl>
+          <p>
+            <code>git checkout -b</code> でも同じことができるが、<code>checkout</code> は「ブランチ切り替え」と「ファイル復元」という
+            無関係な機能を兼ねていて紛らわしい。<strong>それを分割するために新設されたのが <code>switch</code> と <code>restore</code></strong> なので、
+            今から覚えるなら <code>switch</code> を使う。なお<strong>ブランチ名にクォートもスペースも不要・不可</strong>。
+          </p>
+        </div>
+
+        <h3>命名規約：`種別/内容`</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th scope="col">接頭辞</th><th scope="col">用途</th><th scope="col">例</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row"><code>feat/</code></th><td>ユーザーに見える機能追加</td><td><code>feat/company-list</code></td></tr>
+              <tr><th scope="row"><code>fix/</code></th><td>バグ修正</td><td><code>fix/date-format</code></td></tr>
+              <tr><th scope="row"><code>chore/</code></th><td>設定・依存・ビルドまわり</td><td><code>chore/firebase-setup</code></td></tr>
+              <tr><th scope="row"><code>docs/</code></th><td>ドキュメントのみ</td><td><code>docs/learning-log</code></td></tr>
+              <tr><th scope="row"><code>refactor/</code></th><td>挙動を変えない内部改善</td><td><code>refactor/firestore-layer</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          ルールは<strong>小文字・ケバブケース・英語</strong>の3つ。
+          <strong>大文字を使わないのは、macOS と Linux でファイルシステムの大文字小文字の扱いが異なり、事故の原因になるため。</strong>
+          （macOS は既定で大文字小文字を区別せず、Linux は区別する。ローカルで通ったものが CI で別物として扱われる。）
+        </p>
+        <p>
+          却下した案 <code>start-up-setting</code> の問題は2つ。<code>start-up</code> は英語話者にはまず「スタートアップ企業」に見えること、
+          そして「初期設定」では範囲が広すぎて、<code>create-next-app</code> の話か Firebase の話か ESLint の話か判別できないこと。
+        </p>
+
+        <h3>1コミット ＝ 1つの目的</h3>
+        <p>
+          <strong>取り消せる単位がコミットだから</strong>である。
+          「学習ログの追加をなかったことにしたい」と思ったとき、全部が1コミットなら Firebase の導入ごと巻き戻る。
+          <code>git revert</code> も <code>git bisect</code>（バグが入ったコミットを二分探索する機能）も機能しなくなる。
+        </p>
+        <p>
+          コミットメッセージもブランチ名と同じ <code>種別: 内容</code> で揃える（<strong>Conventional Commits</strong>）。
+          内容は日本語でよいが、<strong>接頭辞は英語で統一し、途中で言語を混ぜない</strong>。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">コミット前に毎回やること</div>
+          <p>
+            <code>git add</code> の後、<strong>コミットする前に</strong> <code>git status</code> を実行し、
+            <code>.env.local</code> が「Changes to be committed」に無いことを目視する。
+            <strong><code>git add .</code> は使わず、意図したファイルを明示的に指定する。</strong>
+            一度コミットすると、後から消しても git の履歴には永久に残る——<strong>秘密情報の誤コミットは取り消せない事故</strong>である。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">git log もポートフォリオの一部</div>
+          <p>
+            採用面接でリポジトリを見る人は、コードだけでなくコミット履歴も見る。
+            フェーズ5まで規約が一貫していれば、<code>git log --oneline --graph</code> そのものが
+            <strong>「計画的に開発した証拠」</strong>になる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+  </main>
+
+  <section class="open">
+    <h2>未解決の問い</h2>
+    <ol>
+      <li>
+        素朴に <code>initializeApp(config)</code> と書くと、開発サーバーの HMR で何が起きるか。どう防ぐか。
+      </li>
+      <li>
+        <code>lib/firebase.ts</code> はサーバーとクライアントのどちらから使われるか。<code>"use client"</code> は必要か。
+        <br>
+        ── エントリ 06 の「サーバーとクライアントで同じ書き方ができる」性質、およびエントリ 07 の
+        「ブラウザで動く必要がある ≠ SDK がブラウザ専用」という区別と、どう繋がるか（あるいは繋がらないか）を意識して考える。
+      </li>
+    </ol>
+  </section>
+
+  <section class="colophon">
+    <p><strong>用語の訂正メモ</strong>　── 混同すると「触っただけで理解していない」と判断される。</p>
+    <ul>
+      <li>「クラウドFirebase」ではなく <strong>Cloud Firestore</strong>。Firebase はプラットフォーム全体の名前、Firestore はその中のデータベース製品の名前で別物</li>
+      <li>「Windows」ではなく <strong>window</strong>。前者は Microsoft の OS の名前</li>
+      <li>「本番環境で開発している」ではなく「<strong>Firestore を本番環境モードで作成した</strong>」。環境の話ではなく、作成時に選んだ初期ルールの種類の話</li>
+    </ul>
+    <p>このログはフェーズが進むたびに追記・更新される。</p>
+  </section>
+
+</div>
