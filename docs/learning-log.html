@@ -410,6 +410,75 @@
 
   .open li::marker { color: var(--accent); font-family: var(--mono); }
 
+  /* ---------- decision record ---------- */
+
+  .decisions {
+    margin-top: 2.75rem;
+    padding-top: 1.75rem;
+    border-top: 2px solid var(--ink);
+  }
+
+  .decisions > h2 {
+    font-family: var(--serif);
+    font-size: 1.375rem;
+    font-weight: 600;
+    margin: 0 0 0.6rem;
+    line-height: 1.5;
+  }
+
+  .decisions-note {
+    margin: 0 0 1.5rem;
+    color: var(--muted);
+    font-size: 0.875rem;
+    max-width: 34rem;
+  }
+
+  .decision {
+    border-top: 1px solid var(--rule);
+    padding: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+
+  .decision h3 {
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+
+  .decision dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    gap: 0.5rem 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.8;
+  }
+
+  .decision dt {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    padding-top: 0.4rem;
+  }
+
+  .decision dd {
+    margin: 0;
+    color: var(--ink-2);
+  }
+
+  @media (max-width: 34rem) {
+    .decision dl { grid-template-columns: 1fr; gap: 0.15rem; }
+    .decision dt { padding-top: 0.5rem; }
+  }
+
   /* ---------- glossary ---------- */
 
   .colophon {
@@ -467,6 +536,7 @@
     <div class="meta">
       <span>最終更新 <b>2026-08-11</b></span>
       <span>エントリ <b>11</b></span>
+      <span>決定記録 <b>3</b></span>
       <span>進捗 <b>フェーズ1 ステップ2 完了 → ステップ3 へ</b></span>
     </div>
   </header>
@@ -1178,6 +1248,72 @@ NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
         「ブラウザで動く必要がある ≠ SDK がブラウザ専用」という区別と、どう繋がるか（あるいは繋がらないか）を意識して考える。
       </li>
     </ol>
+  </section>
+
+  <section class="decisions">
+    <h2>決定記録</h2>
+    <p class="decisions-note">
+      面接で最も聞かれるのは「なぜその設計にしたのか」。答えられるのは<strong>捨てた選択肢を覚えている人</strong>だけなので、
+      採用しなかった案とその理由も残す。
+    </p>
+
+    <div class="decision">
+      <h3>ダークモードは v1 では実装しない</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><code>create-next-app</code> のテンプレートが持っていた <code>prefers-color-scheme</code> 対応をそのまま残す</dd>
+        <dt>理由</dt>
+        <dd>
+          仕様書に記載がない。かつ本アプリは<strong>選考ステータスの色分け（青／黄／緑／灰）が中核UI</strong>であり、
+          対応するならこの4色を暗い背景でも読める第2セットとして設計し直す必要がある。仕様書外の機能のために中核UIの設計コストが倍になる。
+          <strong>最悪なのは中途半端に一部画面だけ対応した状態</strong>で、これは非対応より品質が低く見える。
+        </dd>
+        <dt>再検討</dt>
+        <dd>色トークンを設計した上でなら、Tailwind の <code>dark:</code> で後から入れられる。順序を逆にしない。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>フォントはシステムフォントに任せる（Webフォントを導入しない）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> テンプレートの <code>Geist</code> / <code>Geist_Mono</code> を残す
+          <b>(b)</b> <code>Noto Sans JP</code> 等を <code>next/font</code> で読み込む
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          Geist は Vercel のブランドフォントで <code>subsets: ["latin"]</code> が示す通り<strong>日本語グリフを持たない</strong>。
+          日本語アプリでラテン専用フォントを読み込むのは得るものに対してコストが見合わない。
+          (b) は見た目が揃う代わりに<strong>日本語Webフォントはサブセットしても数百KB</strong>あり表示速度に直結する。
+          いまは Tailwind の習得に集中すべき時期で、フォント設定という別軸の複雑さを最初から抱える必要がない。
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          <code>next/font</code> は後からいつでも入れられる（Google Fonts をビルド時にダウンロードして<strong>セルフホスト</strong>するため、
+          外部リクエストが発生せずプライバシーと速度の両面で有利、という Next.js の特徴的な機能）。
+          なお Tailwind v4 の既定 <code>--font-sans</code> は <code>-apple-system</code> から始まる欧文中心のスタックで、
+          日本語は各OSのフォールバックに委ねられる。<strong>Windows で日本語が古いフォントになる可能性がある</strong>ので、
+          実機で確認してから明示的なフォントスタックを定義するか判断する。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>コミットメッセージに絵文字（gitmoji）を使わない</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>Conventional Commits と gitmoji を併用する（<code>📝 docs: ...</code>）</dd>
+        <dt>理由</dt>
+        <dd>
+          <code>📝</code> と <code>docs:</code> は<strong>同じ情報の二重表現</strong>。
+          また「環境変数の設定は <code>🔒️</code> か <code>🔧</code> か」で毎回迷う判断コストが生まれる——<strong>実際に最初の4コミットで発生した</strong>。
+          規約は<strong>決めて書いて守ること</strong>だけが必須で、規約を決めた直後に規約外の要素が入ると規約は形骸化する。
+        </dd>
+        <dt>再検討</dt>
+        <dd>過去4コミットには残っているが、履歴を書き換えるコストに見合わないためそのままにする。次のコミットから適用する。</dd>
+      </dl>
+    </div>
   </section>
 
   <section class="colophon">
