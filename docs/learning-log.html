@@ -535,9 +535,9 @@
     </p>
     <div class="meta">
       <span>最終更新 <b>2026-08-11</b></span>
-      <span>エントリ <b>11</b></span>
+      <span>エントリ <b>18</b></span>
       <span>決定記録 <b>3</b></span>
-      <span>進捗 <b>フェーズ1 ステップ2 完了 → ステップ3 へ</b></span>
+      <span>進捗 <b>lib/firebase.ts 完了 → 認証 Context へ</b></span>
     </div>
   </header>
 
@@ -555,6 +555,13 @@
       <li><a href="#e09">npm install は、他人のコードを自分の権限で実行する操作でもある</a></li>
       <li><a href="#e10">package-lock.json は再現性と改竄検知の両方を担う</a></li>
       <li><a href="#e11">ブランチ名とコミットは、未来の自分への索引である</a></li>
+      <li><a href="#e12">モジュールは「1回だけ実行される」とは限らない</a></li>
+      <li><a href="#e13">"use client" は境界の宣言であって「ブラウザ専用」ではない</a></li>
+      <li><a href="#e14">情報は古くなる。node_modules のソースが最終的な正</a></li>
+      <li><a href="#e15">掃除で残るのは「消したものに付随していた形式」である</a></li>
+      <li><a href="#e16">補完は「存在するもの」を出すだけで、「正しいもの」は出さない</a></li>
+      <li><a href="#e17">「ビルドが通った」は「組み込まれた」を意味しない</a></li>
+      <li><a href="#e18">置き場所は設計の一部である</a></li>
     </ol>
   </nav>
 
@@ -1230,6 +1237,609 @@ NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
             <strong>「計画的に開発した証拠」</strong>になる。
           </p>
         </div>
+
+        <h3>マージするとき</h3>
+        <p>
+          <code>git merge --no-ff</code> の <code>--no-ff</code> は「早送りしない」。
+          付けないと git はコミットを <code>main</code> に一直線に並べてしまい、<strong>ブランチが存在した痕跡が消える</strong>。
+          付けるとマージコミットが1つ作られ、<code>git log --graph</code> に <code>|\</code> の分岐が残る——
+          <strong>「この一連のコミットは1つのまとまった作業だった」という情報が履歴に保存される。</strong>
+        </p>
+        <p>
+          マージ済みブランチは <code>git branch -d</code> で削除する（<code>-d</code> は未マージなら拒否してくれる安全な方）。
+          役目を終えたブランチを残すと、半年後に「これは何だっけ」という墓場ができる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">ブランチの粒度の基準</div>
+          <p><strong>ブランチは「マージする単位」であって「作業する単位」ではない。</strong>ソロ開発なら「一区切りついて main に戻せる状態」が単位。</p>
+          <ul>
+            <li>細かすぎ：<code>chore/firebase-setup</code> / <code>chore/remove-template</code> / <code>docs/conventions</code> を別々に</li>
+            <li><strong>適切</strong>：<code>chore/project-setup</code> にまとめて、一区切りで main へ</li>
+            <li>粗すぎ：<code>phase-1</code> に認証実装まで全部（<strong>動く単位で main に戻せなくなる</strong>）</li>
+          </ul>
+          <p>
+            ブランチ名が内容と乖離したら、push 前なら <code>git branch -m</code> でリネームできる。
+            実際 <code>chore/firebase-setup</code> にテンプレート掃除を載せることになったので <code>chore/project-setup</code> に改名した。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">ターミナルで実際に詰まった点</div>
+          <ul>
+            <li><strong>vim から抜けられない</strong> — <code>--no-ff</code> はメッセージが必要なので git がエディタ（既定は vim）を開く。保存して終了は <code>Esc</code> → <code>:wq</code>、中止は <code>:q!</code>。<strong>SSH 先など VS Code が使えない環境では必ず出てくるので、この2つだけは覚える</strong></li>
+            <li><strong><code>dquote&gt;</code> が出て戻れない</strong> — 全角の <code>”</code> を打つとシェルは閉じ引用符と認識せず待ち続ける。<code>Ctrl+C</code> で抜ける</li>
+            <li><strong>ブランチ名の打ち間違い</strong>（<code>preject</code>）— <strong>Tab 補完を使えば存在する名前しか出ない</strong>ので原理的に起きない</li>
+            <li><strong>前の行の消し残しに続けて打つ</strong>（<code>git branch - git merge ...</code>）— 打ち始める前に <code>Ctrl+U</code> で行を消す</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 12 -->
+    <article class="entry" id="e12">
+      <div class="entry-no">12</div>
+      <div class="entry-body">
+        <h2>モジュールは「1回だけ実行される」とは限らない</h2>
+
+        <h3>前提：モジュールキャッシュ</h3>
+        <p>
+          <code>import</code> は「そのファイルを上から下まで実行して、<code>export</code> されたものを受け取る」操作。
+          そして<strong>同じファイルを何箇所から import しても、実行されるのは最初の1回だけ</strong>で、
+          2回目以降は最初の結果が使い回される。これを<strong>モジュールキャッシュ</strong>という。
+        </p>
+
+        <h3>用語：モジュールグラフ / バンドラ / バンドル</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">用語</th><th scope="col">意味</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">モジュールグラフ</th><td>どのファイルが何を import しているかの<strong>依存関係の地図</strong></td></tr>
+              <tr><th scope="row">バンドラ</th><td>地図を辿ってファイルを集め、変換・最適化して出力する<strong>道具</strong>（Next.js は Turbopack）</td></tr>
+              <tr><th scope="row">バンドル</th><td>その<strong>成果物</strong>。<code>.next/static/</code> に出る</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">バンドラは「集める」だけの道具ではない</div>
+          <p>「ファイル数を減らして速くする」は歴史的な理由で、HTTP/2 以降は弱い。本質は<strong>変換</strong>にある。</p>
+          <ul>
+            <li><strong>解決</strong> — ブラウザは <code>import ... from "firebase/app"</code> のパッケージ名を解決できない（<code>node_modules</code> を知らない）。バンドラが実体に繋ぎ変える</li>
+            <li><strong>変換</strong> — ブラウザは TypeScript も JSX も読めない</li>
+            <li><strong>最適化</strong> — tree shaking、圧縮、そして<strong>環境変数の置換</strong></li>
+          </ul>
+          <p><strong>エントリ01で「置換するのはブラウザではなくバンドラ」と訂正した、その「バンドラ」の正体がこれ。</strong></p>
+        </div>
+
+        <h3>「1回だけ」を壊す2つの例外</h3>
+        <ol>
+          <li>
+            <strong>Next.js はバンドルを2つ持つ。</strong>サーバー用（Node.js で HTML を作る）とクライアント用（ブラウザで動く）。
+            <strong>メモリを共有しないので、同じ <code>lib/firebase.ts</code> がそれぞれの世界で1回ずつ、計2回評価される。</strong>
+            モジュールキャッシュの保証は<strong>バンドルの内側でしか効かない</strong>
+          </li>
+          <li>
+            <strong>HMR。</strong>ファイル保存時に、変更されたモジュールをキャッシュから捨てて再評価する。
+            <strong>「最初の1回だけ」の保証を、変更を反映するためにわざと壊している</strong>
+          </li>
+        </ol>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①</div>
+          <dl class="wrong-right">
+            <dt>「トップレベル」＝ ファイルの一番上の行</dt>
+            <dd><strong>関数の外側</strong>という意味。ファイルの100行目でも関数の外なら「トップレベル」。モジュールが読み込まれた瞬間に走る場所を指す</dd>
+          </dl>
+          <p>
+            <code>auth</code> / <code>db</code> を他のファイルから import したいので <code>export</code> が必要で、
+            <code>export</code> するには関数の外に置くしかない。<strong>トップレベルに書くのは「そう書くと良いから」ではなく、そうせざるを得ないから。</strong>
+            その結果「読み込むたびに走る」性質が付いてくる。
+          </p>
+        </div>
+
+        <h3>Firebase 側で何が起きているか</h3>
+        <p>
+          Firebase SDK は内部に<strong>「作ったアプリの名簿」</strong>（<code>_apps</code>）を持つ。
+          名前を指定しない <code>initializeApp(config)</code> のアプリ名は <code>"[DEFAULT]"</code>。
+        </p>
+<pre><code>initializeApp(config) が呼ばれた
+  └─ 名簿に "[DEFAULT]" が ある？
+       ├─ ある → 設定は前回と同じ？
+       │           ├─ 同じ → 【既存のものを返す】 ← return existingApp
+       │           └─ 違う → 【エラー】duplicate-app
+       └─ ない → 【新しく作って名簿に登録】</code></pre>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②</div>
+          <dl class="wrong-right">
+            <dt>再実行されることで設定が更新され、エラーを吐かなくなる</dt>
+            <dd><strong>因果が逆。</strong>再実行はエラーを防ぐ側ではなく<strong>引き起こす側</strong>。古いアプリが名簿に残ったまま新しい設定で作ろうとして衝突する</dd>
+          </dl>
+          <p>
+            名簿は <code>lib/firebase.ts</code> ではなく <code>node_modules/@firebase/app</code> の中にある。
+            <strong>HMR が捨てるのは変更したモジュールだけなので、名簿は生き残る。</strong>
+            そして <strong>Firebase には「既存アプリの設定を差し替える」APIが存在しない</strong>ので、
+            比較して違えばエラーを投げるしかない。<strong>「更新する」という動作はどこにも実装されていない。</strong>
+          </p>
+        </div>
+
+        <h3>ガードと冪等性</h3>
+        <p>
+          <strong>冪等</strong>とは「同じ操作を何回繰り返しても、1回だけ行ったときと結果が変わらない」性質。
+          エレベーターのボタンを10回押しても来るのは1台、というのと同じ。
+        </p>
+        <p>
+          <code>getApps()</code> は<strong>作成済みアプリの配列</strong>を返し、無ければ空配列（エラーにならないので安全に調べられる）。
+          <code>getApp()</code> は<strong>アプリそのもの</strong>を返し、無ければエラー。
+          この2つを使い、<strong>2回目以降は <code>initializeApp</code> を呼ばせない</strong>のがガードの役目。呼ばれなければ衝突しようがない。
+        </p>
+        <p>
+          <strong>ガードは「エラーを防ぐ回避策」ではなく「このモジュールは冪等である」という宣言。</strong>
+          SDK の内部実装（<code>return existingApp</code>）に依存せず、自分のコードで保証する。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">ガードには副作用がある</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">設定を変えて再評価されたとき</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">ガード無し</th><td><code>duplicate-app</code> エラー。<strong>うるさいが、異常に気づける</strong></td></tr>
+                <tr><th scope="row">ガード有り</th><td>古い設定のまま動き続ける。<strong>静かだが、気づけない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>「エラーが出ない＝正しく動いている」ではない。</strong>ガードは問題を解決したというより、見えなくした側面もある。
+            だから<strong>環境変数を変えたら開発サーバーを再起動する</strong>という運用とセットで初めて成立する。
+            エントリ01の「<code>.env.local</code> を変更したら再起動が必要」と同じ話。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 13 -->
+    <article class="entry" id="e13">
+      <div class="entry-no">13</div>
+      <div class="entry-body">
+        <h2>"use client" は境界の宣言であって「ブラウザ専用」ではない</h2>
+
+        <p>
+          前作の React だけのアプリでは、コードが動く場所は<strong>ブラウザの1箇所だけ</strong>だった。
+          Next.js では<strong>サーバー（Node.js）とブラウザの2箇所</strong>で動く。
+          <strong>「このコードはどっちで動くのか」を意識する必要が生まれた</strong>——これが React 単体との最大の違い。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th scope="col"></th><th scope="col">サーバーコンポーネント</th><th scope="col">クライアントコンポーネント</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">書き方</th><td><strong>何も書かない</strong>（既定）</td><td>ファイル先頭に <code>"use client"</code></td></tr>
+              <tr><th scope="row">JSがブラウザへ</th><td><strong>送られない</strong></td><td>送られる</td></tr>
+              <tr><th scope="row">useState / onClick</th><td>使えない</td><td>使える</td></tr>
+              <tr><th scope="row">useEffect</th><td>使えない</td><td>使える</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>"use client"</code> ＝「これはブラウザ<strong>でだけ</strong>動く」</dt>
+            <dd>「これはサーバーで動き、<strong>加えて</strong>ブラウザにも送られて<strong>もう一度</strong>動く」。<strong>クライアントコンポーネントは計2回実行される</strong></dd>
+          </dl>
+          <p>
+            Next.js のドキュメントは <strong>boundary（境界）</strong> と <strong>entry point（入口）</strong> という語を使っている。
+            「client only」ではない。<strong>名前が誤解を招く。</strong>
+          </p>
+        </div>
+
+        <h3>実行の流れ（時系列）</h3>
+        <ol>
+          <li>
+            <strong>【第1幕】サーバーで HTML を作る</strong> — サーバーコンポーネントも<strong>クライアントコンポーネントも</strong>実行される。
+            ただしこの時点で <code>window</code> / <code>document</code> / <strong><code>IndexedDB</code></strong> は存在せず、
+            <strong><code>useEffect</code> は実行されない</strong>（React がサーバーでは呼ばないと決めている）
+          </li>
+          <li>
+            <strong>【第2幕】ブラウザが HTML を受け取る</strong> — <strong>画面は見えるが、まだボタンは押せない</strong>。
+            JS のダウンロードを待たずに表示できる、というのがサーバーで HTML を作る価値
+          </li>
+          <li>
+            <strong>【第3幕】ブラウザで再実行される</strong>（<strong>ハイドレーション</strong>）— ここで初めて
+            <code>window</code> があり、<code>IndexedDB</code> があり、<code>useEffect</code> が動く
+          </li>
+        </ol>
+
+        <div class="note warn">
+          <div class="note-label">だから何が問題になるか</div>
+          <p>
+            <code>lib/firebase.ts</code> を import するのはクライアントコンポーネントであり、
+            <strong>そのクライアントコンポーネントは第1幕（サーバー）でも実行される</strong>。
+            つまり <code>lib/firebase.ts</code> のトップレベルはサーバーでも走る。
+          </p>
+<pre><code>// 悪い例
+export const auth = getAuth(app);
+onAuthStateChanged(auth, (user) =&gt; { ... });  // ← トップレベル。サーバーでも走る</code></pre>
+          <p>
+            <strong>サーバーには IndexedDB が無い</strong>ので、ログイン状態を読みに行って失敗する。
+          </p>
+          <p>
+            <strong>ルール：トップレベルには「Node.js でも壊れないもの」だけ。ブラウザ専用の処理は <code>useEffect</code> の中へ。</strong>
+            <code>initializeApp</code> / <code>getAuth</code> / <code>getFirestore</code> はインスタンスを作るだけなのでトップレベルで問題ない。
+          </p>
+        </div>
+
+        <h3>結果：サーバーはユーザーが誰か知りようがない</h3>
+        <p>
+          ログイン情報は<strong>ブラウザの IndexedDB</strong> にあり、サーバーは別のマシンなので見られない。
+          <strong>したがってサーバーが作る HTML は、必ず「まだ誰か分からない」状態のものになる。</strong>
+          第3幕で <code>useEffect</code> が動いて初めて「ログイン済みだった」と判明する。
+        </p>
+        <p>
+          <strong>エントリ08の「状態は3つ必要」が、ここでも別の角度から裏付けられた。</strong>
+          ①を用意せず「<code>user</code> が <code>null</code> なら未ログイン」と書くと、
+          <strong>サーバーが作る HTML は必ずログイン画面</strong>になり、リロードのたびに一瞬ちらつく。
+        </p>
+
+        <h3>境界は1箇所に引く</h3>
+<pre><code>app/layout.tsx              ← サーバーコンポーネント（何も書かない）
+  └─ AuthProvider.tsx       ← "use client" ★ 境界はここ
+       └─ lib/firebase.ts   ← 自動的にクライアントバンドルに含まれる</code></pre>
+        <p>
+          ★ の1行を書けば、そこから import されるものは Next.js が依存関係を辿って自動でクライアント側に含める。
+          <code>lib/firebase.ts</code> は<strong>コンポーネントですらない</strong>（JSX も state も持たない、値を export するだけのファイル）ので、
+          境界を宣言する立場にない。<strong><code>"use client"</code> は不要。</strong>
+        </p>
+        <p>ドキュメントも明言している：<em>You do <strong>not</strong> need to add the <code>'use client'</code> directive to <strong>every</strong> file that contains Client Components.</em></p>
+      </div>
+    </article>
+
+    <!-- 14 -->
+    <article class="entry" id="e14">
+      <div class="entry-no">14</div>
+      <div class="entry-body">
+        <h2>情報は古くなる。node_modules のソースが最終的な正</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（指導側の誤りも含む）</div>
+          <dl class="wrong-right">
+            <dt><code>initializeApp</code> を2回呼ぶと <code>duplicate-app</code> エラーになる</dt>
+            <dd><strong>Firebase v9 以降は、設定が同じなら既存アプリを返すだけでエラーにならない。</strong>エラーになるのは設定が違うときだけ。v8 以前は無条件に throw していたため、<strong>ネット上の記事の多くはその前提で書かれている</strong></dd>
+          </dl>
+          <p>
+            確認方法は、記事を探すことではなく<strong>インストール済みのソースを読むこと</strong>だった。
+            <code>node_modules/@firebase/app/dist/esm/index.esm.js</code> に <code>return existingApp;</code> という分岐が実在する。
+          </p>
+        </div>
+
+        <p><strong>信頼度の順序を持っておく。</strong></p>
+        <ol>
+          <li><strong><code>node_modules</code> の中の実際のソース</strong> — いま自分のマシンで動いている本物。議論の余地がない</li>
+          <li><strong><code>node_modules/next/dist/docs/</code> のドキュメント</strong> — インストールしたバージョンに対応した公式文書</li>
+          <li>Web 上の公式ドキュメント — バージョンがずれている可能性がある</li>
+          <li>個人のブログ記事・Q&amp;Aサイト — <strong>書かれた時点の情報。古い可能性が高い</strong></li>
+        </ol>
+
+        <div class="note warn">
+          <div class="note-label">エラーは「何が」より先に「どこに」を読む</div>
+          <p>
+            <code>tsconfig.json</code> の <code>target=ES5</code> が非推奨、というエラーがエディタに出た。
+            しかし自分の <code>tsconfig.json</code> は <code>ES2017</code> で問題なし。
+            <strong>実際は VS Code で開いていた <code>node_modules/protobufjs/tsconfig.json</code> の警告だった。</strong>
+          </p>
+          <p>
+            エディタは<strong>開いているファイルすべて</strong>を検査するので、他人のパッケージを開けば他人の問題まで表示される。
+            <code>npm run lint</code> も <code>npm run build</code> も通っていたことが、自分のコードの問題ではない証拠だった。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">node_modules は読むが、書かない</div>
+          <ul>
+            <li><code>.gitignore</code> 対象なので<strong>変更は git に残らない</strong></li>
+            <li>次の <code>npm install</code> で<strong>上書きされて消える</strong></li>
+            <li>Vercel には<strong>一切反映されない</strong>（lock ファイルから入れ直すため）</li>
+          </ul>
+          <p><strong><code>node_modules</code> は「自分のものではない領域」。読むのは自由、書き込むのは禁止。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 15 -->
+    <article class="entry" id="e15">
+      <div class="entry-no">15</div>
+      <div class="entry-body">
+        <h2>掃除で残るのは「消したものに付随していた形式」である</h2>
+
+        <p>
+          <code>create-next-app</code> のテンプレート残骸を削除したとき、<strong>削除そのものではなく、削除の跡で3回つまずいた。</strong>
+          すべて同じ型のミス——<strong>何かを消したあと、それに付随していた形式だけが残る。</strong>
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：JSX の波括弧</div>
+          <dl class="wrong-right">
+            <dt><code>className={h-full antialiased}</code></dt>
+            <dd><code>{}</code> は JSX において<strong>「ここから JavaScript の式が始まる」</strong>という意味。<code>h-full</code> は <code>h - full</code> という引き算と解釈され文法が破綻する。ただの文字列なので <code>className="h-full antialiased"</code> が正しい</dd>
+          </dl>
+          <p>
+            元は <code>className={`${geistSans.variable} ... h-full antialiased`}</code> で、
+            <strong>変数を埋め込む必要があったから <code>{}</code> が必要だった。</strong>
+            フォントを消してその必要がなくなったのに、<code>{}</code> だけが残った。
+          </p>
+          <p>他の2件も同型：<strong>import を消した跡の空行</strong>、<strong>短くなったのに残った不要な改行</strong>。</p>
+        </div>
+
+        <h3><code>lang="en"</code> → <code>lang="ja"</code> はアクセシビリティの問題</h3>
+        <ul>
+          <li><strong>スクリーンリーダーが日本語を英語の発音規則で読み上げる。</strong>視覚障害のあるユーザーには内容が理解できなくなる</li>
+          <li>ブラウザが的外れな翻訳提案を出す</li>
+          <li>日本語の禁則処理や行分割の判定にも影響する</li>
+        </ul>
+        <p><strong><code>lang</code> 属性の誤りは Web アクセシビリティの最も初歩的な指摘事項。</strong>設定ではなく品質の問題として扱う。</p>
+
+        <h3>ビルド出力は読むもの</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">出力</th><th scope="col">意味</th></tr></thead>
+            <tbody>
+              <tr>
+                <th scope="row"><code>Environments: .env.local</code></th>
+                <td>Next.js が <code>.env.local</code> を認識している証拠。ファイル名や置き場所を間違えると<strong>この行が出ない</strong>。環境変数のトラブルで最初に見る行</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>○ (Static)</code></th>
+                <td>
+                  ビルド時に HTML が完成品として作られ、リクエスト時には何も実行されない。
+                  <strong>「クライアント JS が無い」という意味ではなく「初期 HTML をビルド時に確定できる」という意味。</strong>
+                  <br>
+                  <strong>訂正：</strong>当初「認証を入れると変わる」と書いたが、<strong>変わらなかった</strong>。
+                  クライアント側認証ではサーバーがユーザーを知らないため<strong>全員に同じ HTML を返すしかなく</strong>、
+                  それならビルド時に作っておける。<strong>エントリ13の裏付けになっている。</strong>
+                  動的になるのは <code>cookies()</code> / <code>headers()</code> のようなリクエスト固有の API を使ったとき
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><code>GET /json/version 404</code></th>
+                <td>エディタのデバッガ等がデバッグ用エンドポイントを探しに来ただけ。<strong>アプリとは無関係</strong>。「ログに出た＝問題」ではない</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">削除系の変更こそ検証する</div>
+          <p>
+            削除は「動いているように見えて実は壊れている」ことがある。
+            <code>npm run lint</code>（未使用 import が残っていれば捕まる）→ <code>npm run build</code> → <code>npm run dev</code> の3つを必ず通す。
+            実際、<code>page.tsx</code> がコンポーネントを <code>export default</code> していない状態はビルドでしか捕まらなかった。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 16 -->
+    <article class="entry" id="e16">
+      <div class="entry-no">16</div>
+      <div class="entry-body">
+        <h2>補完は「存在するもの」を出すだけで、「正しいもの」は出さない</h2>
+
+        <p>
+          <code>lib/firebase.ts</code> を書いたとき、間違いは<strong>すべて import 行に集中していた</strong>。
+          そして3件中2件は<strong>自分で判断した結果ではなく、補完候補に出てきたから選ばれたもの</strong>だった。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：process.env と import.meta.env</div>
+          <dl class="wrong-right">
+            <dt><code>import.process.env.NEXT_PUBLIC_...</code> と書いた。さらに「Firebase がサーバー側で動くから、サーバー側のグローバルオブジェクトが使える」と考えた</dt>
+            <dd><strong>実行場所とは無関係。</strong><code>process</code> はブラウザに存在せず、クライアント側では<strong>ビルド時に値へ置換されている</strong>だけ（エントリ01）。「サーバーで動くから使える」ではなく「<strong>ブラウザでは使えないので、使えるフリをさせている</strong>」</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">Next.js</th><th scope="col">Vite</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">書き方</th><td><code>process.env.X</code></td><td><code>import.meta.env.X</code></td></tr>
+                <tr><th scope="row">出自</th><td>Node.js の<strong>グローバルオブジェクト</strong></td><td>ES Modules の<strong>言語構文</strong></td></tr>
+                <tr><th scope="row">ブラウザに実体</th><td><strong>無い</strong></td><td><code>import.meta</code> はある（<code>.env</code> は Vite の独自拡張）</td></tr>
+                <tr><th scope="row">動く仕組み</th><td colspan="2"><strong>どちらもビルド時に置換</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>やっていることは同じ。違うのは「どの入れ物の名前を借りたか」だけ。</strong>
+            そして <code>import</code> しない理由も実行場所とは無関係で、<strong>グローバルオブジェクトと言語構文は、そもそも import できる対象ではない</strong>から。
+          </p>
+          <p>
+            エディタのエラー「<em>'process' はキーワード 'import' に関するメタプロパティとして無効です。候補: 'meta'</em>」は、
+            <code>import.meta</code> が正式な構文であるためパーサーが <code>meta</code> を期待した、という意味。
+            <strong>直し方は <code>process</code> を <code>meta</code> に変えることではなく、<code>import.</code> を丸ごと消すこと。</strong>
+          </p>
+        </div>
+
+        <h3>補完が連れてきた2つの誤った import</h3>
+        <ul>
+          <li>
+            <code>firebase/auth/<strong>cordova</strong></code> — <strong>Apache Cordova</strong>（HTML/JS でスマホアプリを作る別フレームワーク）向けのビルド。このプロジェクトとは無関係
+          </li>
+          <li>
+            <code>firebase/firestore/<strong>lite</strong></code> — 「軽い版」ではなく<strong>「機能が削られた版」</strong>
+          </li>
+        </ul>
+
+        <div class="note warn">
+          <div class="note-label">firestore/lite の実態（ソースで確認）</div>
+          <p>パッケージ自身のドキュメントコメントにこう書かれている。</p>
+          <p><em>Firestore Lite is a small <strong>online-only</strong> SDK ... and <code>onSnapshot()</code> APIs are <strong>not supported</strong>.</em></p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col"><code>declare function onSnapshot</code> の数</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>firebase/firestore</code></th><td><strong>18</strong></td></tr>
+                <tr><th scope="row"><code>firebase/firestore/lite</code></th><td><strong>0</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>onSnapshot</code> はデータ変更をリアルタイムで受け取る中核API。さらに lite は online-only でオフラインキャッシュも効かない。
+            <strong>削られている機能を評価しないまま選ぶのは、選択ではない。</strong>
+            将来バンドルサイズのために lite を選ぶなら、それは制約と引き換えの<strong>設計判断</strong>であり、決定記録に残す対象になる。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">判断基準</div>
+          <p>
+            <code>firebase</code> は <code>firebase/app</code> <code>firebase/auth</code> <code>firebase/auth/cordova</code>
+            <code>firebase/firestore/lite</code> … と多数の入口を持ち、<strong>補完はそれを全部並べるだけ</strong>。
+            どれが適切かは補完には分からない。
+          </p>
+          <p>
+            <strong>迷ったら一番短いものを選ぶ。</strong>サフィックスが付いたものは<strong>特殊な事情がある人のための特殊なビルド</strong>で、
+            その事情に心当たりがなければ自分向けではない。
+          </p>
+          <p>
+            <strong>これは <code>npm install</code> や <code>node_modules</code> の話と同じ構造。</strong>
+            ツールが差し出したものを、読まずに受け取らない。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 17 -->
+    <article class="entry" id="e17">
+      <div class="entry-no">17</div>
+      <div class="entry-body">
+        <h2>「ビルドが通った」は「組み込まれた」を意味しない</h2>
+
+        <p>
+          <code>lib/firebase.ts</code> を書き終え、<code>npm run lint</code> も <code>npm run build</code> も通った。
+          そこでエントリ01で約束した検証——<strong>ビルド成果物に apiKey が平文で入っていることを確認する</strong>——を実行した。
+        </p>
+
+<pre><code>$ grep -rl "AIzaSy..." .next/static/
+（何も出ない）</code></pre>
+
+        <p><strong>見つからなかった。</strong>理由はエントリ12にある。</p>
+
+<pre><code>app/page.tsx    →  （何も import していない）
+app/layout.tsx  →  ./globals.css だけ
+
+lib/firebase.ts    ← 誰からも import されていない。グラフから孤立している</code></pre>
+
+        <p>
+          <strong>バンドラは「存在するファイル」ではなく「辿り着けたファイル」を集める。</strong>
+          誰も import していないファイルには辿り着けないので、バンドルに入らない。
+          ビルド出力のルートが <code>/</code> と <code>/_not-found</code> だけだったことも裏付けになっていた。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">ここが教訓</div>
+          <p>
+            <code>lib/firebase.ts</code> はディスク上に存在し、文法的に正しく、型チェックも通っている。
+            <strong>しかしアプリの一部にはまだなっていない。</strong>
+            ESLint は「使われていないファイル」を検出しないので lint も通る。
+          </p>
+          <p>
+            <strong>「エラーが出ない＝正しく動いている」ではない</strong>——エントリ12でガードの副作用について書いたのと同じ形の教訓。
+          </p>
+        </div>
+
+        <h3>入る場所は2つある</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">ディレクトリ</th><th scope="col">中身</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>.next/static/</code></th><td><strong>クライアント用バンドル</strong>（ブラウザに配信される）</td></tr>
+              <tr><th scope="row"><code>.next/server/</code></th><td><strong>サーバー用バンドル</strong>（Node.js で実行される）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>"use client"</code> を付けた <code>AuthProvider</code> が <code>lib/firebase.ts</code> を import すると、
+          クライアントコンポーネントは<strong>サーバーでも実行される</strong>（エントリ13の第1幕）ため、
+          <strong><code>lib/firebase.ts</code> は両方のバンドルに入る。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">確認する方法（2通り）</div>
+          <p><strong>A. ターミナル</strong></p>
+<pre><code>npm run build
+grep -rl "AIzaSy..." .next/static/    # クライアント用
+grep -rl "AIzaSy..." .next/server/    # サーバー用</code></pre>
+          <p>
+            <code>-r</code> は再帰、<strong><code>-l</code> は「一致したファイル名だけ」を出す</strong>。
+            <strong><code>-l</code> は必須</strong>——バンドルは圧縮されていて1行が数十万文字あるため、付けないとターミナルが埋まる。
+          </p>
+          <p><strong>B. ブラウザの DevTools</strong>（攻撃者が実際にやる方法そのもの）</p>
+<pre><code>npm run build
+npm run start     # dev ではなく本番ビルドを起動する</code></pre>
+          <p>
+            DevTools を開き <code>Cmd + Option + F</code>（全リソース横断検索）で apiKey を検索すると、
+            <code>.js</code> の中に平文で見つかる。<strong><code>npm run dev</code> では最適化されていないので、本番と同じ状態を見るには <code>npm run start</code> を使う。</strong>
+          </p>
+          <p>
+            <strong>AuthProvider を作ったら、この検証を必ず回収する。</strong>
+            「入らない状態」と「入る状態」を両方見れば、置換の仕組みと2つのバンドルの存在が同時に腹落ちする。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 18 -->
+    <article class="entry" id="e18">
+      <div class="entry-no">18</div>
+      <div class="entry-body">
+        <h2>置き場所は設計の一部である</h2>
+
+        <h3>なぜ <code>lib/</code> であって <code>app/</code> の中ではないのか</h3>
+        <p>
+          <code>app/</code> は Next.js にとって<strong>特別な意味を持つディレクトリ</strong>で、中のファイルは名前によってルーティングの一部として解釈される
+          （<code>page.tsx</code> / <code>layout.tsx</code> / <code>loading.tsx</code> / <code>error.tsx</code> / <code>route.ts</code>）。
+        </p>
+        <p>
+          <code>app/lib/firebase.ts</code> と置いても技術的には動く（特定の名前だけがルートとして扱われるため）。
+          しかし——<strong><code>app/</code> の中にあるものは「URLに対応する何か」だと読まれる。</strong>
+          <code>lib/firebase.ts</code> は URL と無関係なので、<strong>「これはルートではない」ということを置き場所で表現する</strong>のが正しい。
+        </p>
+        <p><strong><code>lib/</code> は Next.js にとって何の意味も持たない、ただのディレクトリ。それが利点。</strong></p>
+
+        <h3><code>@/</code> エイリアス</h3>
+        <p><code>tsconfig.json</code> の <code>paths</code> に <code>"@/*": ["./*"]</code> が設定されている。</p>
+<pre><code>import { auth } from "@/lib/firebase";         // ✅ どのファイルからでも同じ
+import { auth } from "../../../lib/firebase";  // ❌ ファイルを移動すると壊れる</code></pre>
+        <p><strong>相対パスは、ファイルを移動しただけで全部書き直しになる。</strong></p>
+
+        <h3>1ファイル1責務</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">ファイル</th><th scope="col">役割</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>lib/firebase.ts</code></th><td><strong>初期化のみ。</strong><code>app</code> / <code>auth</code> / <code>db</code> を作って export する</td></tr>
+              <tr><th scope="row"><code>lib/firestore.ts</code></th><td><strong>データ取得層。</strong><code>getCompanies(uid)</code> のような意図が明確な関数</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>この2つを混ぜない。</strong><code>lib/firebase.ts</code> に <code>getCompanies</code> を書き始めると、
+          「初期化ファイル」が「なんでも置き場」に変質する。
+        </p>
+        <p>
+          ファイル自身の冒頭に「ここでは初期化するだけ、データ取得は <code>lib/firestore.ts</code> を参照」と書いておくと、
+          <strong>責務の境界がファイル自身に記録される</strong>ので、半年後の自分が助かる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">細かいが効いてくること</div>
+          <ul>
+            <li><strong>ファイル名は小文字。</strong>コメントに <code>lib/Firestore.ts</code> と書いてしまったが、実体は <code>lib/firestore.ts</code>。ブランチ名で話した macOS と Linux の大文字小文字問題は、<strong>ファイル名にもそのまま当てはまる</strong>（エントリ11）</li>
+            <li><strong><code>src/</code> を使わない構成で始めた。</strong>Next.js は <code>src/app/</code> も許容するが、<strong>途中で移行しないこと</strong>だけが重要</li>
+          </ul>
+        </div>
       </div>
     </article>
 
@@ -1239,15 +1849,21 @@ NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
     <h2>未解決の問い</h2>
     <ol>
       <li>
-        素朴に <code>initializeApp(config)</code> と書くと、開発サーバーの HMR で何が起きるか。どう防ぐか。
+        <strong>環境変数が未設定のまま起動したとき、どう気づくか。</strong>
+        <code>process.env.X</code> の型は <code>string | undefined</code> で、Firebase の <code>FirebaseOptions</code> は
+        <code>apiKey?: string</code> なので<strong>型チェックは通ってしまう</strong>。
+        値が空のまま実行時に初めて意味不明なエラーになる。検証を入れるか、入れるならどこに置くか。
       </li>
       <li>
-        <code>lib/firebase.ts</code> はサーバーとクライアントのどちらから使われるか。<code>"use client"</code> は必要か。
-        <br>
-        ── エントリ 06 の「サーバーとクライアントで同じ書き方ができる」性質、およびエントリ 07 の
-        「ブラウザで動く必要がある ≠ SDK がブラウザ専用」という区別と、どう繋がるか（あるいは繋がらないか）を意識して考える。
+        <strong>企業を削除したとき、紐づく予定・振り返りをどう扱うか</strong>（仕様書3-6）。
+        一緒に削除するか／参照だけ外すか／紐づくデータがあるうちは削除させないか。
+        <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
       </li>
     </ol>
+    <p class="decisions-note" style="margin-top:1rem">
+      ※ 前回の未解決だった2問（<code>initializeApp</code> と HMR ／ <code>"use client"</code> の要否）は
+      エントリ 12・13 として解決済み。
+    </p>
   </section>
 
   <section class="decisions">
