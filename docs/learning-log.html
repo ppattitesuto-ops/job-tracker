@@ -534,10 +534,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-08-11</b></span>
-      <span>エントリ <b>11</b></span>
-      <span>決定記録 <b>3</b></span>
-      <span>進捗 <b>フェーズ1 ステップ2 完了 → ステップ3 へ</b></span>
+      <span>最終更新 <b>2026-08-14</b></span>
+      <span>エントリ <b>35</b></span>
+      <span>決定記録 <b>9</b></span>
+      <span>進捗 <b>Google 認証 完了 → フェーズ1のマージへ</b></span>
     </div>
   </header>
 
@@ -555,6 +555,30 @@
       <li><a href="#e09">npm install は、他人のコードを自分の権限で実行する操作でもある</a></li>
       <li><a href="#e10">package-lock.json は再現性と改竄検知の両方を担う</a></li>
       <li><a href="#e11">ブランチ名とコミットは、未来の自分への索引である</a></li>
+      <li><a href="#e12">モジュールは「1回だけ実行される」とは限らない</a></li>
+      <li><a href="#e13">"use client" は境界の宣言であって「ブラウザ専用」ではない</a></li>
+      <li><a href="#e14">情報は古くなる。node_modules のソースが最終的な正</a></li>
+      <li><a href="#e15">掃除で残るのは「消したものに付随していた形式」である</a></li>
+      <li><a href="#e16">補完は「存在するもの」を出すだけで、「正しいもの」は出さない</a></li>
+      <li><a href="#e17">「ビルドが通った」は「組み込まれた」を意味しない</a></li>
+      <li><a href="#e18">置き場所は設計の一部である</a></li>
+      <li><a href="#e19">props は1つのオブジェクト、children はその特別なキー</a></li>
+      <li><a href="#e20">useEffect は「外の世界」との接点であり、後始末まで含めて1組</a></li>
+      <li><a href="#e21">規約ではなく仕組みで守る — 認証 Context の設計</a></li>
+      <li><a href="#e22">2つのバンドルを、目で見た</a></li>
+      <li><a href="#e23">フォームは「state が正、画面はその写し」</a></li>
+      <li><a href="#e24">「関数を渡す」と「関数を呼ぶ」は別物</a></li>
+      <li><a href="#e25">フックは呼ばれた順番で管理されている</a></li>
+      <li><a href="#e26">分岐と条件表示の書き分け</a></li>
+      <li><a href="#e27">エラーは、書かなければ握り潰される</a></li>
+      <li><a href="#e28">抽象化は「重複が生まれてから」</a></li>
+      <li><a href="#e29">ルートグループ (protected) — URLを変えずに、守る範囲を作る</a></li>
+      <li><a href="#e30">ページ同士はURLで繋がっている。ファイルの場所ではない</a></li>
+      <li><a href="#e31">return は「何を描くか」、router は「どこに居るか」</a></li>
+      <li><a href="#e32">入口は増えるが、状態は1つ</a></li>
+      <li><a href="#e33">型は実行時に存在しない</a></li>
+      <li><a href="#e34">キャンセルはエラーではない</a></li>
+      <li><a href="#e35">同じ名前は、片方を直したときに黙って身代わりになる</a></li>
     </ol>
   </nav>
 
@@ -1230,6 +1254,1904 @@ NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
             <strong>「計画的に開発した証拠」</strong>になる。
           </p>
         </div>
+
+        <h3>マージするとき</h3>
+        <p>
+          <code>git merge --no-ff</code> の <code>--no-ff</code> は「早送りしない」。
+          付けないと git はコミットを <code>main</code> に一直線に並べてしまい、<strong>ブランチが存在した痕跡が消える</strong>。
+          付けるとマージコミットが1つ作られ、<code>git log --graph</code> に <code>|\</code> の分岐が残る——
+          <strong>「この一連のコミットは1つのまとまった作業だった」という情報が履歴に保存される。</strong>
+        </p>
+        <p>
+          マージ済みブランチは <code>git branch -d</code> で削除する（<code>-d</code> は未マージなら拒否してくれる安全な方）。
+          役目を終えたブランチを残すと、半年後に「これは何だっけ」という墓場ができる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">ブランチの粒度の基準</div>
+          <p><strong>ブランチは「マージする単位」であって「作業する単位」ではない。</strong>ソロ開発なら「一区切りついて main に戻せる状態」が単位。</p>
+          <ul>
+            <li>細かすぎ：<code>chore/firebase-setup</code> / <code>chore/remove-template</code> / <code>docs/conventions</code> を別々に</li>
+            <li><strong>適切</strong>：<code>chore/project-setup</code> にまとめて、一区切りで main へ</li>
+            <li>粗すぎ：<code>phase-1</code> に認証実装まで全部（<strong>動く単位で main に戻せなくなる</strong>）</li>
+          </ul>
+          <p>
+            ブランチ名が内容と乖離したら、push 前なら <code>git branch -m</code> でリネームできる。
+            実際 <code>chore/firebase-setup</code> にテンプレート掃除を載せることになったので <code>chore/project-setup</code> に改名した。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">ターミナルで実際に詰まった点</div>
+          <ul>
+            <li><strong>vim から抜けられない</strong> — <code>--no-ff</code> はメッセージが必要なので git がエディタ（既定は vim）を開く。保存して終了は <code>Esc</code> → <code>:wq</code>、中止は <code>:q!</code>。<strong>SSH 先など VS Code が使えない環境では必ず出てくるので、この2つだけは覚える</strong></li>
+            <li><strong><code>dquote&gt;</code> が出て戻れない</strong> — 全角の <code>”</code> を打つとシェルは閉じ引用符と認識せず待ち続ける。<code>Ctrl+C</code> で抜ける</li>
+            <li><strong>ブランチ名の打ち間違い</strong>（<code>preject</code>）— <strong>Tab 補完を使えば存在する名前しか出ない</strong>ので原理的に起きない</li>
+            <li><strong>前の行の消し残しに続けて打つ</strong>（<code>git branch - git merge ...</code>）— 打ち始める前に <code>Ctrl+U</code> で行を消す</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 12 -->
+    <article class="entry" id="e12">
+      <div class="entry-no">12</div>
+      <div class="entry-body">
+        <h2>モジュールは「1回だけ実行される」とは限らない</h2>
+
+        <h3>前提：モジュールキャッシュ</h3>
+        <p>
+          <code>import</code> は「そのファイルを上から下まで実行して、<code>export</code> されたものを受け取る」操作。
+          そして<strong>同じファイルを何箇所から import しても、実行されるのは最初の1回だけ</strong>で、
+          2回目以降は最初の結果が使い回される。これを<strong>モジュールキャッシュ</strong>という。
+        </p>
+
+        <h3>用語：モジュールグラフ / バンドラ / バンドル</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">用語</th><th scope="col">意味</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">モジュールグラフ</th><td>どのファイルが何を import しているかの<strong>依存関係の地図</strong></td></tr>
+              <tr><th scope="row">バンドラ</th><td>地図を辿ってファイルを集め、変換・最適化して出力する<strong>道具</strong>（Next.js は Turbopack）</td></tr>
+              <tr><th scope="row">バンドル</th><td>その<strong>成果物</strong>。<code>.next/static/</code> に出る</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">バンドラは「集める」だけの道具ではない</div>
+          <p>「ファイル数を減らして速くする」は歴史的な理由で、HTTP/2 以降は弱い。本質は<strong>変換</strong>にある。</p>
+          <ul>
+            <li><strong>解決</strong> — ブラウザは <code>import ... from "firebase/app"</code> のパッケージ名を解決できない（<code>node_modules</code> を知らない）。バンドラが実体に繋ぎ変える</li>
+            <li><strong>変換</strong> — ブラウザは TypeScript も JSX も読めない</li>
+            <li><strong>最適化</strong> — tree shaking、圧縮、そして<strong>環境変数の置換</strong></li>
+          </ul>
+          <p><strong>エントリ01で「置換するのはブラウザではなくバンドラ」と訂正した、その「バンドラ」の正体がこれ。</strong></p>
+        </div>
+
+        <h3>「1回だけ」を壊す2つの例外</h3>
+        <ol>
+          <li>
+            <strong>Next.js はバンドルを2つ持つ。</strong>サーバー用（Node.js で HTML を作る）とクライアント用（ブラウザで動く）。
+            <strong>メモリを共有しないので、同じ <code>lib/firebase.ts</code> がそれぞれの世界で1回ずつ、計2回評価される。</strong>
+            モジュールキャッシュの保証は<strong>バンドルの内側でしか効かない</strong>
+          </li>
+          <li>
+            <strong>HMR。</strong>ファイル保存時に、変更されたモジュールをキャッシュから捨てて再評価する。
+            <strong>「最初の1回だけ」の保証を、変更を反映するためにわざと壊している</strong>
+          </li>
+        </ol>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①</div>
+          <dl class="wrong-right">
+            <dt>「トップレベル」＝ ファイルの一番上の行</dt>
+            <dd><strong>関数の外側</strong>という意味。ファイルの100行目でも関数の外なら「トップレベル」。モジュールが読み込まれた瞬間に走る場所を指す</dd>
+          </dl>
+          <p>
+            <code>auth</code> / <code>db</code> を他のファイルから import したいので <code>export</code> が必要で、
+            <code>export</code> するには関数の外に置くしかない。<strong>トップレベルに書くのは「そう書くと良いから」ではなく、そうせざるを得ないから。</strong>
+            その結果「読み込むたびに走る」性質が付いてくる。
+          </p>
+        </div>
+
+        <h3>Firebase 側で何が起きているか</h3>
+        <p>
+          Firebase SDK は内部に<strong>「作ったアプリの名簿」</strong>（<code>_apps</code>）を持つ。
+          名前を指定しない <code>initializeApp(config)</code> のアプリ名は <code>"[DEFAULT]"</code>。
+        </p>
+<pre><code>initializeApp(config) が呼ばれた
+  └─ 名簿に "[DEFAULT]" が ある？
+       ├─ ある → 設定は前回と同じ？
+       │           ├─ 同じ → 【既存のものを返す】 ← return existingApp
+       │           └─ 違う → 【エラー】duplicate-app
+       └─ ない → 【新しく作って名簿に登録】</code></pre>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②</div>
+          <dl class="wrong-right">
+            <dt>再実行されることで設定が更新され、エラーを吐かなくなる</dt>
+            <dd><strong>因果が逆。</strong>再実行はエラーを防ぐ側ではなく<strong>引き起こす側</strong>。古いアプリが名簿に残ったまま新しい設定で作ろうとして衝突する</dd>
+          </dl>
+          <p>
+            名簿は <code>lib/firebase.ts</code> ではなく <code>node_modules/@firebase/app</code> の中にある。
+            <strong>HMR が捨てるのは変更したモジュールだけなので、名簿は生き残る。</strong>
+            そして <strong>Firebase には「既存アプリの設定を差し替える」APIが存在しない</strong>ので、
+            比較して違えばエラーを投げるしかない。<strong>「更新する」という動作はどこにも実装されていない。</strong>
+          </p>
+        </div>
+
+        <h3>ガードと冪等性</h3>
+        <p>
+          <strong>冪等</strong>とは「同じ操作を何回繰り返しても、1回だけ行ったときと結果が変わらない」性質。
+          エレベーターのボタンを10回押しても来るのは1台、というのと同じ。
+        </p>
+        <p>
+          <code>getApps()</code> は<strong>作成済みアプリの配列</strong>を返し、無ければ空配列（エラーにならないので安全に調べられる）。
+          <code>getApp()</code> は<strong>アプリそのもの</strong>を返し、無ければエラー。
+          この2つを使い、<strong>2回目以降は <code>initializeApp</code> を呼ばせない</strong>のがガードの役目。呼ばれなければ衝突しようがない。
+        </p>
+        <p>
+          <strong>ガードは「エラーを防ぐ回避策」ではなく「このモジュールは冪等である」という宣言。</strong>
+          SDK の内部実装（<code>return existingApp</code>）に依存せず、自分のコードで保証する。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">ガードには副作用がある</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">設定を変えて再評価されたとき</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">ガード無し</th><td><code>duplicate-app</code> エラー。<strong>うるさいが、異常に気づける</strong></td></tr>
+                <tr><th scope="row">ガード有り</th><td>古い設定のまま動き続ける。<strong>静かだが、気づけない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>「エラーが出ない＝正しく動いている」ではない。</strong>ガードは問題を解決したというより、見えなくした側面もある。
+            だから<strong>環境変数を変えたら開発サーバーを再起動する</strong>という運用とセットで初めて成立する。
+            エントリ01の「<code>.env.local</code> を変更したら再起動が必要」と同じ話。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 13 -->
+    <article class="entry" id="e13">
+      <div class="entry-no">13</div>
+      <div class="entry-body">
+        <h2>"use client" は境界の宣言であって「ブラウザ専用」ではない</h2>
+
+        <p>
+          前作の React だけのアプリでは、コードが動く場所は<strong>ブラウザの1箇所だけ</strong>だった。
+          Next.js では<strong>サーバー（Node.js）とブラウザの2箇所</strong>で動く。
+          <strong>「このコードはどっちで動くのか」を意識する必要が生まれた</strong>——これが React 単体との最大の違い。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th scope="col"></th><th scope="col">サーバーコンポーネント</th><th scope="col">クライアントコンポーネント</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">書き方</th><td><strong>何も書かない</strong>（既定）</td><td>ファイル先頭に <code>"use client"</code></td></tr>
+              <tr><th scope="row">JSがブラウザへ</th><td><strong>送られない</strong></td><td>送られる</td></tr>
+              <tr><th scope="row">useState / onClick</th><td>使えない</td><td>使える</td></tr>
+              <tr><th scope="row">useEffect</th><td>使えない</td><td>使える</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>"use client"</code> ＝「これはブラウザ<strong>でだけ</strong>動く」</dt>
+            <dd>「これはサーバーで動き、<strong>加えて</strong>ブラウザにも送られて<strong>もう一度</strong>動く」。<strong>クライアントコンポーネントは計2回実行される</strong></dd>
+          </dl>
+          <p>
+            Next.js のドキュメントは <strong>boundary（境界）</strong> と <strong>entry point（入口）</strong> という語を使っている。
+            「client only」ではない。<strong>名前が誤解を招く。</strong>
+          </p>
+        </div>
+
+        <h3>実行の流れ（時系列）</h3>
+        <ol>
+          <li>
+            <strong>【第1幕】サーバーで HTML を作る</strong> — サーバーコンポーネントも<strong>クライアントコンポーネントも</strong>実行される。
+            ただしこの時点で <code>window</code> / <code>document</code> / <strong><code>IndexedDB</code></strong> は存在せず、
+            <strong><code>useEffect</code> は実行されない</strong>（React がサーバーでは呼ばないと決めている）
+          </li>
+          <li>
+            <strong>【第2幕】ブラウザが HTML を受け取る</strong> — <strong>画面は見えるが、まだボタンは押せない</strong>。
+            JS のダウンロードを待たずに表示できる、というのがサーバーで HTML を作る価値
+          </li>
+          <li>
+            <strong>【第3幕】ブラウザで再実行される</strong>（<strong>ハイドレーション</strong>）— ここで初めて
+            <code>window</code> があり、<code>IndexedDB</code> があり、<code>useEffect</code> が動く
+          </li>
+        </ol>
+
+        <div class="note warn">
+          <div class="note-label">だから何が問題になるか</div>
+          <p>
+            <code>lib/firebase.ts</code> を import するのはクライアントコンポーネントであり、
+            <strong>そのクライアントコンポーネントは第1幕（サーバー）でも実行される</strong>。
+            つまり <code>lib/firebase.ts</code> のトップレベルはサーバーでも走る。
+          </p>
+<pre><code>// 悪い例
+export const auth = getAuth(app);
+onAuthStateChanged(auth, (user) =&gt; { ... });  // ← トップレベル。サーバーでも走る</code></pre>
+          <p>
+            <strong>サーバーには IndexedDB が無い</strong>ので、ログイン状態を読みに行って失敗する。
+          </p>
+          <p>
+            <strong>ルール：トップレベルには「Node.js でも壊れないもの」だけ。ブラウザ専用の処理は <code>useEffect</code> の中へ。</strong>
+            <code>initializeApp</code> / <code>getAuth</code> / <code>getFirestore</code> はインスタンスを作るだけなのでトップレベルで問題ない。
+          </p>
+        </div>
+
+        <h3>結果：サーバーはユーザーが誰か知りようがない</h3>
+        <p>
+          ログイン情報は<strong>ブラウザの IndexedDB</strong> にあり、サーバーは別のマシンなので見られない。
+          <strong>したがってサーバーが作る HTML は、必ず「まだ誰か分からない」状態のものになる。</strong>
+          第3幕で <code>useEffect</code> が動いて初めて「ログイン済みだった」と判明する。
+        </p>
+        <p>
+          <strong>エントリ08の「状態は3つ必要」が、ここでも別の角度から裏付けられた。</strong>
+          ①を用意せず「<code>user</code> が <code>null</code> なら未ログイン」と書くと、
+          <strong>サーバーが作る HTML は必ずログイン画面</strong>になり、リロードのたびに一瞬ちらつく。
+        </p>
+
+        <h3>境界は1箇所に引く</h3>
+<pre><code>app/layout.tsx              ← サーバーコンポーネント（何も書かない）
+  └─ AuthProvider.tsx       ← "use client" ★ 境界はここ
+       └─ lib/firebase.ts   ← 自動的にクライアントバンドルに含まれる</code></pre>
+        <p>
+          ★ の1行を書けば、そこから import されるものは Next.js が依存関係を辿って自動でクライアント側に含める。
+          <code>lib/firebase.ts</code> は<strong>コンポーネントですらない</strong>（JSX も state も持たない、値を export するだけのファイル）ので、
+          境界を宣言する立場にない。<strong><code>"use client"</code> は不要。</strong>
+        </p>
+        <p>ドキュメントも明言している：<em>You do <strong>not</strong> need to add the <code>'use client'</code> directive to <strong>every</strong> file that contains Client Components.</em></p>
+      </div>
+    </article>
+
+    <!-- 14 -->
+    <article class="entry" id="e14">
+      <div class="entry-no">14</div>
+      <div class="entry-body">
+        <h2>情報は古くなる。node_modules のソースが最終的な正</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（指導側の誤りも含む）</div>
+          <dl class="wrong-right">
+            <dt><code>initializeApp</code> を2回呼ぶと <code>duplicate-app</code> エラーになる</dt>
+            <dd><strong>Firebase v9 以降は、設定が同じなら既存アプリを返すだけでエラーにならない。</strong>エラーになるのは設定が違うときだけ。v8 以前は無条件に throw していたため、<strong>ネット上の記事の多くはその前提で書かれている</strong></dd>
+          </dl>
+          <p>
+            確認方法は、記事を探すことではなく<strong>インストール済みのソースを読むこと</strong>だった。
+            <code>node_modules/@firebase/app/dist/esm/index.esm.js</code> に <code>return existingApp;</code> という分岐が実在する。
+          </p>
+        </div>
+
+        <p><strong>信頼度の順序を持っておく。</strong></p>
+        <ol>
+          <li><strong><code>node_modules</code> の中の実際のソース</strong> — いま自分のマシンで動いている本物。議論の余地がない</li>
+          <li><strong><code>node_modules/next/dist/docs/</code> のドキュメント</strong> — インストールしたバージョンに対応した公式文書</li>
+          <li>Web 上の公式ドキュメント — バージョンがずれている可能性がある</li>
+          <li>個人のブログ記事・Q&amp;Aサイト — <strong>書かれた時点の情報。古い可能性が高い</strong></li>
+        </ol>
+
+        <div class="note warn">
+          <div class="note-label">エラーは「何が」より先に「どこに」を読む</div>
+          <p>
+            <code>tsconfig.json</code> の <code>target=ES5</code> が非推奨、というエラーがエディタに出た。
+            しかし自分の <code>tsconfig.json</code> は <code>ES2017</code> で問題なし。
+            <strong>実際は VS Code で開いていた <code>node_modules/protobufjs/tsconfig.json</code> の警告だった。</strong>
+          </p>
+          <p>
+            エディタは<strong>開いているファイルすべて</strong>を検査するので、他人のパッケージを開けば他人の問題まで表示される。
+            <code>npm run lint</code> も <code>npm run build</code> も通っていたことが、自分のコードの問題ではない証拠だった。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">node_modules は読むが、書かない</div>
+          <ul>
+            <li><code>.gitignore</code> 対象なので<strong>変更は git に残らない</strong></li>
+            <li>次の <code>npm install</code> で<strong>上書きされて消える</strong></li>
+            <li>Vercel には<strong>一切反映されない</strong>（lock ファイルから入れ直すため）</li>
+          </ul>
+          <p><strong><code>node_modules</code> は「自分のものではない領域」。読むのは自由、書き込むのは禁止。</strong></p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">記事の新旧を見分ける最大の手がかり：Pages Router か App Router か</div>
+          <p>Next.js には2つのルーティング方式があり、<strong>App Router が新しい方</strong>（Next.js 13 で導入）。</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">Pages Router（旧）</th><th scope="col">App Router（本アプリ）</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">ディレクトリ</th><td><code>pages/</code></td><td><strong><code>app/</code></strong></td></tr>
+                <tr><th scope="row">URLの決まり方</th><td><strong>ファイル名</strong>が URL</td><td><strong>フォルダ名</strong>が URL、<code>page.tsx</code> が本体</td></tr>
+                <tr><th scope="row">サーバーコンポーネント</th><td><strong>無い</strong>（全部クライアント）</td><td><strong>デフォルト</strong></td></tr>
+                <tr><th scope="row">共通レイアウト</th><td><code>_app.tsx</code> が1つだけ</td><td><strong><code>layout.tsx</code> を階層ごとに置ける</strong></td></tr>
+                <tr><th scope="row">データ取得</th><td><code>getServerSideProps</code> など</td><td>コンポーネントを <code>async</code> にして直接</td></tr>
+                <tr><th scope="row">ルーター</th><td><strong><code>next/router</code></strong></td><td><strong><code>next/navigation</code></strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>記事に <code>pages/</code>・<code>next/router</code>・<code>getServerSideProps</code>・<code>_app.tsx</code> が出てきたら、App Router 以前のもの。</strong>
+            そのまま真似すると動かない。実際 <code>useRouter</code> は <code>next/navigation</code> から import する。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">useRouter は「道具を返す」だけ</div>
+<pre><code>const router = useRouter();   // ① 道具を取ってくる（まだ何も起きない）
+router.replace("/");          // ② 道具を使う（ここで移動が起きる）</code></pre>
+          <p><strong>リモコンを手に取る（①）のと、ボタンを押す（②）の違い。</strong></p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">メソッド</th><th scope="col">動作</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>push("/")</code></th><td>移動する（<strong>履歴に積む</strong> → 戻るボタンで戻れる）</td></tr>
+                <tr><th scope="row"><code>replace("/")</code></th><td>移動する（<strong>履歴を置き換える</strong> → 戻れない）</td></tr>
+                <tr><th scope="row"><code>back()</code></th><td>1つ前に戻る</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>ログイン後の遷移には <code>replace</code> を使う。</strong><code>push</code> だと戻るボタンで <code>/login</code> に戻れてしまい、
+            戻った瞬間また飛ばされる——<strong>ユーザーが戻れなくなる</strong>。
+          </p>
+          <p>
+            なお <code>&lt;Link href="/"&gt;</code> は<strong>ユーザーがクリックして</strong>移動するもの、
+            <code>router.replace()</code> は<strong>コードから</strong>移動させるもの。<strong>リンクは踏むもの、router は呼ぶもの。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 15 -->
+    <article class="entry" id="e15">
+      <div class="entry-no">15</div>
+      <div class="entry-body">
+        <h2>掃除で残るのは「消したものに付随していた形式」である</h2>
+
+        <p>
+          <code>create-next-app</code> のテンプレート残骸を削除したとき、<strong>削除そのものではなく、削除の跡で3回つまずいた。</strong>
+          すべて同じ型のミス——<strong>何かを消したあと、それに付随していた形式だけが残る。</strong>
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：JSX の波括弧</div>
+          <dl class="wrong-right">
+            <dt><code>className={h-full antialiased}</code></dt>
+            <dd><code>{}</code> は JSX において<strong>「ここから JavaScript の式が始まる」</strong>という意味。<code>h-full</code> は <code>h - full</code> という引き算と解釈され文法が破綻する。ただの文字列なので <code>className="h-full antialiased"</code> が正しい</dd>
+          </dl>
+          <p>
+            元は <code>className={`${geistSans.variable} ... h-full antialiased`}</code> で、
+            <strong>変数を埋め込む必要があったから <code>{}</code> が必要だった。</strong>
+            フォントを消してその必要がなくなったのに、<code>{}</code> だけが残った。
+          </p>
+          <p>他の2件も同型：<strong>import を消した跡の空行</strong>、<strong>短くなったのに残った不要な改行</strong>。</p>
+        </div>
+
+        <h3><code>lang="en"</code> → <code>lang="ja"</code> はアクセシビリティの問題</h3>
+        <ul>
+          <li><strong>スクリーンリーダーが日本語を英語の発音規則で読み上げる。</strong>視覚障害のあるユーザーには内容が理解できなくなる</li>
+          <li>ブラウザが的外れな翻訳提案を出す</li>
+          <li>日本語の禁則処理や行分割の判定にも影響する</li>
+        </ul>
+        <p><strong><code>lang</code> 属性の誤りは Web アクセシビリティの最も初歩的な指摘事項。</strong>設定ではなく品質の問題として扱う。</p>
+
+        <h3>ビルド出力は読むもの</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">出力</th><th scope="col">意味</th></tr></thead>
+            <tbody>
+              <tr>
+                <th scope="row"><code>Environments: .env.local</code></th>
+                <td>Next.js が <code>.env.local</code> を認識している証拠。ファイル名や置き場所を間違えると<strong>この行が出ない</strong>。環境変数のトラブルで最初に見る行</td>
+              </tr>
+              <tr>
+                <th scope="row"><code>○ (Static)</code></th>
+                <td>
+                  ビルド時に HTML が完成品として作られ、リクエスト時には何も実行されない。
+                  <strong>「クライアント JS が無い」という意味ではなく「初期 HTML をビルド時に確定できる」という意味。</strong>
+                  <br>
+                  <strong>訂正：</strong>当初「認証を入れると変わる」と書いたが、<strong>変わらなかった</strong>。
+                  クライアント側認証ではサーバーがユーザーを知らないため<strong>全員に同じ HTML を返すしかなく</strong>、
+                  それならビルド時に作っておける。<strong>エントリ13の裏付けになっている。</strong>
+                  動的になるのは <code>cookies()</code> / <code>headers()</code> のようなリクエスト固有の API を使ったとき
+                </td>
+              </tr>
+              <tr>
+                <th scope="row"><code>GET /json/version 404</code></th>
+                <td>エディタのデバッガ等がデバッグ用エンドポイントを探しに来ただけ。<strong>アプリとは無関係</strong>。「ログに出た＝問題」ではない</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">削除系の変更こそ検証する</div>
+          <p>
+            削除は「動いているように見えて実は壊れている」ことがある。
+            <code>npm run lint</code>（未使用 import が残っていれば捕まる）→ <code>npm run build</code> → <code>npm run dev</code> の3つを必ず通す。
+            実際、<code>page.tsx</code> がコンポーネントを <code>export default</code> していない状態はビルドでしか捕まらなかった。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 16 -->
+    <article class="entry" id="e16">
+      <div class="entry-no">16</div>
+      <div class="entry-body">
+        <h2>補完は「存在するもの」を出すだけで、「正しいもの」は出さない</h2>
+
+        <p>
+          <code>lib/firebase.ts</code> を書いたとき、間違いは<strong>すべて import 行に集中していた</strong>。
+          そして3件中2件は<strong>自分で判断した結果ではなく、補完候補に出てきたから選ばれたもの</strong>だった。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：process.env と import.meta.env</div>
+          <dl class="wrong-right">
+            <dt><code>import.process.env.NEXT_PUBLIC_...</code> と書いた。さらに「Firebase がサーバー側で動くから、サーバー側のグローバルオブジェクトが使える」と考えた</dt>
+            <dd><strong>実行場所とは無関係。</strong><code>process</code> はブラウザに存在せず、クライアント側では<strong>ビルド時に値へ置換されている</strong>だけ（エントリ01）。「サーバーで動くから使える」ではなく「<strong>ブラウザでは使えないので、使えるフリをさせている</strong>」</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">Next.js</th><th scope="col">Vite</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">書き方</th><td><code>process.env.X</code></td><td><code>import.meta.env.X</code></td></tr>
+                <tr><th scope="row">出自</th><td>Node.js の<strong>グローバルオブジェクト</strong></td><td>ES Modules の<strong>言語構文</strong></td></tr>
+                <tr><th scope="row">ブラウザに実体</th><td><strong>無い</strong></td><td><code>import.meta</code> はある（<code>.env</code> は Vite の独自拡張）</td></tr>
+                <tr><th scope="row">動く仕組み</th><td colspan="2"><strong>どちらもビルド時に置換</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>やっていることは同じ。違うのは「どの入れ物の名前を借りたか」だけ。</strong>
+            そして <code>import</code> しない理由も実行場所とは無関係で、<strong>グローバルオブジェクトと言語構文は、そもそも import できる対象ではない</strong>から。
+          </p>
+          <p>
+            エディタのエラー「<em>'process' はキーワード 'import' に関するメタプロパティとして無効です。候補: 'meta'</em>」は、
+            <code>import.meta</code> が正式な構文であるためパーサーが <code>meta</code> を期待した、という意味。
+            <strong>直し方は <code>process</code> を <code>meta</code> に変えることではなく、<code>import.</code> を丸ごと消すこと。</strong>
+          </p>
+        </div>
+
+        <h3>補完が連れてきた2つの誤った import</h3>
+        <ul>
+          <li>
+            <code>firebase/auth/<strong>cordova</strong></code> — <strong>Apache Cordova</strong>（HTML/JS でスマホアプリを作る別フレームワーク）向けのビルド。このプロジェクトとは無関係
+          </li>
+          <li>
+            <code>firebase/firestore/<strong>lite</strong></code> — 「軽い版」ではなく<strong>「機能が削られた版」</strong>
+          </li>
+        </ul>
+
+        <div class="note warn">
+          <div class="note-label">firestore/lite の実態（ソースで確認）</div>
+          <p>パッケージ自身のドキュメントコメントにこう書かれている。</p>
+          <p><em>Firestore Lite is a small <strong>online-only</strong> SDK ... and <code>onSnapshot()</code> APIs are <strong>not supported</strong>.</em></p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col"><code>declare function onSnapshot</code> の数</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>firebase/firestore</code></th><td><strong>18</strong></td></tr>
+                <tr><th scope="row"><code>firebase/firestore/lite</code></th><td><strong>0</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>onSnapshot</code> はデータ変更をリアルタイムで受け取る中核API。さらに lite は online-only でオフラインキャッシュも効かない。
+            <strong>削られている機能を評価しないまま選ぶのは、選択ではない。</strong>
+            将来バンドルサイズのために lite を選ぶなら、それは制約と引き換えの<strong>設計判断</strong>であり、決定記録に残す対象になる。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">判断基準</div>
+          <p>
+            <code>firebase</code> は <code>firebase/app</code> <code>firebase/auth</code> <code>firebase/auth/cordova</code>
+            <code>firebase/firestore/lite</code> … と多数の入口を持ち、<strong>補完はそれを全部並べるだけ</strong>。
+            どれが適切かは補完には分からない。
+          </p>
+          <p>
+            <strong>迷ったら一番短いものを選ぶ。</strong>サフィックスが付いたものは<strong>特殊な事情がある人のための特殊なビルド</strong>で、
+            その事情に心当たりがなければ自分向けではない。
+          </p>
+          <p>
+            <strong>これは <code>npm install</code> や <code>node_modules</code> の話と同じ構造。</strong>
+            ツールが差し出したものを、読まずに受け取らない。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">再発した（AuthContext.tsx）</div>
+          <p>
+            <code>throw new Error(...)</code> を書く途中で <code>error</code> と打ったところ、エディタが
+            <strong><code>import { error } from "console";</code></strong> を挿入し、それを受け入れてしまった。
+          </p>
+          <p>
+            <strong><code>console</code> は Node.js のモジュールで、ブラウザには存在しない。</strong>
+            <code>"use client"</code> を付けたファイルなので、<strong>実際に使っていたらブラウザで壊れていた</strong>。
+            未使用だったため <code>npm run lint</code> の警告で済んだ。
+          </p>
+          <p>
+            <strong>warning は error ではない</strong>——<code>0 errors, 1 warning</code> ではビルドは通る。
+            だが<strong>警告0件を維持すること</strong>。「警告が5件あるのが普通」になった瞬間、6件目に気づけなくなる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 17 -->
+    <article class="entry" id="e17">
+      <div class="entry-no">17</div>
+      <div class="entry-body">
+        <h2>「ビルドが通った」は「組み込まれた」を意味しない</h2>
+
+        <p>
+          <code>lib/firebase.ts</code> を書き終え、<code>npm run lint</code> も <code>npm run build</code> も通った。
+          そこでエントリ01で約束した検証——<strong>ビルド成果物に apiKey が平文で入っていることを確認する</strong>——を実行した。
+        </p>
+
+<pre><code>$ grep -rl "AIzaSy..." .next/static/
+（何も出ない）</code></pre>
+
+        <p><strong>見つからなかった。</strong>理由はエントリ12にある。</p>
+
+<pre><code>app/page.tsx    →  （何も import していない）
+app/layout.tsx  →  ./globals.css だけ
+
+lib/firebase.ts    ← 誰からも import されていない。グラフから孤立している</code></pre>
+
+        <p>
+          <strong>バンドラは「存在するファイル」ではなく「辿り着けたファイル」を集める。</strong>
+          誰も import していないファイルには辿り着けないので、バンドルに入らない。
+          ビルド出力のルートが <code>/</code> と <code>/_not-found</code> だけだったことも裏付けになっていた。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">ここが教訓</div>
+          <p>
+            <code>lib/firebase.ts</code> はディスク上に存在し、文法的に正しく、型チェックも通っている。
+            <strong>しかしアプリの一部にはまだなっていない。</strong>
+            ESLint は「使われていないファイル」を検出しないので lint も通る。
+          </p>
+          <p>
+            <strong>「エラーが出ない＝正しく動いている」ではない</strong>——エントリ12でガードの副作用について書いたのと同じ形の教訓。
+          </p>
+        </div>
+
+        <h3>入る場所は2つある</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">ディレクトリ</th><th scope="col">中身</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>.next/static/</code></th><td><strong>クライアント用バンドル</strong>（ブラウザに配信される）</td></tr>
+              <tr><th scope="row"><code>.next/server/</code></th><td><strong>サーバー用バンドル</strong>（Node.js で実行される）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>"use client"</code> を付けた <code>AuthProvider</code> が <code>lib/firebase.ts</code> を import すると、
+          クライアントコンポーネントは<strong>サーバーでも実行される</strong>（エントリ13の第1幕）ため、
+          <strong><code>lib/firebase.ts</code> は両方のバンドルに入る。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">確認する方法（2通り）</div>
+          <p><strong>A. ターミナル</strong></p>
+<pre><code>npm run build
+grep -rl "AIzaSy..." .next/static/    # クライアント用
+grep -rl "AIzaSy..." .next/server/    # サーバー用</code></pre>
+          <p>
+            <code>-r</code> は再帰、<strong><code>-l</code> は「一致したファイル名だけ」を出す</strong>。
+            <strong><code>-l</code> は必須</strong>——バンドルは圧縮されていて1行が数十万文字あるため、付けないとターミナルが埋まる。
+          </p>
+          <p><strong>B. ブラウザの DevTools</strong>（攻撃者が実際にやる方法そのもの）</p>
+<pre><code>npm run build
+npm run start     # dev ではなく本番ビルドを起動する</code></pre>
+          <p>
+            DevTools を開き <code>Cmd + Option + F</code>（全リソース横断検索）で apiKey を検索すると、
+            <code>.js</code> の中に平文で見つかる。<strong><code>npm run dev</code> では最適化されていないので、本番と同じ状態を見るには <code>npm run start</code> を使う。</strong>
+          </p>
+          <p>
+            <strong>AuthProvider を作ったら、この検証を必ず回収する。</strong>
+            「入らない状態」と「入る状態」を両方見れば、置換の仕組みと2つのバンドルの存在が同時に腹落ちする。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 18 -->
+    <article class="entry" id="e18">
+      <div class="entry-no">18</div>
+      <div class="entry-body">
+        <h2>置き場所は設計の一部である</h2>
+
+        <h3>なぜ <code>lib/</code> であって <code>app/</code> の中ではないのか</h3>
+        <p>
+          <code>app/</code> は Next.js にとって<strong>特別な意味を持つディレクトリ</strong>で、中のファイルは名前によってルーティングの一部として解釈される
+          （<code>page.tsx</code> / <code>layout.tsx</code> / <code>loading.tsx</code> / <code>error.tsx</code> / <code>route.ts</code>）。
+        </p>
+        <p>
+          <code>app/lib/firebase.ts</code> と置いても技術的には動く（特定の名前だけがルートとして扱われるため）。
+          しかし——<strong><code>app/</code> の中にあるものは「URLに対応する何か」だと読まれる。</strong>
+          <code>lib/firebase.ts</code> は URL と無関係なので、<strong>「これはルートではない」ということを置き場所で表現する</strong>のが正しい。
+        </p>
+        <p><strong><code>lib/</code> は Next.js にとって何の意味も持たない、ただのディレクトリ。それが利点。</strong></p>
+
+        <h3><code>@/</code> エイリアス</h3>
+        <p><code>tsconfig.json</code> の <code>paths</code> に <code>"@/*": ["./*"]</code> が設定されている。</p>
+<pre><code>import { auth } from "@/lib/firebase";         // ✅ どのファイルからでも同じ
+import { auth } from "../../../lib/firebase";  // ❌ ファイルを移動すると壊れる</code></pre>
+        <p><strong>相対パスは、ファイルを移動しただけで全部書き直しになる。</strong></p>
+
+        <h3>1ファイル1責務</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">ファイル</th><th scope="col">役割</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>lib/firebase.ts</code></th><td><strong>初期化のみ。</strong><code>app</code> / <code>auth</code> / <code>db</code> を作って export する</td></tr>
+              <tr><th scope="row"><code>lib/firestore.ts</code></th><td><strong>データ取得層。</strong><code>getCompanies(uid)</code> のような意図が明確な関数</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>この2つを混ぜない。</strong><code>lib/firebase.ts</code> に <code>getCompanies</code> を書き始めると、
+          「初期化ファイル」が「なんでも置き場」に変質する。
+        </p>
+        <p>
+          ファイル自身の冒頭に「ここでは初期化するだけ、データ取得は <code>lib/firestore.ts</code> を参照」と書いておくと、
+          <strong>責務の境界がファイル自身に記録される</strong>ので、半年後の自分が助かる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">細かいが効いてくること</div>
+          <ul>
+            <li><strong>ファイル名は小文字。</strong>コメントに <code>lib/Firestore.ts</code> と書いてしまったが、実体は <code>lib/firestore.ts</code>。ブランチ名で話した macOS と Linux の大文字小文字問題は、<strong>ファイル名にもそのまま当てはまる</strong>（エントリ11）</li>
+            <li><strong><code>src/</code> を使わない構成で始めた。</strong>Next.js は <code>src/app/</code> も許容するが、<strong>途中で移行しないこと</strong>だけが重要</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 19 -->
+    <article class="entry" id="e19">
+      <div class="entry-no">19</div>
+      <div class="entry-body">
+        <h2>props は1つのオブジェクト、children はその特別なキー</h2>
+
+        <p>React はコンポーネントに props を渡すとき、<strong>すべてを1つのオブジェクトにまとめて、引数1個で渡す。</strong></p>
+<pre><code>&lt;Card title="タイトル" count={3}&gt;
+  &lt;p&gt;本文&lt;/p&gt;
+&lt;/Card&gt;
+
+      ↓ React は内部でこう呼んでいる
+
+Card({ title: "タイトル", count: 3, children: &lt;p&gt;本文&lt;/p&gt; })</code></pre>
+        <p><strong><code>children</code> だけは属性として書かず、タグで囲んだ中身が自動的にこのキーに入る。</strong></p>
+
+        <h3>分割代入は React ではなく JavaScript の文法</h3>
+<pre><code>const obj = { a: 1, b: 2 };
+const a = obj.a;      // 昔の書き方
+const { a } = obj;    // 分割代入。同じことをしている</code></pre>
+        <p>
+          <code>function AuthProvider({ children })</code> は、React が渡してくる props オブジェクトに対して
+          この JavaScript の構文を使っているだけ。<code>props.children</code> と書くのと動作は同じ。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：型の位置には「オブジェクト全体の形」を書く</div>
+          <dl class="wrong-right">
+            <dt><code>{ children }: { ReactNode }</code></dt>
+            <dd><code>{ children }: { children: ReactNode }</code>。右側は<strong>props オブジェクト全体の型</strong>であって「children の型」ではない。だから<strong>キー名が要る</strong></dd>
+          </dl>
+<pre><code>function AuthProvider({ children }: { children: ReactNode })
+                      └─ ① ─┘  └───── ② ─────┘
+
+① 受け取ったオブジェクトから children を取り出す（値の話）
+② 受け取るオブジェクト全体の形（型の話）</code></pre>
+          <p>左右で <code>children</code> が2回出るのは冗長に見えるが、<strong>片方は「取り出し方」、もう片方は「形の宣言」</strong>で役割が違う。</p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：const は「左が名前、右が値」</div>
+          <dl class="wrong-right">
+            <dt><code>const useContext(AuthContext) = </code></dt>
+            <dd><code>const context = useContext(AuthContext);</code>。左は<strong>自分で決める新しい変数名</strong>、右は<strong>入れたい値</strong></dd>
+          </dl>
+        </div>
+
+        <h3>詰まった細かい点</h3>
+        <ul>
+          <li><code>useState</code> は <strong>[現在の値, 更新関数] の2つ</strong>を返す。片方だけ受け取ると値を変えられない</li>
+          <li><code>useState(null)</code> は型が <code>null</code> と推論される。<strong><code>useState&lt;User | null&gt;(null)</code></strong> と明示する</li>
+          <li><code>value={{ user, loading }}</code> の <code>{ user }</code> は <code>{ user: user }</code> の<strong>省略記法</strong>。分割代入の逆向きで、あちらは「取り出す」、こちらは「詰める」</li>
+          <li>関数の宣言は <code>export function useAuth() { }</code>。<code>export useAuth( )</code> は「既にある関数を呼ぶ」形</li>
+          <li><code>if (undefined)</code> は「<code>undefined</code> は真か？」を聞いていて<strong>常に偽</strong>。<code>if (context === undefined)</code> と書く</li>
+          <li><code>throw</code> の後に <code>else</code> は不要。<strong>throw に到達した時点で関数は終わる</strong>ので、早期リターンでネストを浅くできる</li>
+        </ul>
+      </div>
+    </article>
+
+    <!-- 20 -->
+    <article class="entry" id="e20">
+      <div class="entry-no">20</div>
+      <div class="entry-body">
+        <h2>useEffect は「外の世界」との接点であり、後始末まで含めて1組</h2>
+
+        <p>
+          <code>useEffect</code> は<strong>「レンダリングとは別に、外の世界とやり取りする処理」を書く場所</strong>。
+          <code>onAuthStateChanged</code> は「Firebase に見張りを立てる」という外の世界への働きかけなので、ここに入れる。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">コンポーネント本体に直接書くと</th><th scope="col">useEffect に入れると</th></tr></thead>
+            <tbody>
+              <tr><td><strong>レンダリングのたびに</strong>実行される</td><td><strong>依存配列で実行タイミングを制御できる</strong></td></tr>
+              <tr><td><strong>サーバーでも実行される</strong> → IndexedDB が無く壊れる</td><td><strong>ブラウザでしか実行されない</strong></td></tr>
+              <tr><td>後片付けができない</td><td><strong>購読の解除を書ける</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>後始末の仕組み</h3>
+        <p>
+          <code>onAuthStateChanged</code> の戻り値の型は <code>Unsubscribe</code>、その実体は
+          <strong><code>() =&gt; void</code></strong>（引数なし・戻り値なしの関数）。<code>useEffect</code> が返した関数は
+          <strong>クリーンアップ関数</strong>として、React が2つのタイミングで呼ぶ。
+        </p>
+        <ol>
+          <li>コンポーネントが画面から消えるとき（アンマウント）</li>
+          <li>依存配列が変わって、エフェクトを<strong>やり直す直前</strong></li>
+        </ol>
+        <p>
+          <strong>「解散させないと増える」のではなく、「自分が立てた見張りは自分で解散させる責任がある」</strong>——
+          放置すると、次に立てた見張りと重なって積み上がる。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：不要なラッパー</div>
+          <dl class="wrong-right">
+            <dt><code>return () =&gt; unsubscribe();</code></dt>
+            <dd><code>return unsubscribe;</code> で十分。<code>unsubscribe</code> は<strong>既にクリーンアップに渡すべき形の関数</strong>。<strong>鍵そのものを渡せばいいのに「鍵を回す係」を1人雇っている</strong></dd>
+          </dl>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②：型を決めているのは誰か</div>
+          <dl class="wrong-right">
+            <dt><code>onAuthStateChanged</code> が <code>User | null</code> を渡すのは、自分の <code>AuthContextValue</code> がそう決めているから</dt>
+            <dd><strong>逆。</strong>Firebase の型定義（<code>NextOrObserver&lt;T&gt; = NextFn&lt;T | null&gt;</code>）が決めている。<strong>Firebase の型に合わせて自分の型を決めた</strong>のであって、その逆ではない</dd>
+          </dl>
+          <p>
+            同じ理由で、<strong>意味のない分岐</strong>も削除した——
+            <code>if (currentUser) setUser(currentUser) else setUser(null)</code> は
+            「<code>null</code> なら <code>null</code> を入れる」と言っているだけで <code>setUser(currentUser)</code> と完全に同じ。
+            <strong>分岐を書く前に「本当に場合分けが必要か」を確認する。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">忘れると画面が固まる：setLoading(false)</div>
+          <p>
+            コールバックで <code>setUser</code> だけして <code>setLoading(false)</code> を忘れると、
+            <strong>user は更新されるのに loading が true のままで、永遠に「確認中」表示になる。</strong>
+            <code>if</code> の内外どちらでもなく<strong>両方の場合に必要</strong>——
+            ログインしていてもいなくても「確認は終わった」という事実は同じだから。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">開発中は「購読 → 解除 → 購読」が起きる</div>
+          <p>
+            Next.js は既定で <strong>React Strict Mode</strong> が有効。開発時のみエフェクトをわざと1回余分に実行して即座にクリーンアップする。
+            <strong>これは「クリーンアップを正しく書いているか」を検査する仕組み</strong>で、書いていなければ開発中いきなり見張りが2体になる。本番では1回だけ。
+          </p>
+        </div>
+
+        <p><strong>依存配列は <code>[]</code>。</strong>判断基準は「この購読は何回行われるべきか」——マウント時に1回で十分。</p>
+      </div>
+    </article>
+
+    <!-- 21 -->
+    <article class="entry" id="e21">
+      <div class="entry-no">21</div>
+      <div class="entry-body">
+        <h2>規約ではなく仕組みで守る — 認証 Context の設計</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">部品</th><th scope="col">正体</th><th scope="col">仕事</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>AuthContext</code></th><td>器</td><td>配る経路そのもの</td></tr>
+              <tr><th scope="row"><code>AuthProvider</code></th><td><strong>自分が作った関数</strong></td><td>Firebase を購読して <code>user</code> / <code>loading</code> を<strong>持つ</strong></td></tr>
+              <tr><th scope="row"><code>AuthContext.Provider</code></th><td><strong>React が用意した部品</strong></td><td>渡された値を配下の全コンポーネントに<strong>配る</strong></td></tr>
+              <tr><th scope="row"><code>useAuth()</code></th><td>自分が作ったフック</td><td>取り出す<strong>唯一の入口</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>AuthProvider</code> と <code>AuthContext.Provider</code> は名前が似ていて紛らわしいが、
+          <strong>前者は「状態を作る係」、後者は「配る係」</strong>。前者が後者を使っている。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：AuthProvider は「確認」しない</div>
+          <dl class="wrong-right">
+            <dt><code>AuthProvider</code> がユーザー認証とローディング状態を確認する</dt>
+            <dd><strong>認証を確認しているのは Firebase。</strong><code>AuthProvider</code> は見張りを立てて<strong>結果を受け取り、保持して、配る</strong>だけ。「ログインしているか？」を判定するコードは1行も無い</dd>
+          </dl>
+          <p>
+            同様に <code>loading</code> は<strong>「確認が終わったか」だけ</strong>を表し、「ログイン画面を出すか」は受け取った側が決める。
+            <strong>事実を配るだけで、画面の判断はしない。</strong>この分離があるから、同じ <code>useAuth()</code> をどのページでも使い回せる。
+          </p>
+        </div>
+
+        <h3>createContext の初期値を undefined にする理由</h3>
+<pre><code>createContext&lt;AuthContextValue | undefined&gt;(undefined);
+                                             ^^^^^^^^^
+                    ← Provider が無いときに useContext が返す値</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">初期値</th><th scope="col">Provider の外で呼ばれたら</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>{ user: null, loading: true }</code></th><td><strong>「まだ確認中」と見分けがつかない。</strong>エラーも出ず画面は永遠にローディング。手がかりゼロ</td></tr>
+              <tr><th scope="row"><code>undefined</code></th><td><strong>「Provider の外だ」と確実に判定でき、その場でエラーを投げられる</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>型が <code>AuthContextValue | undefined</code> なのも、この2通りがあるから。</p>
+
+        <h3>AuthContext を export しない</h3>
+<pre><code>【AuthContext.tsx の中】          【他のファイル】
+  useAuth() {                      const { user, loading } = useAuth();
+    useContext(AuthContext)          ← これしか書けない
+    undefined ならエラー
+  }</code></pre>
+        <p>
+          器を外に出さなければ、他のファイルは <code>useContext(AuthContext)</code> を<strong>書きようがない</strong>。
+          <code>useAuth()</code> を通る以外の道を<strong>物理的に塞いでいる</strong>。
+        </p>
+        <p>
+          <strong>「気をつけて useAuth を使いましょう」というルールではなく、「それ以外できない」という構造にする。</strong>
+          規約ではなく仕組みで守る——これが設計。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">おまけ：型の絞り込み（narrowing）</div>
+<pre><code>const context = useContext(AuthContext);  // AuthContextValue | undefined
+if (context === undefined) throw new Error(...);
+return context;                            // AuthContextValue（undefined ではない）</code></pre>
+          <p>
+            TypeScript が <code>if</code> の条件を理解して型を絞り込むので、
+            <strong>使う側は <code>undefined</code> チェックを書かなくて済む。</strong>
+            <code>useAuth()</code> が1箇所で吸収している。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">「アプリ全体を囲むなら、外側は存在しないのでは？」への答え</div>
+          <ul>
+            <li><strong>囲み忘れ</strong> — 半年後にレイアウトを作り替えたとき</li>
+            <li><strong>囲む範囲を変えたとき</strong> — 「認証が必要なページだけ囲む」への変更はありうる</li>
+            <li><strong>テストで単体描画したとき</strong> — Provider 無しで1コンポーネントを描画すれば必ず起きる</li>
+          </ul>
+          <p>
+            ただし本質はそこではない。<strong>ガードは「今の自分」ではなく「未来の誰か」のためにある。</strong>
+            「いまは起きないから不要」で安全装置を外すと、コードが変わった瞬間に無防備になる。<strong>コードは必ず変わる。</strong>
+          </p>
+          <p>
+            判断材料は<strong>コストの非対称性</strong>——<strong>払うのは3行、防ぐのは「エラーも出ず原因不明で固まる画面」</strong>。
+            この形なら発生確率が低くても書く価値がある。逆に「コストが大きく防ぐものが小さい」なら書かない。
+            <strong>「安全だから常に書く」ではなく、天秤にかけるのが設計。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">前作との違い：setter を配らない</div>
+          <p>前作 my-dedicated-hours では、状態の更新関数をそのまま props で配っていた。</p>
+<pre><code>setEmail: React.Dispatch&lt;React.SetStateAction&lt;string&gt;&gt;;
+setPassword: React.Dispatch&lt;React.SetStateAction&lt;string&gt;&gt;;</code></pre>
+          <p>
+            今回の <code>AuthContextValue</code> に <strong>setter は入れない</strong>。
+            <code>user</code> を書き換えてよいのは <strong>Firebase の <code>onAuthStateChanged</code> だけ</strong>で、
+            <code>setUser</code> を配るとアプリのどこからでも<strong>ログイン状態を偽装</strong>できてしまう。
+            実際の認証状態と画面がずれ、しかもどこで書き換えられたか追跡できない。
+          </p>
+          <p><strong>配るのは「結果」だけで、「書き換える手段」は配らない。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 22 -->
+    <article class="entry" id="e22">
+      <div class="entry-no">22</div>
+      <div class="entry-body">
+        <h2>2つのバンドルを、目で見た</h2>
+
+        <p>エントリ17で持ち越した宿題の回収。<code>layout.tsx</code> が <code>AuthProvider</code> を import したことで鎖が繋がった。</p>
+
+<pre><code>$ grep -rl "AIzaSy..." .next/static/
+.next/static/chunks/1zelssa_nkmlo.js
+
+$ grep -rl "AIzaSy..." .next/server/
+.next/server/chunks/ssr/[root-of-the-server]__0oxgxht._.js
+                    ^^^</code></pre>
+
+        <p>
+          <strong>ファイルパスそのものが語っている。</strong><code>ssr</code> は Server-Side Rendering の略で、
+          <strong>エントリ13の「第1幕：サーバーで HTML を作る」で実行されるコードがここに入っている。</strong>
+        </p>
+        <p>
+          同じ <code>lib/firebase.ts</code> から出た同じ apiKey が、<strong>別々のファイルに、別々に埋め込まれている</strong>——
+          これが「2つのバンドル」の実体。理屈で読んだことが、ファイルシステム上の事実として確認できた。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">前回0件だった理由</div>
+          <p>
+            <code>lib/firebase.ts</code> の書き方が悪かったのではなく、<strong>起点から辿り着けなかった</strong>だけ。ファイル自体は最初から完成していた。
+          </p>
+<pre><code>【バンドラの視点】
+app/layout.tsx           ← ページを起点にして
+  └─ AuthContext.tsx     ← 辿って
+       └─ lib/firebase.ts ← 辿り着いた
+            → ここの process.env.XXX を値に置換してバンドルに入れる</code></pre>
+          <p><strong>データが流れる向きと、バンドラが辿る向きは逆。</strong></p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：検索範囲を指定していなかった</div>
+          <dl class="wrong-right">
+            <dt><code>grep -rl "AIzaSy..."</code>（範囲指定なし）で <code>.env.local</code> と <code>.next/cache/</code> にヒットして「入っている」と判断した</dt>
+            <dd><code>.env.local</code> は<strong>元データなので当然</strong>で証拠にならない。<code>.next/cache/</code> は<strong>Turbopack が次回ビルドを速くするための内部データ（31MB）で、ブラウザには1バイトも送られない</strong>。しかも随時書き換わるので検証対象として不適切</dd>
+          </dl>
+          <p>
+            <strong>「見つかった」で終わらせず「どこで見つかったか」を読む。</strong>
+            エントリ14の「エラーは『何が』より先に『どこに』を読む」とまったく同じ形。<strong>検証コマンドは範囲を絞って初めて意味を持つ。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">認証を入れても ○ (Static) のままだった</div>
+          <p>
+            当初「認証を入れると動的になる」と予測したが<strong>変わらなかった</strong>。そしてそれは正しい。
+          </p>
+          <p>
+            <strong>サーバーはユーザーが誰か知らない。だから全員に同じ HTML を返すしかない。</strong>
+            個別化はすべてブラウザ側で起きる。サーバーが個別化しないなら、HTML はビルド時に作っておける。
+          </p>
+          <p>
+            <code>○ (Static)</code> は「クライアント JS が無い」ではなく<strong>「初期 HTML をビルド時に確定できる」</strong>という意味。
+            動的になるのは <code>cookies()</code> / <code>headers()</code> のようなリクエスト固有の API を使ったとき。
+            <strong>エントリ13の裏付けになっている。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 23 -->
+    <article class="entry" id="e23">
+      <div class="entry-no">23</div>
+      <div class="entry-body">
+        <h2>フォームは「state が正、画面はその写し」</h2>
+
+        <p>React の入力欄には <strong><code>value</code> と <code>onChange</code> の両方</strong>を持たせる。</p>
+<pre><code>&lt;input value={email} onChange={(e) =&gt; setEmail(e.target.value)} /&gt;</code></pre>
+        <ul>
+          <li><code>value</code> — 「表示する値は state のこれ」</li>
+          <li><code>onChange</code> — 「入力されたら state を更新する」</li>
+        </ul>
+        <p>
+          <strong>片方だけだと壊れる。</strong><code>value</code> だけ書くと state が変わらないので、
+          <strong>何を打っても入力欄が変化しない</strong>（React が state の値を表示し続けるため）。
+          この「<strong>state が唯一の正しい値で、入力欄はそれを映しているだけ</strong>」という形を<strong>制御コンポーネント</strong>と呼ぶ。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">placeholder はラベルの代わりにならない</div>
+          <p>当初 <code>placeholder</code> だけで <code>&lt;label&gt;</code> を書いていなかった。理由は3つ。</p>
+          <ul>
+            <li><strong>入力を始めると消える。</strong>「これ何の欄だったっけ」となっても確認できない</li>
+            <li><strong>スクリーンリーダーがラベルとして読み上げるとは限らない。</strong>あくまで補助的なヒント用の属性</li>
+            <li><strong>コントラストが低く</strong>、そもそも読みにくい</li>
+          </ul>
+<pre><code>&lt;label htmlFor="email"&gt;メールアドレス&lt;/label&gt;
+&lt;input id="email" type="email" ... /&gt;</code></pre>
+          <p>
+            <code>htmlFor</code> と <code>id</code> を一致させると<strong>ラベルのクリックで入力欄にフォーカスが当たる</strong>。
+            React で <code>for</code> ではなく <code>htmlFor</code> なのは、<code>for</code> が JavaScript の予約語だから
+            （<code>class</code> → <code>className</code> と同じ理由）。<strong>エントリ15の <code>lang="ja"</code> と同じアクセシビリティの基本。</strong>
+          </p>
+        </div>
+
+        <h3><code>type</code> 属性は見た目だけの話ではない</h3>
+        <ul>
+          <li><code>type="password"</code> — 入力を伏せ字にする</li>
+          <li><code>type="email"</code> — <strong>スマホでメール用キーボードが出る</strong>。ブラウザ標準の形式チェックも効く</li>
+          <li><strong>フォーム内の <code>&lt;button&gt;</code> には常に <code>type</code> を書く</strong>——既定値が <code>submit</code> なので、「送信しないボタン」に <code>type="button"</code> を書き忘れると<strong>勝手に送信される</strong></li>
+        </ul>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：type="submit" に onClick を付けると二重発火する</div>
+          <dl class="wrong-right">
+            <dt><code>&lt;button type="submit" onClick={handleLogIn}&gt;</code></dt>
+            <dd>クリックすると <strong>① <code>onClick</code> ② フォームの <code>onSubmit</code></strong> が<strong>順に両方走る</strong>。<code>type="submit"</code> のボタンは「送信の引き金」であって、<strong>それ自体が処理を持つべきではない</strong></dd>
+          </dl>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">囲む理由ができてから囲む</div>
+          <p>
+            「<code>input</code> を <code>div</code> で囲むべきか」——<strong>意味のない <code>div</code> は増やさない</strong>（DOM が深くなるだけ）。
+            ただし <code>&lt;label&gt;</code> と <code>&lt;input&gt;</code> は1組なので、<strong>それを囲む <code>div</code> には「ひとまとまり」という意味が生まれる</strong>。
+          </p>
+          <p><strong>同じ形になっても、理由があるかないかは別物。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 24 -->
+    <article class="entry" id="e24">
+      <div class="entry-no">24</div>
+      <div class="entry-body">
+        <h2>「関数を渡す」と「関数を呼ぶ」は別物</h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>onClick={setMode("signup")}</code></dt>
+            <dd><code>onClick={() =&gt; setMode("signup")}</code>。前者は<strong>JSX が評価された瞬間に実行され</strong>、返り値（<code>undefined</code>）がハンドラとして渡される</dd>
+          </dl>
+          <p><strong>さらに無限ループになる：</strong></p>
+<pre><code>レンダリング → setMode 実行 → state 変化 → 再レンダリング → setMode 実行 → …</code></pre>
+          <p>
+            <strong>答えは自分のコードの中にあった。</strong><code>onChange={(e) =&gt; setEmail(e.target.value)}</code> では
+            正しくアロー関数で包めていた。<strong>「〜されたら実行する処理」は関数の形で渡す</strong>——同じこと。
+          </p>
+        </div>
+
+        <h3><code>() =&gt;</code> の構造</h3>
+<pre><code>() => setMode("signup")
+^^    ^^^^^^^^^^^^^^^^^
+①  ②        ③
+
+① 引数のリスト（空 = 引数なし）
+② 「ここから関数の中身」という区切り
+③ 関数の中身</code></pre>
+<pre><code>function () { setMode("signup") }   // 従来の書き方
+() => { setMode("signup") }         // アロー関数
+() => setMode("signup")             // {} と return を省略（1行なら）</code></pre>
+        <p>3つとも同じもの。</p>
+
+        <div class="note talk">
+          <div class="note-label">料理の比喩</div>
+          <ul>
+            <li><code>setMode("signup")</code> ＝ <strong>いま料理を作る</strong></li>
+            <li><code>() =&gt; setMode("signup")</code> ＝ <strong>レシピを渡す</strong></li>
+          </ul>
+          <p>
+            <strong>React が欲しいのはレシピ。</strong>実際に作る（実行する）のはクリックされたときで、いまではない。
+            <code>onClick={setMode("signup")}</code> は「後で作ってね」と言いながら<strong>料理を作って渡している</strong>状態。
+          </p>
+          <p>
+            <code>(e)</code> が付くのは、React が「どんな入力が起きたか」の情報を渡してくるものを受け取る場合。
+            クリックではその情報を使わないので箱は空 <code>()</code>。<strong>引数の有無は付随的で、「これは関数だ」という点が本質。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 25 -->
+    <article class="entry" id="e25">
+      <div class="entry-no">25</div>
+      <div class="entry-body">
+        <h2>フックは呼ばれた順番で管理されている</h2>
+
+        <p>
+          <strong>フック</strong>とは、React の機能（state・副作用・Context など）を関数コンポーネントから使うための特別な関数。
+          名前が <strong><code>use</code> で始まる</strong>のが目印。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">フック</th><th scope="col">何を使えるようにするか</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>useState</code></th><td>状態を持つ</td></tr>
+              <tr><th scope="row"><code>useEffect</code></th><td>外の世界とのやり取り</td></tr>
+              <tr><th scope="row"><code>useContext</code></th><td>Context から値を取る</td></tr>
+              <tr><th scope="row"><code>useRouter</code></th><td>ページ移動（Next.js 製）</td></tr>
+              <tr><th scope="row"><code>useAuth</code></th><td><strong>自分で作ったもの（カスタムフック）</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>カスタムフックとは</h3>
+        <p>
+          <code>useAuth</code> は中で <code>useContext</code> を呼んでいる。
+          <strong>フックを呼ぶ関数は、自分もフックでなければならない。</strong>
+          だから <code>use</code> で始まる名前を付ける（規約だが、ESLint がこの名前を見てルール違反を検出する）。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：フックを useEffect の中で呼んだ</div>
+          <dl class="wrong-right">
+            <dt><code>useEffect(() =&gt; { const {...} = useAuth(); const router = useRouter(); ... })</code></dt>
+            <dd><strong>フックはコンポーネントのトップレベルでしか呼べない。</strong>条件分岐・ループ・関数の中では呼べない</dd>
+          </dl>
+          <p><strong>なぜか：React は「フックが呼ばれた順番」で値を紐付けているから。</strong></p>
+<pre><code>1回目:  useState(a) → useState(b) → useEffect(c)
+          1番目        2番目         3番目
+
+2回目:  useState(a) →  （飛ばした） → useEffect(c)
+          1番目                        2番目 ← ずれた</code></pre>
+          <p>
+            条件によって呼ばれたり呼ばれなかったりすると順番がずれ、
+            React は「2番目は <code>b</code> のはず」と思っているので<strong>まったく違う値を返し始める</strong>。
+            <strong>「常に同じ順番で、同じ数だけ呼ばれる」ことが前提。</strong>
+            （<code>npm run lint</code> の <code>react-hooks/rules-of-hooks</code> で捕まる。）
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：分割代入の形</div>
+          <dl class="wrong-right">
+            <dt><code>const [user, loading] = useAuth()</code></dt>
+            <dd><code>const { user, loading } = useAuth()</code>。<code>useAuth</code> が返すのは<strong>オブジェクト</strong>で、<code>useState</code> が返す<strong>配列</strong>とは形が違う</dd>
+          </dl>
+          <ul>
+            <li><code>[]</code> → 配列から<strong>順番</strong>で取り出す</li>
+            <li><code>{}</code> → オブジェクトから<strong>キー名</strong>で取り出す</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 26 -->
+    <article class="entry" id="e26">
+      <div class="entry-no">26</div>
+      <div class="entry-body">
+        <h2>分岐と条件表示の書き分け</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書き方</th><th scope="col">使う場面</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">三項演算子 <code>A ? B : C</code></th><td><strong>値が欲しい</strong>とき（式）。<strong>どちらかを必ず出す</strong></td></tr>
+              <tr><th scope="row"><code>if / else</code></th><td><strong>処理を分けたい</strong>とき（文）</td></tr>
+              <tr><th scope="row"><code>&amp;&amp;</code></th><td><strong>あるときだけ出す</strong>（無いときは何も描画しない）</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：処理の分岐に三項演算子を使った</div>
+          <dl class="wrong-right">
+            <dt><code>{mode === "login" ? (await signIn...) : (await createUser...)}</code></dt>
+            <dd>戻り値を使っていないので <code>if / else</code> が正しい。<strong>三項演算子は「値を選ぶ」もの。</strong>後でエラー処理やログを足すときにも <code>if</code> なら自然に書ける（三項演算子の枝に複数の処理は書けない）</dd>
+          </dl>
+          <p>
+            <strong>さらに <code>{}</code> は JSX の中でだけ意味を持つ。</strong>
+            普通の JavaScript の関数の中に書いた <code>{}</code> は<strong>ただのブロック</strong>で、何の役にも立っていなかった。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②：条件付きレンダリング</div>
+          <dl class="wrong-right">
+            <dt><code>{error === !"" ? (&lt;div&gt;&lt;/div&gt;)}</code></dt>
+            <dd><code>{error &amp;&amp; &lt;div&gt;{error}&lt;/div&gt;}</code>。<code>!""</code> は <code>true</code> なので <code>error === true</code> を比較しており<strong>常に false</strong>。さらに <code>:</code> が無く構文エラーで、中身も空だった</dd>
+          </dl>
+          <p>
+            <code>&amp;&amp;</code> は「<strong>左が truthy なら右を評価して返す</strong>」。空文字は falsy なので何も描画されない。
+            「あるときだけ出す」なら三項演算子で <code>: null</code> と書くより<strong>短くて意図が明確</strong>。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ③：否定と比較の優先順位</div>
+          <dl class="wrong-right">
+            <dt><code>if (!loading &amp;&amp; !user === null)</code></dt>
+            <dd><code>!</code> は <code>===</code> より先に評価されるので <code>(!user) === null</code>、つまり<strong>真偽値と null の比較で常に false</strong>。<code>if (!loading &amp;&amp; user)</code> でよい</dd>
+          </dl>
+          <p><strong><code>!a === b</code> という形を見たら疑う。</strong>書きたかったのはほぼ確実に <code>a !== b</code>。</p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">予告：&amp;&amp; の 0 の罠</div>
+          <p>
+            <code>&amp;&amp;</code> は左辺の値をそのまま返すので、<strong>左辺が <code>0</code> だと画面に <code>0</code> が表示される</strong>。
+            文字列なら空文字は何も描画されないので安全だが、<strong>数値のときは <code>{count &gt; 0 &amp;&amp; ...}</code> と明示的に真偽値へ変換する</strong>。
+            企業数やカウントを扱うフェーズ5で必ず遭遇する。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 27 -->
+    <article class="entry" id="e27">
+      <div class="entry-no">27</div>
+      <div class="entry-body">
+        <h2>エラーは、書かなければ握り潰される</h2>
+
+        <p>
+          <code>try/catch</code> を書かずにログインを試したとき、<strong>画面には何も起きなかった</strong>。
+          失敗していないのではなく、<strong>失敗がコンソールにだけ流れていた</strong>。
+        </p>
+        <p>
+          <strong>仕様書8章で「前作の課題：エラー通知が <code>alert</code> 頼り」を挙げた、その理由がこの状態。</strong>
+          ユーザーから見れば「ボタンを押しても何も起こらない」——最も対処しづらい壊れ方。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">「動かない」ときの手順</div>
+          <p>まず DevTools の Console を開く。<strong>エラーは出ている。見えていないだけ。</strong></p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">Firebase のエラーコード</th><th scope="col">意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>auth/invalid-credential</code></th><td>メールかパスワードが違う（<strong>存在しないアカウントも含む</strong>）</td></tr>
+                <tr><th scope="row"><code>auth/weak-password</code></th><td>パスワードが6文字未満</td></tr>
+                <tr><th scope="row"><code>auth/invalid-email</code></th><td>メールアドレスの形式が不正</td></tr>
+                <tr><th scope="row"><code>auth/email-already-in-use</code></th><td>そのメールで既に登録済み</td></tr>
+                <tr><th scope="row"><code>auth/operation-not-allowed</code></th><td>コンソールでその認証方法が有効になっていない</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3>実装で気をつけた点</h3>
+        <ul>
+          <li><strong>送信のたびに <code>setError("")</code> でクリアする</strong>——無いと、一度エラーが出た後で成功しても古いエラーが残り続け、「直したのに消えない」混乱を生む</li>
+          <li><strong><code>try</code> を <code>if</code> の外側に出す</strong>——モードごとに <code>try/catch</code> を書くと同じ <code>catch</code> が2つになり、片方に <code>setError("")</code> を書き忘れる</li>
+          <li><code>catch (e)</code> の <code>e</code> は <strong><code>unknown</code> 型</strong>。「何が投げられるか分からない」ので TypeScript が安全側に倒している。<code>e.message</code> といきなり書くとエラーになる</li>
+        </ul>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：失敗時に入力を消してはいけない</div>
+          <dl class="wrong-right">
+            <dt>送信時に <code>setEmail("")</code> / <code>setPassword("")</code> でクリアした</dt>
+            <dd><strong>ログインに失敗したのに入力欄が空になる</strong>と、ユーザーは最初から打ち直しになる。<strong>エラー時こそ入力は残す。</strong>成功時は画面が変わるので消す意味もない——<strong>どちらの場合も消す理由がない</strong></dd>
+          </dl>
+          <p><strong>なぜか動いてしまった理由（重要）：</strong></p>
+          <p>
+            <code>setEmail("")</code> の直後に <code>signInWithEmailAndPassword(auth, email, password)</code> を呼んでも、
+            渡るのは<strong>空文字ではなく入力値</strong>だった。
+            <strong><code>email</code> は、このレンダリング時点の値がこの関数の中に閉じ込められている</strong>から。
+            <code>setEmail("")</code> を呼んでも<strong>この関数の中の <code>email</code> は書き換わらない</strong>——変わるのは「次のレンダリング」の値。
+          </p>
+          <p><strong>つまり「たまたま動いていた」だけで、読む人は「空文字を渡している」と誤読する。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 28 -->
+    <article class="entry" id="e28">
+      <div class="entry-no">28</div>
+      <div class="entry-body">
+        <h2>抽象化は「重複が生まれてから」</h2>
+
+        <p>
+          認証の呼び出しを <code>lib/auth.ts</code> に切り出すべきか迷ったが、<strong>いまは切り出さない</strong>と判断した。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">判断基準</div>
+          <p><strong>抽象化は「重複が生まれてから」行う。</strong></p>
+          <p>
+            <code>signInWithEmailAndPassword</code> を呼ぶ場所は <code>/login</code> の<strong>1箇所だけ</strong>。
+            1箇所しか使わないものを別ファイルに切り出すと、<strong>ファイルを行き来する手間が増えるだけで何も得られない</strong>。
+          </p>
+        </div>
+
+        <h3>ではなぜ Firestore は先に決めたのか</h3>
+        <p>
+          <strong>呼び出し箇所が確実に多いから。</strong>companies / schedules / reviews × 取得・作成・更新・削除で12以上の関数を、12ページから呼ぶ。
+          <strong>重複が起きることが最初から確実</strong>なので先に決める価値があった（加えて前作で <code>App.tsx</code> に直書きして困った実績もある）。
+        </p>
+        <p>
+          認証はそうではない——ログイン・新規登録は <code>/login</code> だけ、ログアウトはヘッダーだけの<strong>2箇所</strong>。
+        </p>
+        <p>
+          <strong>「将来使うかもしれない」で層を作ると、使われない抽象が残る。</strong>
+          必要になってから切り出す方が正しい形の抽象になる——<strong>何が共通なのかは、実例が2つ以上ないと分からない</strong>から。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">予告：ここは切り出す</div>
+          <p>
+            Firebase は <code>auth/wrong-password</code> のような<strong>英語のエラーコード</strong>を返す。
+            これを日本語に直す処理は<strong>メール認証でも Google 認証でも必要</strong>になる。
+            <strong>そこで初めて「2箇所で同じことをしている」が発生する</strong>ので、そのときに切り出す。先回りしない。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">同じ考え方：型注釈も「必要なところにだけ」</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書き方</th><th scope="col">推論される型</th><th scope="col">明示が必要か</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>useState("")</code></th><td><code>string</code></td><td><strong>不要</strong>（意図通り）</td></tr>
+                <tr><th scope="row"><code>useState(null)</code></th><td><code>null</code></td><td><strong>必要</strong> → <code>&lt;User | null&gt;</code></td></tr>
+                <tr><th scope="row"><code>useState("login")</code></th><td><strong><code>string</code></strong>（型の拡大）</td><td><strong>必要</strong> → <code>&lt;"login" | "signup"&gt;</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>型注釈は「推論が意図と違うとき」だけ書く。</strong>
+            <code>useState&lt;string&gt;("")</code> は冗長。
+            <strong>「全部書けば安全」ではなく、必要なところにだけ書く方が、書いてある箇所の意味が際立つ。</strong>
+          </p>
+          <p>
+            文字列リテラル型（<code>"login" | "signup"</code>）にすると <code>"loginn"</code> のようなタイポが通らなくなる——
+            <strong>取りうる値が決まっているなら型で表現する</strong>（決定記録で案Bとして触れたユニオン型と同じ発想）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 29 -->
+    <article class="entry" id="e29">
+      <div class="entry-no">29</div>
+      <div class="entry-body">
+        <h2>ルートグループ <code>(protected)</code> — URLを変えずに、守る範囲を作る</h2>
+
+        <p>
+          フォルダ名を<strong>丸括弧で囲むと、そのフォルダ名はURLに含まれない</strong>（ルートグループ）。
+        </p>
+<pre><code>app/(protected)/page.tsx   →   URL は  /
+                                （/protected/ にはならない）</code></pre>
+        <p>
+          <strong>URLを変えずにフォルダだけを分けられる</strong>ので、
+          <code>layout.tsx</code> を「一部のページにだけ」掛けることができる。認証ガードはこれで実現した。
+        </p>
+
+        <h3>「配下」とは、そのフォルダと、その中のすべて</h3>
+<pre><code>app/(protected)/
+├─ layout.tsx        ← これが
+├─ page.tsx          ← ✅ 含む（同じ階層でも）
+└─ companies/
+   ├─ page.tsx       ← ✅ 含む
+   └─ [id]/page.tsx  ← ✅ 含む（何階層下でも）</code></pre>
+        <p>
+          <code>layout.tsx</code> は <code>page.tsx</code> の<strong>隣にいるのではなく、包んでいる</strong>。
+          同じ階層のページも例外なく中に入る。
+        </p>
+<pre><code>&lt;ProtectedLayout&gt;    ← layout.tsx
+  &lt;Home /&gt;           ← page.tsx が children として入る
+&lt;/ProtectedLayout&gt;</code></pre>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：children は「アプリ全体」だと思っていた</div>
+          <dl class="wrong-right">
+            <dt><code>children</code> ＝ アプリ全体</dt>
+            <dd><code>children</code> ＝ <strong>そのレイアウトの「1段内側」</strong>。どのレイアウトの話かで指すものが変わる</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">レイアウト</th><th scope="col">その <code>children</code> が指すもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>app/layout.tsx</code></th><td>アプリ全体（<code>/login</code> も <code>/</code> も）</td></tr>
+                <tr><th scope="row"><code>app/(protected)/layout.tsx</code></th><td><strong><code>(protected)/</code> の中のページだけ</strong>。<code>/login</code> は入らない</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3>なぜ各ページに書かず、レイアウトに書くのか</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">各ページに書く</th><th scope="col">レイアウトに書く（採用）</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">ページが10個になったら</th><td>同じガードを10回書く</td><td><strong>0回。</strong>フォルダに置くだけ</td></tr>
+              <tr><th scope="row">1ページ書き忘れたら</th><td><strong>そのページだけ誰でも見られる</strong></td><td>起こりえない</td></tr>
+              <tr><th scope="row">仕様を変えるとき</th><td>10箇所を直す</td><td>1箇所</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>「書き忘れたら穴が空く」設計は、いつか必ず穴が空く。</strong>
+          人間の注意力に頼らず、構造で保証する——エントリ21で <code>AuthContext</code> を
+          <code>export</code> せず <code>useAuth</code> だけを出したのと<strong>同じ考え方</strong>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">見返り：この先のページで認証を書かなくてよくなる</div>
+          <p>
+            <code>companies/page.tsx</code> を作るとき、書くのは<strong>企業一覧の中身だけ</strong>。
+            <code>useAuth()</code> も、リダイレクトも、「読み込み中」の分岐も要らない。<strong>すでに包まれているから。</strong>
+          </p>
+          <p>
+            いま <code>page.tsx</code> が1枚しかない段階では「わざわざフォルダを分けた」ようにしか見えないが、
+            <strong>この1ファイルが、この先作る十数個のページ全部に効く。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label"><code>/login</code> をガードの中に入れてはいけない</div>
+          <p>
+            <strong>無限ループになる。</strong>未ログインで <code>/login</code> を開く → ガードが「未ログイン」と判断 →
+            <code>/login</code> へリダイレクト → またガードが動く → …
+          </p>
+          <p>
+            <strong>ログイン画面は、未ログインの人が見るための画面である。</strong>未ログインを弾く場所に置けない。
+            <strong>フォルダをどう切るかは、見た目の整理ではなくアクセス制御の設計そのもの。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">型は自動生成されない</div>
+          <p>
+            <code>app/layout.tsx</code> は <code>LayoutProps&lt;"/"&gt;</code> を使えるが、
+            <code>(protected)/layout.tsx</code> は <code>{ children }: { children: ReactNode }</code> と<strong>手書きが正しい</strong>。
+          </p>
+          <p>
+            <code>.next/types/routes.d.ts</code> を読むと <code>type LayoutRoutes = "/"</code> の1つだけ。
+            ルートグループはURL上 <code>/</code> と同じなので<strong>別エントリが生成されない</strong>——
+            <code>LayoutProps&lt;"/(protected)"&gt;</code> のような型は存在しない。
+            <strong>迷ったら生成物を読む</strong>（エントリ14）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 30 -->
+    <article class="entry" id="e30">
+      <div class="entry-no">30</div>
+      <div class="entry-body">
+        <h2>ページ同士はURLで繋がっている。ファイルの場所ではない</h2>
+
+        <p>
+          <code>/login</code> がログイン成功後に書いているのは、これだけ。
+        </p>
+<pre><code>router.replace("/");</code></pre>
+        <p>
+          <strong>渡しているのはURLであって、ファイルパスではない。</strong>
+          <code>app/login/page.tsx</code> は <code>app/(protected)/page.tsx</code> というファイルの存在を<strong>知らない</strong>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">実際に起きたこと</div>
+          <p>
+            <code>app/page.tsx</code> を <code>app/(protected)/page.tsx</code> へ<strong>移動した</strong>。
+            それでもURLは <code>/</code> のままなので、<strong><code>login/page.tsx</code> は1文字も直していない。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">「ファイルを動かしても平気」は無条件ではない</div>
+          <p>
+            壊れなかったのは<strong>URLが変わらない移動だったから</strong>。ルートグループが特別なだけで、
+            普通のフォルダへ移せば <code>app/dashboard/page.tsx</code> → <code>/dashboard</code> と<strong>URLは変わり、
+            <code>router.replace("/")</code> は別のページを指すことになる</strong>。
+          </p>
+          <p>
+            正しくはこう——<strong>ファイルの場所とURLは別の軸であり、繋がりを保証しているのはURLの方。</strong>
+            移動していいかどうかは「URLが変わるか」で判断する。
+          </p>
+        </div>
+
+        <p>
+          <strong>「どこにファイルがあるか」と「どのURLか」を分けて考える。</strong>
+          これは <code>@/</code> エイリアスで相対パスを避けた話（エントリ18）と根が同じで、
+          <strong>場所に依存した繋がりは、動かした瞬間に壊れる</strong>。
+        </p>
+      </div>
+    </article>
+
+    <!-- 31 -->
+    <article class="entry" id="e31">
+      <div class="entry-no">31</div>
+      <div class="entry-body">
+        <h2><code>return</code> は「何を描くか」、<code>router</code> は「どこに居るか」</h2>
+
+        <p>認証ガードの本体は3行しかない。</p>
+<pre><code>if (loading) return &lt;div&gt;読み込み中...&lt;/div&gt;;  // 確認中
+if (!user)   return null;                      // 未ログイン → 何も描かない
+return &lt;&gt;{children}&lt;/&gt;;                        // 確認済み＆ログイン済み</code></pre>
+        <p>
+          3行目に到達したということは、1行目と2行目を<strong>通り抜けた</strong>＝
+          「<code>loading</code> が <code>false</code> かつ <code>user</code> がある」が<strong>確定している</strong>。
+          <strong>だから <code>else</code> は要らない</strong>（<code>useAuth</code> の <code>throw</code> の後で <code>else</code> を消したのと同じ理屈）。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：「ローディング画面に遷移させる」と考えていた</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col"><code>loading</code> が true</th><th scope="col"><code>user</code> が null</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">URL</th><td><strong>変わらない</strong>（<code>/</code> のまま）</td><td><strong><code>/login</code> に変わる</strong></td></tr>
+                <tr><th scope="row">やっていること</th><td>描くものを差し替えただけ</td><td>ページ移動</td></tr>
+                <tr><th scope="row">担当</th><td><code>return</code></td><td><code>router.replace()</code>（<code>useEffect</code> の中）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>読み込み中は「遷移」ではない。</strong>同じページのまま中身だけ差し替えている。
+            だから <code>useEffect</code> に書くことは何もない。
+          </p>
+          <p>
+            <strong><code>return</code> で変えられるのは「何を描くか」だけ。「どこに居るか」を変えるのは <code>router</code> の仕事。</strong>
+            2つを混同すると「表示を変えたいのにリダイレクトを書く」「移動したいのに <code>return</code> を書く」という誤りになる。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②：説明用の擬似コードを JSX の中に貼ってしまった</div>
+          <dl class="wrong-right">
+            <dt><code>return (&lt;&gt; if (loading) { return ... } &lt;/&gt;)</code></dt>
+            <dd><code>if</code> は <strong>JSX の中には書けない</strong>。書いても実行されず、<strong><code>if (loading) {</code> という文字列がそのまま画面に表示される</strong></dd>
+          </dl>
+          <p>
+            <strong>JSX の中に書けるのは「式」だけで、「文」は書けない。</strong>
+            エントリ26で区別した式と文が、ここで効いてくる——
+            <strong>JSXの中の条件分岐に三項演算子や <code>&amp;&amp;</code> を使うのは、<code>if</code> が書けないから</strong>。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">例</th><th scope="col">JSXの中</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">式（値になる）</th><td>三項演算子、<code>&amp;&amp;</code>、変数、関数呼び出し</td><td><strong>書ける</strong></td></tr>
+                <tr><th scope="row">文（処理の単位）</th><td><code>if</code>、<code>for</code>、<code>return</code></td><td><strong>書けない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            早期リターンは <code>return</code> の<strong>前</strong>に置く。そして——
+            <strong><code>return</code> は関数の中に何個あってもいい。</strong>「最後に1つだけ」ではない。
+            上の3行は <code>return</code> が3つあり、<strong>どれに到達するかを <code>if</code> が決めている</strong>。
+          </p>
+        </div>
+
+        <h3>包まれている側は、何も書かなくてよくなる</h3>
+        <p>
+          <code>(protected)/page.tsx</code> のログアウトボタンには、<strong>遷移処理を一切書いていない</strong>。それでも <code>/login</code> へ飛ぶ。
+        </p>
+<pre><code>signOut()
+  → onAuthStateChanged が発火
+  → Context の user が null になる
+  → (protected)/layout.tsx の useEffect が反応
+  → router.replace("/login")</code></pre>
+        <p>
+          <strong>「ログアウトしたら画面を変える」処理を、ボタン側に書かなくて済む。</strong>
+          これが認証状態を Context に集約し、判断をレイアウトに寄せた見返り。<strong>ページが増えても、この配線は書き足す必要がない。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">ガードが2枚そろった</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ファイル</th><th scope="col">誰を弾くか</th><th scope="col">どこへ</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>app/login/page.tsx</code></th><td>ログイン済み</td><td><code>/</code></td></tr>
+                <tr><th scope="row"><code>app/(protected)/layout.tsx</code></th><td>未ログイン</td><td><code>/login</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>ログイン状態と、表示すべき画面が、常に一致する。</strong></p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">3つのファイルの役割分担</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ファイル</th><th scope="col">役割</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>contexts/AuthContext.tsx</code></th><td>認証状態を<strong>作る・配る</strong></td></tr>
+                <tr><th scope="row"><code>app/login/page.tsx</code></th><td>認証状態を<strong>変える</strong>（ログイン／新規登録）</td></tr>
+                <tr><th scope="row"><code>app/(protected)/layout.tsx</code></th><td>認証状態を<strong>読んで通行を判断する</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>作る・変える・読む が、それぞれ1箇所に分かれている。</strong></p>
+<pre><code>app/layout.tsx
+└─ &lt;AuthProvider&gt;                    ← 購読して user / loading を保持
+   ├─ /login  →  login/page.tsx      ← ガードの外
+   └─ /       →  (protected)/layout.tsx  ← ガード
+                 └─ (protected)/page.tsx</code></pre>
+          <p><strong><code>AuthProvider</code> が一番外側にいるから、どちらも <code>useAuth()</code> を使える。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 32 -->
+    <article class="entry" id="e32">
+      <div class="entry-no">32</div>
+      <div class="entry-body">
+        <h2>入口は増えるが、状態は1つ</h2>
+
+        <p>Google 認証を追加したが、<strong><code>AuthContext.tsx</code> も <code>(protected)/layout.tsx</code> も1行も変えていない。</strong></p>
+
+<pre><code>signInWithEmailAndPassword(...)  ─┐
+                                  ├─→ Firebase が auth の状態を更新
+signInWithPopup(...)             ─┘        ↓
+                                   onAuthStateChanged が発火   ← 共通
+                                           ↓
+                                   Context の user に入る
+                                           ↓
+                                   useEffect が / へ飛ばす</code></pre>
+
+        <p>
+          <strong><code>onAuthStateChanged</code> は「どうやってログインしたか」を知らない。</strong>
+          「いまログインしている人が居るか」しか見ていない。だから入口を何本増やしても、状態を監視する側は無傷。
+        </p>
+        <p>
+          もし各画面が「メール認証か Google 認証か」を意識する作りだったら、
+          <strong>認証方法を1つ足すたびに全画面を直すことになっていた。</strong>
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">増えるもの</th><th scope="col">Context</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><strong>認証の入口</strong>（GitHub、電話番号…）</th><td><strong>変えなくてよい</strong></td></tr>
+              <tr><th scope="row"><strong>状態として持ちたい情報</strong>（表示名、権限…）</th><td>変わる</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：GoogleAuthProvider を「監視役」だと思っていた</div>
+          <dl class="wrong-right">
+            <dt><code>new GoogleAuthProvider()</code> は、メール認証における <code>onAuthStateChanged</code> のような役割</dt>
+            <dd>役割が違う。<code>provider</code> の対応相手は <code>onAuthStateChanged</code> ではなく、<strong><code>email, password</code> の位置</strong>——「誰であることを、何によって証明するか」を表す<strong>引数</strong></dd>
+          </dl>
+<pre><code>signInWithEmailAndPassword(auth, email, password)   // 本人が知っている情報
+signInWithPopup(auth, provider)                     // Google に聞きに行く、という指定</code></pre>
+          <p>
+            文字列 <code>"google"</code> ではなくクラスなのは、<strong>プロバイダが追加設定を持てる</strong>から
+            （<code>addScope()</code> で権限を追加、<code>setCustomParameters()</code> で毎回アカウント選択させる等）。
+            <strong>「Google を使う」だけでなく「Google にどう聞くか」まで表現できる器</strong>。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">クラスとインスタンス</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">正体</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">クラス <code>GoogleAuthProvider</code></th><td><strong>設計図。</strong>それ自体は物ではない</td></tr>
+                <tr><th scope="row">インスタンス</th><td>設計図から作られた<strong>個体</strong>。実際にメモリ上に存在する</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>変数に入れるのは可読性のためではなく、入れないと使えないから。</strong>
+            <code>new GoogleAuthProvider();</code> と書くと作った直後に捨てられ、次の行で <code>provider</code> は存在しない。
+            <strong>名前を付けなかった物には、二度と触れない。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 33 -->
+    <article class="entry" id="e33">
+      <div class="entry-no">33</div>
+      <div class="entry-body">
+        <h2>型は実行時に存在しない</h2>
+
+        <p><strong>TypeScript はビルド時に消える。ブラウザが受け取るのは JavaScript だけ。</strong></p>
+
+<pre><code>// 書く TypeScript
+interface Foo { a: string }
+const x: Foo = { a: "hi" };
+
+// ブラウザに届く JavaScript
+const x = { a: "hi" };        // ← Foo はどこにも無い</code></pre>
+
+        <p>
+          だから <code>x instanceof Foo</code> は<strong>比較する相手が無く</strong>、「<code>Foo</code> は型のみを参照します」というエラーになる。
+        </p>
+        <p>
+          <code>class</code> は違う——<strong>TypeScript の機能ではなく JavaScript の機能</strong>なので、コンパイルしても消えない。
+          <code>FirebaseError</code> が実在するからこそ <code>error instanceof FirebaseError</code> という<strong>実行時のチェック</strong>が成立する。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">やりたいこと</th><th scope="col">使うもの</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><strong>書いている最中</strong>に間違いを防ぐ</th><td><code>interface</code> / <code>type</code> / 型注釈</td></tr>
+              <tr><th scope="row"><strong>実行時</strong>に値の正体を確かめる</th><td><code>instanceof</code> / <code>typeof</code> / <code>in</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>「型で守れる範囲」と「実行時にしか分からない範囲」の境界がここにある。</strong>
+          エントリ01の「環境変数はビルド時に置換される」と同じ問い——<strong>何がビルドを生き延びて、ブラウザに届くのか。</strong>
+        </p>
+
+        <h3><code>catch</code> の値が <code>unknown</code> になる理由</h3>
+<pre><code>catch (err) {        // ← 型は書かない。書けない。TypeScript が unknown を付ける
+  setError(getAuthErrorMessage(err));
+}</code></pre>
+        <p>
+          <strong><code>any</code> は「何でも許す」、<code>unknown</code> は「まず確かめろ」。</strong>
+          JavaScript は <code>throw</code> に何でも渡せる（文字列でも数値でも投げられる）ので、
+          TypeScript は<strong>確認するまで <code>.code</code> すら読ませない</strong>。strict 設定がこれを有効にしている。
+        </p>
+
+        <h3><code>instanceof</code> は2つの仕事をしている</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">仕事</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">実行時</th><td>この値は本当に <code>FirebaseError</code> か判定する</td></tr>
+              <tr><th scope="row">型の上</th><td>それ以降のコードで <code>error</code> を <code>FirebaseError</code> として<strong>扱えるようにする</strong>（型の絞り込み）</td></tr>
+            </tbody>
+          </table>
+        </div>
+<pre><code>if (!(error instanceof FirebaseError)) {
+  return "ログインに失敗しました";   // ← Firebase 以外はここで終わり
+}
+error.code                            // ← ここでは読める</code></pre>
+        <p>
+          <strong>弾かれる側にも意味がある。</strong><code>FirebaseError</code> でない例外——自分のコードのバグ、
+          ブラウザやネットワーク層の例外——に「メールアドレスが正しくありません」と表示したら嘘になる。
+          <strong>分からないものを、分かったふりで説明しない。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">戻り値の型は「自分が保証したいこと」を書く場所</div>
+          <p>
+            <code>getAuthErrorMessage(error: unknown): string</code> と書いておくと、
+            <code>switch</code> の <code>default</code> を忘れた瞬間に
+            <strong>「<code>string | undefined</code> は <code>string</code> に代入できない」</strong>とコンパイルエラーになる。
+            書かなければ <code>undefined</code> が画面まで届く。
+          </p>
+          <p>
+            <strong>定数を使うのも同じ発想。</strong><code>AuthErrorCodes.POPUP_CLOSED_BY_USER</code> の型は
+            <code>string</code> ではなく <code>"auth/popup-closed-by-user"</code> そのもの（値まで型として固定）なので、
+            <strong>綴りを間違えた瞬間に落ちる</strong>。<code>useState&lt;"login" | "signup"&gt;</code> と同じ仕組み。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 34 -->
+    <article class="entry" id="e34">
+      <div class="entry-no">34</div>
+      <div class="entry-body">
+        <h2>キャンセルはエラーではない</h2>
+
+        <p>
+          Google のポップアップを <strong>× で閉じただけ</strong>で「ログインに失敗しました」と表示された。
+          ユーザーは自分の意思で閉じた——<strong>何も失敗していない。</strong>
+        </p>
+        <p>
+          <strong>これは嘘の表示であり、アプリが状況を理解していないことの表明。</strong>
+          ユーザーの操作の結果を、すべて同じ <code>catch</code> に流し込んだせいで起きた。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">エントリ28の予告が、予告通りの地点で当たった</div>
+          <p>
+            「エラーコードの日本語化は<strong>メール認証でも Google 認証でも必要</strong>になる。
+            そこで初めて2箇所目の重複が発生するので、そのときに切り出す」——
+            <strong>いま <code>setError(...)</code> が2箇所になったので、<code>lib/authErrors.ts</code> に切り出した。</strong>
+          </p>
+          <p>
+            先回りして作らなかったから、<strong>「キャンセルは空文字を返す」という要件を知った状態で設計できた。</strong>
+            先に作っていたら、その分岐は入っていなかった。<strong>これが「重複してから抽象化する」の実利。</strong>
+          </p>
+        </div>
+
+        <h3>「何も無い」の表し方を1種類に揃える</h3>
+        <p>
+          キャンセル時の戻り値は <code>null</code> ではなく<strong>空文字</strong>にした。
+          <code>error</code> state はすでに<strong>「<code>""</code> ＝ 何も表示しない」という約束</strong>で動いている
+          （<code>{error &amp;&amp; &lt;div&gt;{error}&lt;/div&gt;}</code>）ので、その約束にそのまま乗れる。
+        </p>
+        <p>
+          <code>null</code> を返す設計もあり得るが、<strong>「何も無い」の表し方が <code>""</code> と <code>null</code> の2種類に増える。</strong>
+          呼び出し側が毎回どちらか判断することになるので、1種類に揃える。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label"><code>return "";</code> には必ず理由を書く</div>
+          <p>
+            <strong>なぜ空文字なのかは、コードからは絶対に読み取れない。</strong>コメントが無いと「書き忘れ」に見える。
+          </p>
+<pre><code>case AuthErrorCodes.POPUP_CLOSED_BY_USER:
+case AuthErrorCodes.EXPIRED_POPUP_REQUEST:
+  // ユーザーが自分で閉じただけなので、何も表示しない
+  return "";</code></pre>
+          <p>
+            <code>case</code> を続けて書くと<strong>どちらも同じ処理へ落ちる</strong>。
+            同じ文字列を2回書くより<strong>「この2つは同じ種類だ」という分類がコードに現れる</strong>。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：説明文を <code>return</code> の中に書いた</div>
+          <dl class="wrong-right">
+            <dt><code>return "ユーザーが自分で閉じただけなので、何も表示しない";</code></dt>
+            <dd>この文章が<strong>そのまま画面に表示される</strong>。返すのは <code>""</code> で、理由は <code>//</code> コメントに書く</dd>
+          </dl>
+          <p>
+            <strong><code>(protected)/layout.tsx</code> で擬似コードを JSX の中に貼ったのと同じ種類の間違い。</strong>
+            説明はコードの外に置く。<strong>引用符の中身は、必ずユーザーの目に触れる。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 35 -->
+    <article class="entry" id="e35">
+      <div class="entry-no">35</div>
+      <div class="entry-body">
+        <h2>同じ名前は、片方を直したときに黙って身代わりになる</h2>
+
+<pre><code>const handleSubmit = async (e: React.SubmitEvent&lt;HTMLFormElement&gt;) =&gt; {   // ← e はイベント
+  ...
+  } catch (e) {          // ← 同じ名前。外側の e はここから見えない</code></pre>
+
+        <p>
+          動いてはいた。<code>catch</code> の中でイベントを使っていなかったから。
+          <strong>これをシャドーイング（変数の遮蔽）と呼ぶ。</strong>
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">壊れ方が非対称だった</div>
+          <p>
+            <code>catch (e)</code> → <code>catch (err)</code> に変えたとき、<strong>中身の <code>getAuthErrorMessage(e)</code> を直し忘れた。</strong>
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">外側に <code>e</code> が</th><th scope="col">結果</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>handleSubmit</code></th><td><strong>ある</strong>（イベント）</td><td><strong>エラーにならない。</strong>イベントを渡してしまう</td></tr>
+                <tr><th scope="row"><code>handleGoogleSignIn</code></th><td>ない</td><td>コンパイルエラーで気づける</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>getAuthErrorMessage</code> の引数は <code>unknown</code> なので<strong>イベントを渡しても型エラーにならない</strong>。
+            中で <code>instanceof FirebaseError</code> が偽になり、
+            <strong>パスワード間違いも通信断も、すべて「ログインに失敗しました」になる。</strong>
+          </p>
+          <p>
+            <strong>同じ書き間違いなのに、片方は気づけて片方は気づけない。</strong>この差が、名前を分ける理由。
+          </p>
+        </div>
+
+        <p>
+          <code>catch (error)</code> にもできなかった——<strong>この関数の外に <code>const [error, setError]</code> がある</strong>ので、
+          今度は state を遮蔽することになる。<strong>名前は「短いか」ではなく「この場所で他と衝突しないか」で選ぶ。</strong>
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">同じ日に、もう1つの「呼ぶ／渡す」</div>
+<pre><code>setError(getAuthErrorMessage(err))   // 呼んだ結果（文字列）を渡す ✅
+setError(getAuthErrorMessage)        // 関数そのものを渡す ❌</code></pre>
+          <p>
+            <strong><code>()</code> は「呼ぶ」という記号。</strong>引数の有無とは無関係で、<code>()</code> が付いた瞬間に走る。
+            名前だけを書いても<strong>中の処理は1行も実行されない</strong>——<code>3</code> や <code>"abc"</code> と同じ、ただの値。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">渡す相手</th><th scope="col">求めているもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>onClick</code></th><td><strong>あとで呼ぶための関数</strong> → <code>()</code> を付けない</td></tr>
+                <tr><th scope="row"><code>setError</code></th><td><strong>いま入れる値</strong> → <code>()</code> を付けて呼ぶ</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>呼ぶか渡すかは好みではなく、相手が何を求めているかで決まる</strong>（エントリ24）。</p>
+        </div>
       </div>
     </article>
 
@@ -1239,15 +3161,21 @@ NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
     <h2>未解決の問い</h2>
     <ol>
       <li>
-        素朴に <code>initializeApp(config)</code> と書くと、開発サーバーの HMR で何が起きるか。どう防ぐか。
+        <strong>環境変数が未設定のまま起動したとき、どう気づくか。</strong>
+        <code>process.env.X</code> の型は <code>string | undefined</code> で、Firebase の <code>FirebaseOptions</code> は
+        <code>apiKey?: string</code> なので<strong>型チェックは通ってしまう</strong>。
+        値が空のまま実行時に初めて意味不明なエラーになる。検証を入れるか、入れるならどこに置くか。
       </li>
       <li>
-        <code>lib/firebase.ts</code> はサーバーとクライアントのどちらから使われるか。<code>"use client"</code> は必要か。
-        <br>
-        ── エントリ 06 の「サーバーとクライアントで同じ書き方ができる」性質、およびエントリ 07 の
-        「ブラウザで動く必要がある ≠ SDK がブラウザ専用」という区別と、どう繋がるか（あるいは繋がらないか）を意識して考える。
+        <strong>企業を削除したとき、紐づく予定・振り返りをどう扱うか</strong>（仕様書3-6）。
+        一緒に削除するか／参照だけ外すか／紐づくデータがあるうちは削除させないか。
+        <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
       </li>
     </ol>
+    <p class="decisions-note" style="margin-top:1rem">
+      ※ 前回の未解決だった2問（<code>initializeApp</code> と HMR ／ <code>"use client"</code> の要否）は
+      エントリ 12・13 として解決済み。
+    </p>
   </section>
 
   <section class="decisions">
@@ -1296,6 +3224,177 @@ NEXT_PUBLIC_FIREBASE_APP_ID</code></pre>
           日本語は各OSのフォールバックに委ねられる。<strong>Windows で日本語が古いフォントになる可能性がある</strong>ので、
           実機で確認してから明示的なフォントスタックを定義するか判断する。
         </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>認証画面は <code>/login</code> という専用ページにする</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>URLを作らず、<code>AuthProvider</code> の配下で「未ログインなら認証画面、ログイン済みならアプリ本体」と出し分ける</dd>
+        <dt>理由</dt>
+        <dd>
+          仕様書3-2で編集をインライン編集ではなく専用ページにした理由——<strong>「URLで状態が表現でき、リロードしても維持される」</strong>——が、
+          「ログイン画面を表示している」という状態にもそのまま当てはまる。<strong>同じ原則を一貫して適用する。</strong>
+          後から見た人に「なぜ編集はページで認証はページじゃないのか」と考えさせない。
+          加えて、URLで画面が分かれる構成を扱うことがこのアプリの学習目的そのものである。
+        </dd>
+        <dt>捨てた案の長所</dt>
+        <dd>
+          <strong>リダイレクトの仕組みが要らない。</strong>未ログインで <code>/companies/123</code> を開いても URL は保たれ、
+          ログインすればそのまま企業詳細が表示される。専用ページ方式では
+          <strong>「ログイン後にどこへ戻すか」を覚えておく仕組みを別途作る必要がある</strong>（＝機能が1つ増える）。
+          それを承知の上で選んでいる。
+        </dd>
+        <dt>誤解していた点</dt>
+        <dd>
+          当初「捨てた案＝1ファイルに全部詰め込む形」と考えたが<strong>不正確</strong>。捨てた案でもコンポーネントは分割できる。
+          <strong>争点は「ファイルを分けるか」ではなく「URLが分かれるか」。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ログインと新規登録は、1画面のモード切り替えにする</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><code>/signup</code> を別ページとして作る</dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>ログインと新規登録は「別の画面」ではなく「同じフォームの2つの動作」</strong>。入力項目が <code>email</code> と <code>password</code> で完全に同一なので、
+          ページを分けると<strong>同じフォームが2箇所に重複</strong>する。
+          ボタンが1つに保たれるので<strong><code>type="submit"</code> の二重発火の問題も構造的に起きない</strong>し、
+          <code>&lt;form&gt;</code> 本来の挙動（Enter キーで送信）も活きる。
+        </dd>
+        <dt>URLを分ける基準</dt>
+        <dd>
+          <strong>その状態を、リロード・ブックマーク・共有したいか。</strong>
+          <br>企業詳細＝「あの企業のページ」を共有したい → <strong>分ける</strong>
+          <br>編集中＝リロードしても編集画面のままでいてほしい → <strong>分ける</strong>
+          <br>新規登録フォームを表示中＝リロードでログイン画面に戻っても困らない（切り替えボタンを押せばいい） → <strong>分けない</strong>
+        </dd>
+        <dt>誤解していた点</dt>
+        <dd>
+          当初「性質が似ているか」を基準にしたが<strong>主観が入りやすい</strong>。上の「リロード・ブックマーク・共有したいか」なら、
+          「ボタンごとにページを作るのか？」という迷いが出ない。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>認証ガードはクライアント側で実装する（middleware を使わない）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> Next.js の <strong>middleware</strong>（リクエストがページに届く前にサーバー側で処理を挟む仕組み）でガードする——認証ガードの定番の置き場所
+          <b>(b)</b> ID トークンを Cookie に入れ、サーバーからも読めるようにする
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>(a) は使えない。</strong>ログイン情報はブラウザの IndexedDB にあり、<strong>middleware はサーバーで動くので見えない</strong>（エントリ13）。
+          middleware は「このリクエストがログイン済みか」を判定する手段をそもそも持たない。
+          <strong>(b) は可能だが、v1 の複雑さに見合わない。</strong>
+        </dd>
+        <dt>位置づけ</dt>
+        <dd>
+          これは<strong>制約であると同時に、クライアント側認証を選んだことの必然的な帰結</strong>。
+          「Firebase Authentication をブラウザで使う」と決めた時点で、ガードの置き場所も決まっていた。
+        </dd>
+        <dt>再検討</dt>
+        <dd>サーバー側でユーザーごとのデータを扱う必要が出たら (b) を検討する。そのときは Cookie の有効期限・更新・セキュリティ属性の設計が必要になる。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ガードの置き場所は、ルートグループ <code>(protected)/</code> の <code>layout.tsx</code> にする</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 各ページの先頭に <code>useAuth()</code> + <code>useEffect</code> のリダイレクトを書く
+          <b>(b)</b> <code>app/layout.tsx</code>（ルートレイアウト）でガードし、<code>/login</code> のときだけ例外にする
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>(a) は書き忘れが即そのまま脆弱性になる。</strong>仕様書のルーティング設計では保護対象が13ページあり、
+          <strong>1つ漏れれば、そのページだけ誰でも開ける</strong>。しかも漏れていることはテストしない限り分からない。
+          <strong>(b) は「例外」を条件分岐で表現することになり、ページが増えるたびに条件が育つ。</strong>
+          ルートグループなら<strong>「どちら側のフォルダに置くか」でガードの有無が決まる</strong>ので、条件分岐が存在しない。
+        </dd>
+        <dt>効果</dt>
+        <dd>
+          <code>(protected)/</code> に置くだけでガードされ、ページ側は<strong>認証を一切書かなくてよい</strong>。
+          <code>/login</code> はグループの外にあるため、<strong>構造上ガードされえない</strong>（中に入れると無限ループになる）。
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          「ログイン必須だが表示は別レイアウト」といった第3の区分が出たら、
+          <code>(protected)/</code> と並ぶルートグループをもう1つ作る。<strong>条件分岐を増やす方向には進まない。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>Google 認証はポップアップ方式で実装する（リダイレクト方式を使わない）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><code>signInWithRedirect</code> — ページ全体を Google へ遷移させ、戻ってきてから <code>getRedirectResult</code> で結果を受け取る</dd>
+        <dt>捨てた案の長所</dt>
+        <dd>
+          <b>(a)</b> ポップアップブロッカーの影響を受けない
+          <b>(b)</b> <strong>アプリ内ブラウザ（LINE や Instagram の WebView）でも動く</strong>——別ウィンドウを開けない環境がある
+          <b>(c)</b> 小さい画面では全画面遷移の方が自然。<strong>かつては Firebase 自身が「モバイルはこちら」を推奨していた</strong>
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          リダイレクト方式は<strong>「認証ドメイン（<code>firebaseapp.com</code>）に一時的な状態を預けて、戻ってきたら取り出す」</strong>作り。
+          ところが Safari の ITP と Chrome のストレージ分割により、<strong>別ドメインに預けたデータは「第三者のもの」として遮断・分離される</strong>ようになった。
+          このアプリはアプリ側が <code>*.vercel.app</code>、認証側が <code>*.firebaseapp.com</code> でまさに別ドメインになる。
+          <strong>方式の欠陥ではなく、土台が抜けた。</strong>
+          Firebase の型定義が <code>signInWithRedirect</code> にだけ「redirect best practices に従え」というリンクを貼っているのがその証拠
+          （<code>node_modules/@firebase/auth/dist/auth-public.d.ts:3427</code>）。
+        </dd>
+        <dt>効果</dt>
+        <dd>
+          <code>signInWithPopup</code> の Promise が解決すれば <code>onAuthStateChanged</code> が発火し、
+          <strong>既存の <code>useEffect</code> がそのまま遷移を担当する</strong>ので追加コードが要らない。
+          リダイレクト方式なら <code>getRedirectResult</code> のハンドリングが別途必要だった。
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          独自ドメインを認証ドメインに設定する（またはリバースプロキシを立てる）なら、リダイレクト方式が使える。
+          <strong>SNS 経由の流入が多いサービスなら (b) だけで選ぶ理由になる。</strong>
+          切り替えは関数の差し替えと <code>getRedirectResult</code> の追加で済む。
+        </dd>
+        <dt>学び</dt>
+        <dd>
+          <strong>技術の優劣は環境が決め、環境は変わる。</strong>自分の書いたコードとは無関係な理由で「本来こちらが優れている」が覆る。
+          古い記事が「モバイルは redirect」と書いているのは<strong>当時は正しかったから</strong>（エントリ14）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>認証の3状態を <code>user</code> + <code>loading</code> の2フィールドで表す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          判別可能なユニオン型で状態そのものを型にする：<br>
+          <code>{ status: "loading" } | { status: "unauthenticated" } | { status: "authenticated"; user: User }</code>
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          Firebase の <code>onAuthStateChanged</code> が <code>User | null</code> を渡してくるので<strong>2フィールド案が自然に対応する</strong>。
+          最も一般的な形なので他人が読んで即座に理解でき、参考にできる情報も多い。
+        </dd>
+        <dt>弱点</dt>
+        <dd>
+          <code>{ loading: true, user: User }</code> という<strong>意味のない組み合わせが型として表現できてしまう</strong>。
+          捨てた案なら「<code>user</code> は認証済みのときしか存在しない」ことを型で強制でき、
+          <strong>確認前に <code>user</code> を触るコードはコンパイルエラーになる</strong>（不正な状態を型で表現できなくする）。
+          いまは Provider が正しく書かれていることに依存している。
+        </dd>
+        <dt>再検討</dt>
+        <dd>実際に状態の取り違えバグが出たら、ユニオン型に移行する。<strong>「案Bを知った上で案Aを選んだ」という状態にしておく。</strong></dd>
       </dl>
     </div>
 
