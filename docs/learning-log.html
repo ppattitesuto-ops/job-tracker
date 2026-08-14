@@ -535,9 +535,9 @@
     </p>
     <div class="meta">
       <span>最終更新 <b>2026-08-14</b></span>
-      <span>エントリ <b>31</b></span>
-      <span>決定記録 <b>8</b></span>
-      <span>進捗 <b>認証ガード 完了 → Google 認証へ</b></span>
+      <span>エントリ <b>35</b></span>
+      <span>決定記録 <b>9</b></span>
+      <span>進捗 <b>Google 認証 完了 → フェーズ1のマージへ</b></span>
     </div>
   </header>
 
@@ -575,6 +575,10 @@
       <li><a href="#e29">ルートグループ (protected) — URLを変えずに、守る範囲を作る</a></li>
       <li><a href="#e30">ページ同士はURLで繋がっている。ファイルの場所ではない</a></li>
       <li><a href="#e31">return は「何を描くか」、router は「どこに居るか」</a></li>
+      <li><a href="#e32">入口は増えるが、状態は1つ</a></li>
+      <li><a href="#e33">型は実行時に存在しない</a></li>
+      <li><a href="#e34">キャンセルはエラーではない</a></li>
+      <li><a href="#e35">同じ名前は、片方を直したときに黙って身代わりになる</a></li>
     </ol>
   </nav>
 
@@ -2862,6 +2866,295 @@ return &lt;&gt;{children}&lt;/&gt;;                        // 確認済み＆ロ
       </div>
     </article>
 
+    <!-- 32 -->
+    <article class="entry" id="e32">
+      <div class="entry-no">32</div>
+      <div class="entry-body">
+        <h2>入口は増えるが、状態は1つ</h2>
+
+        <p>Google 認証を追加したが、<strong><code>AuthContext.tsx</code> も <code>(protected)/layout.tsx</code> も1行も変えていない。</strong></p>
+
+<pre><code>signInWithEmailAndPassword(...)  ─┐
+                                  ├─→ Firebase が auth の状態を更新
+signInWithPopup(...)             ─┘        ↓
+                                   onAuthStateChanged が発火   ← 共通
+                                           ↓
+                                   Context の user に入る
+                                           ↓
+                                   useEffect が / へ飛ばす</code></pre>
+
+        <p>
+          <strong><code>onAuthStateChanged</code> は「どうやってログインしたか」を知らない。</strong>
+          「いまログインしている人が居るか」しか見ていない。だから入口を何本増やしても、状態を監視する側は無傷。
+        </p>
+        <p>
+          もし各画面が「メール認証か Google 認証か」を意識する作りだったら、
+          <strong>認証方法を1つ足すたびに全画面を直すことになっていた。</strong>
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">増えるもの</th><th scope="col">Context</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><strong>認証の入口</strong>（GitHub、電話番号…）</th><td><strong>変えなくてよい</strong></td></tr>
+              <tr><th scope="row"><strong>状態として持ちたい情報</strong>（表示名、権限…）</th><td>変わる</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：GoogleAuthProvider を「監視役」だと思っていた</div>
+          <dl class="wrong-right">
+            <dt><code>new GoogleAuthProvider()</code> は、メール認証における <code>onAuthStateChanged</code> のような役割</dt>
+            <dd>役割が違う。<code>provider</code> の対応相手は <code>onAuthStateChanged</code> ではなく、<strong><code>email, password</code> の位置</strong>——「誰であることを、何によって証明するか」を表す<strong>引数</strong></dd>
+          </dl>
+<pre><code>signInWithEmailAndPassword(auth, email, password)   // 本人が知っている情報
+signInWithPopup(auth, provider)                     // Google に聞きに行く、という指定</code></pre>
+          <p>
+            文字列 <code>"google"</code> ではなくクラスなのは、<strong>プロバイダが追加設定を持てる</strong>から
+            （<code>addScope()</code> で権限を追加、<code>setCustomParameters()</code> で毎回アカウント選択させる等）。
+            <strong>「Google を使う」だけでなく「Google にどう聞くか」まで表現できる器</strong>。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">クラスとインスタンス</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">正体</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">クラス <code>GoogleAuthProvider</code></th><td><strong>設計図。</strong>それ自体は物ではない</td></tr>
+                <tr><th scope="row">インスタンス</th><td>設計図から作られた<strong>個体</strong>。実際にメモリ上に存在する</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>変数に入れるのは可読性のためではなく、入れないと使えないから。</strong>
+            <code>new GoogleAuthProvider();</code> と書くと作った直後に捨てられ、次の行で <code>provider</code> は存在しない。
+            <strong>名前を付けなかった物には、二度と触れない。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 33 -->
+    <article class="entry" id="e33">
+      <div class="entry-no">33</div>
+      <div class="entry-body">
+        <h2>型は実行時に存在しない</h2>
+
+        <p><strong>TypeScript はビルド時に消える。ブラウザが受け取るのは JavaScript だけ。</strong></p>
+
+<pre><code>// 書く TypeScript
+interface Foo { a: string }
+const x: Foo = { a: "hi" };
+
+// ブラウザに届く JavaScript
+const x = { a: "hi" };        // ← Foo はどこにも無い</code></pre>
+
+        <p>
+          だから <code>x instanceof Foo</code> は<strong>比較する相手が無く</strong>、「<code>Foo</code> は型のみを参照します」というエラーになる。
+        </p>
+        <p>
+          <code>class</code> は違う——<strong>TypeScript の機能ではなく JavaScript の機能</strong>なので、コンパイルしても消えない。
+          <code>FirebaseError</code> が実在するからこそ <code>error instanceof FirebaseError</code> という<strong>実行時のチェック</strong>が成立する。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">やりたいこと</th><th scope="col">使うもの</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><strong>書いている最中</strong>に間違いを防ぐ</th><td><code>interface</code> / <code>type</code> / 型注釈</td></tr>
+              <tr><th scope="row"><strong>実行時</strong>に値の正体を確かめる</th><td><code>instanceof</code> / <code>typeof</code> / <code>in</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>「型で守れる範囲」と「実行時にしか分からない範囲」の境界がここにある。</strong>
+          エントリ01の「環境変数はビルド時に置換される」と同じ問い——<strong>何がビルドを生き延びて、ブラウザに届くのか。</strong>
+        </p>
+
+        <h3><code>catch</code> の値が <code>unknown</code> になる理由</h3>
+<pre><code>catch (err) {        // ← 型は書かない。書けない。TypeScript が unknown を付ける
+  setError(getAuthErrorMessage(err));
+}</code></pre>
+        <p>
+          <strong><code>any</code> は「何でも許す」、<code>unknown</code> は「まず確かめろ」。</strong>
+          JavaScript は <code>throw</code> に何でも渡せる（文字列でも数値でも投げられる）ので、
+          TypeScript は<strong>確認するまで <code>.code</code> すら読ませない</strong>。strict 設定がこれを有効にしている。
+        </p>
+
+        <h3><code>instanceof</code> は2つの仕事をしている</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">仕事</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">実行時</th><td>この値は本当に <code>FirebaseError</code> か判定する</td></tr>
+              <tr><th scope="row">型の上</th><td>それ以降のコードで <code>error</code> を <code>FirebaseError</code> として<strong>扱えるようにする</strong>（型の絞り込み）</td></tr>
+            </tbody>
+          </table>
+        </div>
+<pre><code>if (!(error instanceof FirebaseError)) {
+  return "ログインに失敗しました";   // ← Firebase 以外はここで終わり
+}
+error.code                            // ← ここでは読める</code></pre>
+        <p>
+          <strong>弾かれる側にも意味がある。</strong><code>FirebaseError</code> でない例外——自分のコードのバグ、
+          ブラウザやネットワーク層の例外——に「メールアドレスが正しくありません」と表示したら嘘になる。
+          <strong>分からないものを、分かったふりで説明しない。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">戻り値の型は「自分が保証したいこと」を書く場所</div>
+          <p>
+            <code>getAuthErrorMessage(error: unknown): string</code> と書いておくと、
+            <code>switch</code> の <code>default</code> を忘れた瞬間に
+            <strong>「<code>string | undefined</code> は <code>string</code> に代入できない」</strong>とコンパイルエラーになる。
+            書かなければ <code>undefined</code> が画面まで届く。
+          </p>
+          <p>
+            <strong>定数を使うのも同じ発想。</strong><code>AuthErrorCodes.POPUP_CLOSED_BY_USER</code> の型は
+            <code>string</code> ではなく <code>"auth/popup-closed-by-user"</code> そのもの（値まで型として固定）なので、
+            <strong>綴りを間違えた瞬間に落ちる</strong>。<code>useState&lt;"login" | "signup"&gt;</code> と同じ仕組み。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 34 -->
+    <article class="entry" id="e34">
+      <div class="entry-no">34</div>
+      <div class="entry-body">
+        <h2>キャンセルはエラーではない</h2>
+
+        <p>
+          Google のポップアップを <strong>× で閉じただけ</strong>で「ログインに失敗しました」と表示された。
+          ユーザーは自分の意思で閉じた——<strong>何も失敗していない。</strong>
+        </p>
+        <p>
+          <strong>これは嘘の表示であり、アプリが状況を理解していないことの表明。</strong>
+          ユーザーの操作の結果を、すべて同じ <code>catch</code> に流し込んだせいで起きた。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">エントリ28の予告が、予告通りの地点で当たった</div>
+          <p>
+            「エラーコードの日本語化は<strong>メール認証でも Google 認証でも必要</strong>になる。
+            そこで初めて2箇所目の重複が発生するので、そのときに切り出す」——
+            <strong>いま <code>setError(...)</code> が2箇所になったので、<code>lib/authErrors.ts</code> に切り出した。</strong>
+          </p>
+          <p>
+            先回りして作らなかったから、<strong>「キャンセルは空文字を返す」という要件を知った状態で設計できた。</strong>
+            先に作っていたら、その分岐は入っていなかった。<strong>これが「重複してから抽象化する」の実利。</strong>
+          </p>
+        </div>
+
+        <h3>「何も無い」の表し方を1種類に揃える</h3>
+        <p>
+          キャンセル時の戻り値は <code>null</code> ではなく<strong>空文字</strong>にした。
+          <code>error</code> state はすでに<strong>「<code>""</code> ＝ 何も表示しない」という約束</strong>で動いている
+          （<code>{error &amp;&amp; &lt;div&gt;{error}&lt;/div&gt;}</code>）ので、その約束にそのまま乗れる。
+        </p>
+        <p>
+          <code>null</code> を返す設計もあり得るが、<strong>「何も無い」の表し方が <code>""</code> と <code>null</code> の2種類に増える。</strong>
+          呼び出し側が毎回どちらか判断することになるので、1種類に揃える。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label"><code>return "";</code> には必ず理由を書く</div>
+          <p>
+            <strong>なぜ空文字なのかは、コードからは絶対に読み取れない。</strong>コメントが無いと「書き忘れ」に見える。
+          </p>
+<pre><code>case AuthErrorCodes.POPUP_CLOSED_BY_USER:
+case AuthErrorCodes.EXPIRED_POPUP_REQUEST:
+  // ユーザーが自分で閉じただけなので、何も表示しない
+  return "";</code></pre>
+          <p>
+            <code>case</code> を続けて書くと<strong>どちらも同じ処理へ落ちる</strong>。
+            同じ文字列を2回書くより<strong>「この2つは同じ種類だ」という分類がコードに現れる</strong>。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：説明文を <code>return</code> の中に書いた</div>
+          <dl class="wrong-right">
+            <dt><code>return "ユーザーが自分で閉じただけなので、何も表示しない";</code></dt>
+            <dd>この文章が<strong>そのまま画面に表示される</strong>。返すのは <code>""</code> で、理由は <code>//</code> コメントに書く</dd>
+          </dl>
+          <p>
+            <strong><code>(protected)/layout.tsx</code> で擬似コードを JSX の中に貼ったのと同じ種類の間違い。</strong>
+            説明はコードの外に置く。<strong>引用符の中身は、必ずユーザーの目に触れる。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 35 -->
+    <article class="entry" id="e35">
+      <div class="entry-no">35</div>
+      <div class="entry-body">
+        <h2>同じ名前は、片方を直したときに黙って身代わりになる</h2>
+
+<pre><code>const handleSubmit = async (e: React.SubmitEvent&lt;HTMLFormElement&gt;) =&gt; {   // ← e はイベント
+  ...
+  } catch (e) {          // ← 同じ名前。外側の e はここから見えない</code></pre>
+
+        <p>
+          動いてはいた。<code>catch</code> の中でイベントを使っていなかったから。
+          <strong>これをシャドーイング（変数の遮蔽）と呼ぶ。</strong>
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">壊れ方が非対称だった</div>
+          <p>
+            <code>catch (e)</code> → <code>catch (err)</code> に変えたとき、<strong>中身の <code>getAuthErrorMessage(e)</code> を直し忘れた。</strong>
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">外側に <code>e</code> が</th><th scope="col">結果</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>handleSubmit</code></th><td><strong>ある</strong>（イベント）</td><td><strong>エラーにならない。</strong>イベントを渡してしまう</td></tr>
+                <tr><th scope="row"><code>handleGoogleSignIn</code></th><td>ない</td><td>コンパイルエラーで気づける</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>getAuthErrorMessage</code> の引数は <code>unknown</code> なので<strong>イベントを渡しても型エラーにならない</strong>。
+            中で <code>instanceof FirebaseError</code> が偽になり、
+            <strong>パスワード間違いも通信断も、すべて「ログインに失敗しました」になる。</strong>
+          </p>
+          <p>
+            <strong>同じ書き間違いなのに、片方は気づけて片方は気づけない。</strong>この差が、名前を分ける理由。
+          </p>
+        </div>
+
+        <p>
+          <code>catch (error)</code> にもできなかった——<strong>この関数の外に <code>const [error, setError]</code> がある</strong>ので、
+          今度は state を遮蔽することになる。<strong>名前は「短いか」ではなく「この場所で他と衝突しないか」で選ぶ。</strong>
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">同じ日に、もう1つの「呼ぶ／渡す」</div>
+<pre><code>setError(getAuthErrorMessage(err))   // 呼んだ結果（文字列）を渡す ✅
+setError(getAuthErrorMessage)        // 関数そのものを渡す ❌</code></pre>
+          <p>
+            <strong><code>()</code> は「呼ぶ」という記号。</strong>引数の有無とは無関係で、<code>()</code> が付いた瞬間に走る。
+            名前だけを書いても<strong>中の処理は1行も実行されない</strong>——<code>3</code> や <code>"abc"</code> と同じ、ただの値。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">渡す相手</th><th scope="col">求めているもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>onClick</code></th><td><strong>あとで呼ぶための関数</strong> → <code>()</code> を付けない</td></tr>
+                <tr><th scope="row"><code>setError</code></th><td><strong>いま入れる値</strong> → <code>()</code> を付けて呼ぶ</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>呼ぶか渡すかは好みではなく、相手が何を求めているかで決まる</strong>（エントリ24）。</p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -3036,6 +3329,46 @@ return &lt;&gt;{children}&lt;/&gt;;                        // 確認済み＆ロ
         <dd>
           「ログイン必須だが表示は別レイアウト」といった第3の区分が出たら、
           <code>(protected)/</code> と並ぶルートグループをもう1つ作る。<strong>条件分岐を増やす方向には進まない。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>Google 認証はポップアップ方式で実装する（リダイレクト方式を使わない）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><code>signInWithRedirect</code> — ページ全体を Google へ遷移させ、戻ってきてから <code>getRedirectResult</code> で結果を受け取る</dd>
+        <dt>捨てた案の長所</dt>
+        <dd>
+          <b>(a)</b> ポップアップブロッカーの影響を受けない
+          <b>(b)</b> <strong>アプリ内ブラウザ（LINE や Instagram の WebView）でも動く</strong>——別ウィンドウを開けない環境がある
+          <b>(c)</b> 小さい画面では全画面遷移の方が自然。<strong>かつては Firebase 自身が「モバイルはこちら」を推奨していた</strong>
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          リダイレクト方式は<strong>「認証ドメイン（<code>firebaseapp.com</code>）に一時的な状態を預けて、戻ってきたら取り出す」</strong>作り。
+          ところが Safari の ITP と Chrome のストレージ分割により、<strong>別ドメインに預けたデータは「第三者のもの」として遮断・分離される</strong>ようになった。
+          このアプリはアプリ側が <code>*.vercel.app</code>、認証側が <code>*.firebaseapp.com</code> でまさに別ドメインになる。
+          <strong>方式の欠陥ではなく、土台が抜けた。</strong>
+          Firebase の型定義が <code>signInWithRedirect</code> にだけ「redirect best practices に従え」というリンクを貼っているのがその証拠
+          （<code>node_modules/@firebase/auth/dist/auth-public.d.ts:3427</code>）。
+        </dd>
+        <dt>効果</dt>
+        <dd>
+          <code>signInWithPopup</code> の Promise が解決すれば <code>onAuthStateChanged</code> が発火し、
+          <strong>既存の <code>useEffect</code> がそのまま遷移を担当する</strong>ので追加コードが要らない。
+          リダイレクト方式なら <code>getRedirectResult</code> のハンドリングが別途必要だった。
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          独自ドメインを認証ドメインに設定する（またはリバースプロキシを立てる）なら、リダイレクト方式が使える。
+          <strong>SNS 経由の流入が多いサービスなら (b) だけで選ぶ理由になる。</strong>
+          切り替えは関数の差し替えと <code>getRedirectResult</code> の追加で済む。
+        </dd>
+        <dt>学び</dt>
+        <dd>
+          <strong>技術の優劣は環境が決め、環境は変わる。</strong>自分の書いたコードとは無関係な理由で「本来こちらが優れている」が覆る。
+          古い記事が「モバイルは redirect」と書いているのは<strong>当時は正しかったから</strong>（エントリ14）。
         </dd>
       </dl>
     </div>
