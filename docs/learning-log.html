@@ -535,9 +535,9 @@
     </p>
     <div class="meta">
       <span>最終更新 <b>2026-08-14</b></span>
-      <span>エントリ <b>35</b></span>
-      <span>決定記録 <b>9</b></span>
-      <span>進捗 <b>Google 認証 完了 → フェーズ1のマージへ</b></span>
+      <span>エントリ <b>39</b></span>
+      <span>決定記録 <b>10</b></span>
+      <span>進捗 <b>フェーズ1 完了 → フェーズ2（Firestore）へ</b></span>
     </div>
   </header>
 
@@ -579,6 +579,10 @@
       <li><a href="#e33">型は実行時に存在しない</a></li>
       <li><a href="#e34">キャンセルはエラーではない</a></li>
       <li><a href="#e35">同じ名前は、片方を直したときに黙って身代わりになる</a></li>
+      <li><a href="#e36">公開する前に、公開されるものを確認する</a></li>
+      <li><a href="#e37">秘密を送らずに、持っていることを証明する</a></li>
+      <li><a href="#e38">git add はスナップショットである</a></li>
+      <li><a href="#e39">打ち間違いは、必ずしもエラーにならない</a></li>
     </ol>
   </nav>
 
@@ -3155,6 +3159,292 @@ setError(getAuthErrorMessage)        // 関数そのものを渡す ❌</code></
       </div>
     </article>
 
+    <!-- 36 -->
+    <article class="entry" id="e36">
+      <div class="entry-no">36</div>
+      <div class="entry-body">
+        <h2>公開する前に、公開されるものを確認する</h2>
+
+        <p>GitHub に Public リポジトリとして上げる前に、<strong>履歴に秘密が入っていないか</strong>を機械的に確認した。</p>
+
+<pre><code>$ git log --all --diff-filter=A --name-only --pretty=format: | sort -u | grep -i env
+.env.example        ← 一度も .env.local は追加されていない</code></pre>
+
+        <p>
+          <code>--diff-filter=A</code> は「追加（Add）された時点」だけを拾うオプション。
+          <strong>現在のファイル一覧ではなく、過去に一度でも登場したかを見る</strong>のが要点。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">一度コミットしたものは、消しても残る</div>
+          <p>
+            後からファイルを削除しても、<strong>そのファイルを含むコミットは履歴に残り続ける</strong>。
+            取り除くには履歴の書き換え（<code>git filter-repo</code> 等）が必要で、
+            <strong>すでに push 済みなら、鍵の再発行しか安全な手はない。</strong>
+          </p>
+          <p>
+            <strong>「消したから大丈夫」は通用しない。公開する前に確認するのが唯一の正解。</strong>
+          </p>
+        </div>
+
+        <h3>push した後も、外から見る</h3>
+        <p>
+          <code>git ls-tree -r origin/main --name-only</code> でリモートの中身を一覧し、
+          さらに<strong>ブラウザでリポジトリのページを開いて目視した。</strong>
+        </p>
+        <p>
+          手元の <code>git ls-files</code> で確認済みでも、それとは別に見る意味がある——
+          <strong>確認したいのは「公開された結果」であって、「公開したつもり」ではない。</strong>
+          エントリ17の「ビルドが通った ≠ 組み込まれた」と同じ姿勢。
+        </p>
+        <p>
+          いま見ている画面は、<strong>世界中の誰もが見られる画面と同じもの</strong>。
+          そこに秘密が無いことを目で確かめる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">SSH の指紋も同じ話</div>
+          <p>
+            初回接続時に出る <code>ED25519 key fingerprint is: SHA256:+DiY3wvv...</code> は、
+            <strong>「接続先が本物の GitHub か」を確認するためのもの</strong>。
+            <code>yes</code> を押す行為は<strong>「この鍵の持ち主を GitHub 本人として信頼する」という宣言</strong>で、
+            本来は公式が公開している値と見比べてから押す。
+            <strong>偽のサーバーに繋がれていた場合、ここが唯一の防御線になる。</strong>
+            以降は <code>~/.ssh/known_hosts</code> に記録され、聞かれなくなる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 37 -->
+    <article class="entry" id="e37">
+      <div class="entry-no">37</div>
+      <div class="entry-body">
+        <h2>秘密を送らずに、持っていることを証明する</h2>
+
+        <p>
+          GitHub が2021年にパスワード認証を廃止した理由は、パスワードの根本的な弱点にある。
+        </p>
+        <p>
+          <strong>パスワードは「秘密そのものを相手に渡して証明する」方式。</strong>
+          送った先が偽サイトなら盗まれ、通信を覗かれても盗まれ、相手のサーバーが漏洩しても盗まれる。
+        </p>
+        <p><strong>鍵認証は、秘密を一度も送らない。</strong></p>
+
+<pre><code>あなた                                GitHub
+  │  ── 接続。私は誰それです ────→    │
+  │                                     │  登録済みの公開鍵を探す
+  │  ←── ランダムな文字列を送る ────    │  「これに署名してみせろ」
+  │  秘密鍵で署名を作る                  │
+  │  ── 署名を送る ──────────→        │
+  │                                     │  公開鍵で検証
+  │  ←──── 認証成功 ──────────      │</code></pre>
+
+        <p>
+          流れるのは署名だけで、しかも<strong>毎回ランダムな文字列に対する署名</strong>なので、
+          盗んで再利用することもできない。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">ファイル</th><th scope="col">扱い</th><th scope="col">見分け方</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>id_ed25519</code></th><td><strong>秘密鍵。絶対に外に出さない</strong></td><td><code>-----BEGIN OPENSSH PRIVATE KEY-----</code> で始まる複数行</td></tr>
+              <tr><th scope="row"><code>id_ed25519.pub</code></th><td>公開鍵。配ってよい</td><td><code>ssh-ed25519 AAAA...</code> の<strong>1行</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>公開鍵から秘密鍵は計算できない</strong>——できないことがこの暗号方式の前提。
+          <strong>エントリ03の「Firebase の apiKey（公開前提）と AI の APIキー（秘密）」と同じ構造</strong>で、
+          <strong>「配ってよいもの」と「絶対に出さないもの」がペアで存在する。</strong>
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">混同しやすい：パスフレーズは通信を守っていない</div>
+          <dl class="wrong-right">
+            <dt>パスフレーズは、通信の安全のためにある</dt>
+            <dd><strong>秘密鍵ファイルそのものを暗号化している。</strong>守るのは「ノートPCを盗まれた」「マルウェアに <code>~/.ssh/</code> を読まれた」という状況</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">鍵ファイルを盗まれたら</th><th scope="col">パスフレーズ無し</th><th scope="col">パスフレーズ有り</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">結果</th><td><strong>即座に本人になりすませる</strong></td><td>ファイルだけでは使えない</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>.env.local</code> を <code>.gitignore</code> に入れるのと同じ、
+            <strong>「持ち出されたときにどうなるか」の防御</strong>。<strong>通信の安全とは別の層。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">安全と手間のトレードオフを、仕組みで解消する</div>
+          <p>
+            パスフレーズがあると push のたびに入力を求められる。
+            <strong>面倒だと、人はパスフレーズを空にしてしまう。</strong>
+          </p>
+<pre><code># ~/.ssh/config
+Host github.com
+  AddKeysToAgent yes        # 使うとき自動で ssh-agent に登録
+  UseKeychain yes           # パスフレーズを macOS キーチェーンから取る
+  IdentityFile ~/.ssh/id_ed25519</code></pre>
+          <p>
+            <strong>ssh-agent</strong> は復号した秘密鍵をメモリに預かり、以降の署名を代行する常駐プログラム。
+            この3行があるので<strong>再起動してもパスフレーズを聞かれない。</strong>
+          </p>
+          <p>
+            <strong>「妥協しないと不便」という状況は、設定で解消できることが多い。</strong>
+            不便を理由に安全性を下げる前に、仕組みで解けないか考える。
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">成功メッセージが失敗に見える</div>
+<pre><code>Hi ppattitesuto-ops! You've successfully authenticated,
+but GitHub does not provide shell access.</code></pre>
+          <p>
+            <strong>これは成功。</strong>後半は「SSH でログインはさせない」という案内であって、エラーではない。
+            <strong>英語のメッセージを雰囲気で失敗と判断しない。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 38 -->
+    <article class="entry" id="e38">
+      <div class="entry-no">38</div>
+      <div class="entry-body">
+        <h2><code>git add</code> はスナップショットである</h2>
+
+        <p>
+          コメントを直す前に <code>git add</code> し、そのあと内容を修正した。
+          <code>git status</code> の表示はこうなっていた。
+        </p>
+
+<pre><code>MM app/(protected)/layout.tsx</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">位置</th><th scope="col">意味</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">左の <code>M</code></th><td>ステージ済み（<code>git add</code> した内容）</td></tr>
+              <tr><th scope="row">右の <code>M</code></th><td><strong>ステージした後、さらに編集した内容</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">あのままコミットしていたら、間違ったコメントが記録されていた</div>
+          <p>
+            <code>git diff --cached</code>（＝いまコミットされる内容）を見ると、
+            <strong>修正前の「ローディングが false なら読み込み中」が入っていた。</strong>
+          </p>
+          <p>
+            <strong><code>git add</code> はファイルを指し示す操作ではなく、その瞬間の中身をコピーしてステージに置く操作。</strong>
+            だから add したあとに編集したら、<strong>もう一度 add しないと反映されない。</strong>
+          </p>
+        </div>
+
+        <p>
+          これが「コミット前に <code>git status</code> を目視する」もう1つの理由。
+          <code>.env.local</code> の混入を防ぐためだけではない。
+        </p>
+        <p>
+          <strong>確実なのは <code>git commit</code> の直前に <code>git diff --cached</code> を読むこと。</strong>
+          <strong>コミットされるのは「編集したもの」ではなく「ステージにあるもの」</strong>——この2つを別物として扱う。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">コミットメッセージには本文が書ける</div>
+<pre><code>git commit -m "feat: Google 認証を追加" \
+           -m "ポップアップ方式を採用。キャンセル時にエラーを出さないよう、
+               エラーコードの日本語化を lib/authErrors.ts に切り出した。"</code></pre>
+          <p>
+            <strong><code>-m</code> は複数回書ける。</strong>1つ目が件名、2つ目が本文。
+            <strong>件名は「何をしたか」、本文は「なぜそうしたか」。</strong>
+            <code>git log</code> は件名だけを一覧表示するので、
+            <strong>件名に理由まで詰め込むと一覧が読めなくなる。</strong>
+          </p>
+          <p>
+            なお <code>git merge --no-ff feat/auth -m "..."</code> のように <code>-m</code> を付けると、
+            <strong>エディタ（vim）が開かない</strong>。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 39 -->
+    <article class="entry" id="e39">
+      <div class="entry-no">39</div>
+      <div class="entry-body">
+        <h2>打ち間違いは、必ずしもエラーにならない</h2>
+
+        <p>SSH の設定中に3種類の失敗をした。<strong>どれも壊れ方が違う。</strong></p>
+
+        <h3>① スペース1つで、後続がまるごと止まった</h3>
+<pre><code>touch ~/ .ssh/config && open -e ~/.ssh/config
+       ↑ここにスペース</code></pre>
+        <p>
+          シェルはスペースで区切って<strong>2つの別々の引数</strong>として受け取る——
+          <code>~/</code>（ホーム。存在するので無視される）と <code>.ssh/config</code>（<strong>いる場所からの相対パス</strong>＝存在しない）。
+        </p>
+        <p>
+          <code>touch</code> が失敗したので、<strong><code>&amp;&amp;</code> の後ろの <code>open</code> は実行されなかった</strong>
+          （<code>&amp;&amp;</code> は「左が成功したときだけ右を実行する」）。
+          <strong>結果、テキストエディタが開かず、貼り付けた設定がそのままターミナルへ入力された。</strong>
+        </p>
+
+        <h3>② 大文字の <code>Host</code> が、コマンドとして実行された</h3>
+<pre><code>Host github.com not found: 5(REFUSED)     ← 1行目だけ挙動が違った
+zsh: command not found: AddKeysToAgent    ← 残りは command not found</code></pre>
+        <p>
+          <code>/usr/bin/host</code>（DNS を調べるコマンド）が実行された。
+          <strong>macOS のファイルシステムが大文字小文字を区別しないため、<code>Host</code> で <code>host</code> が見つかった。</strong>
+        </p>
+        <div class="note check">
+          <div class="note-label">エントリ11で学んだ話が、実地で出た</div>
+          <p>
+            ブランチ名を小文字に統一した理由——<strong>「macOS と Linux でファイルシステムの大文字小文字の扱いが違う」</strong>——が、
+            まったく別の場面で牙を剥いた。<strong>Linux なら <code>command not found</code> で終わっていた。</strong>
+            <strong>知識は、学んだのと同じ形では出てこない。</strong>
+          </p>
+        </div>
+
+        <h3>③ リモートURLの打ち間違いは、push まで分からなかった</h3>
+<pre><code>git remote add origin git@github.com:.../job-toracker.git
+                                          ↑ o が余分
+
+$ git push -u origin main
+ERROR: Repository not found.</code></pre>
+        <p>
+          <strong><code>git remote add</code> は文字列を記録するだけで、その時点では通信も検証もしない。</strong>
+          だから間違いに気づくのは<strong>push の瞬間</strong>。
+        </p>
+        <p>
+          直すのは <code>add</code> ではなく <code>set-url</code>——<strong>すでに <code>origin</code> があるので <code>add</code> は拒否される。</strong>
+        </p>
+<pre><code>git remote set-url origin git@github.com:.../job-tracker.git
+git ls-remote --heads origin    # 何も出なければ成功（リポジトリが空）</code></pre>
+
+        <div class="note warn">
+          <div class="note-label">対策は「気をつける」ではない</div>
+          <ul>
+            <li><strong>パスは手で打たず Tab で補完する。</strong><code>~/.ss</code> まで打って Tab</li>
+            <li><strong>URL は GitHub の画面からコピーして貼る。</strong>手打ちしない</li>
+            <li><strong>括弧を含むパスはクォートで囲む。</strong><code>git add 'app/(protected)/layout.tsx'</code>——囲まないと zsh が <code>no matches found</code> を出す</li>
+            <li>full-width の <code>”</code> を打つと <code>dquote&gt;</code> から抜けられなくなる。<strong><code>Ctrl+C</code> で脱出</strong></li>
+          </ul>
+          <p>
+            <strong>失敗の仕方が毎回違うのは、失敗する場所が毎回違うから。</strong>
+            覚えるべきは個々のエラーメッセージではなく、<strong>「入力を人力に頼らない手段があるなら、そちらを使う」</strong>という方針。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -3369,6 +3659,31 @@ setError(getAuthErrorMessage)        // 関数そのものを渡す ❌</code></
         <dd>
           <strong>技術の優劣は環境が決め、環境は変わる。</strong>自分の書いたコードとは無関係な理由で「本来こちらが優れている」が覆る。
           古い記事が「モバイルは redirect」と書いているのは<strong>当時は正しかったから</strong>（エントリ14）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>GitHub への接続は SSH 鍵で行う（HTTPS + トークンを使わない）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>HTTPS + Personal Access Token（PAT）。macOS のキーチェーンにトークンを保存する</dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>PAT には有効期限がある。</strong>切れたときに出るのは「認証に失敗した」という曖昧なエラーで、
+          <strong>原因が期限切れだと気づくまでに時間を溶かす</strong>——しかも数ヶ月後、まったく別の作業をしている最中に起きる。
+          SSH 鍵は一度作れば期限がない。
+        </dd>
+        <dt>捨てた案の長所</dt>
+        <dd>
+          鍵の生成・登録・<code>~/.ssh/config</code> の設定が不要で、初回の手数が少ない。
+          ネットワークによっては SSH（22番ポート）が塞がれていることがあり、その環境では HTTPS しか使えない。
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          22番ポートが塞がれた環境で作業する必要が出たら、SSH を 443番ポートで話す設定
+          （<code>Host github.com</code> / <code>Hostname ssh.github.com</code> / <code>Port 443</code>）に切り替える。
+          <strong>HTTPS + PAT へ戻すのではなく、SSH のまま経路を変える。</strong>
         </dd>
       </dl>
     </div>
