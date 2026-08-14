@@ -534,10 +534,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-08-11</b></span>
-      <span>エントリ <b>28</b></span>
-      <span>決定記録 <b>7</b></span>
-      <span>進捗 <b>ログイン画面 完了 → ログアウト・認証ガードへ</b></span>
+      <span>最終更新 <b>2026-08-14</b></span>
+      <span>エントリ <b>31</b></span>
+      <span>決定記録 <b>8</b></span>
+      <span>進捗 <b>認証ガード 完了 → Google 認証へ</b></span>
     </div>
   </header>
 
@@ -572,6 +572,9 @@
       <li><a href="#e26">分岐と条件表示の書き分け</a></li>
       <li><a href="#e27">エラーは、書かなければ握り潰される</a></li>
       <li><a href="#e28">抽象化は「重複が生まれてから」</a></li>
+      <li><a href="#e29">ルートグループ (protected) — URLを変えずに、守る範囲を作る</a></li>
+      <li><a href="#e30">ページ同士はURLで繋がっている。ファイルの場所ではない</a></li>
+      <li><a href="#e31">return は「何を描くか」、router は「どこに居るか」</a></li>
     </ol>
   </nav>
 
@@ -2594,6 +2597,271 @@ app/layout.tsx           ← ページを起点にして
       </div>
     </article>
 
+    <!-- 29 -->
+    <article class="entry" id="e29">
+      <div class="entry-no">29</div>
+      <div class="entry-body">
+        <h2>ルートグループ <code>(protected)</code> — URLを変えずに、守る範囲を作る</h2>
+
+        <p>
+          フォルダ名を<strong>丸括弧で囲むと、そのフォルダ名はURLに含まれない</strong>（ルートグループ）。
+        </p>
+<pre><code>app/(protected)/page.tsx   →   URL は  /
+                                （/protected/ にはならない）</code></pre>
+        <p>
+          <strong>URLを変えずにフォルダだけを分けられる</strong>ので、
+          <code>layout.tsx</code> を「一部のページにだけ」掛けることができる。認証ガードはこれで実現した。
+        </p>
+
+        <h3>「配下」とは、そのフォルダと、その中のすべて</h3>
+<pre><code>app/(protected)/
+├─ layout.tsx        ← これが
+├─ page.tsx          ← ✅ 含む（同じ階層でも）
+└─ companies/
+   ├─ page.tsx       ← ✅ 含む
+   └─ [id]/page.tsx  ← ✅ 含む（何階層下でも）</code></pre>
+        <p>
+          <code>layout.tsx</code> は <code>page.tsx</code> の<strong>隣にいるのではなく、包んでいる</strong>。
+          同じ階層のページも例外なく中に入る。
+        </p>
+<pre><code>&lt;ProtectedLayout&gt;    ← layout.tsx
+  &lt;Home /&gt;           ← page.tsx が children として入る
+&lt;/ProtectedLayout&gt;</code></pre>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：children は「アプリ全体」だと思っていた</div>
+          <dl class="wrong-right">
+            <dt><code>children</code> ＝ アプリ全体</dt>
+            <dd><code>children</code> ＝ <strong>そのレイアウトの「1段内側」</strong>。どのレイアウトの話かで指すものが変わる</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">レイアウト</th><th scope="col">その <code>children</code> が指すもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>app/layout.tsx</code></th><td>アプリ全体（<code>/login</code> も <code>/</code> も）</td></tr>
+                <tr><th scope="row"><code>app/(protected)/layout.tsx</code></th><td><strong><code>(protected)/</code> の中のページだけ</strong>。<code>/login</code> は入らない</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3>なぜ各ページに書かず、レイアウトに書くのか</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">各ページに書く</th><th scope="col">レイアウトに書く（採用）</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">ページが10個になったら</th><td>同じガードを10回書く</td><td><strong>0回。</strong>フォルダに置くだけ</td></tr>
+              <tr><th scope="row">1ページ書き忘れたら</th><td><strong>そのページだけ誰でも見られる</strong></td><td>起こりえない</td></tr>
+              <tr><th scope="row">仕様を変えるとき</th><td>10箇所を直す</td><td>1箇所</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>「書き忘れたら穴が空く」設計は、いつか必ず穴が空く。</strong>
+          人間の注意力に頼らず、構造で保証する——エントリ21で <code>AuthContext</code> を
+          <code>export</code> せず <code>useAuth</code> だけを出したのと<strong>同じ考え方</strong>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">見返り：この先のページで認証を書かなくてよくなる</div>
+          <p>
+            <code>companies/page.tsx</code> を作るとき、書くのは<strong>企業一覧の中身だけ</strong>。
+            <code>useAuth()</code> も、リダイレクトも、「読み込み中」の分岐も要らない。<strong>すでに包まれているから。</strong>
+          </p>
+          <p>
+            いま <code>page.tsx</code> が1枚しかない段階では「わざわざフォルダを分けた」ようにしか見えないが、
+            <strong>この1ファイルが、この先作る十数個のページ全部に効く。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label"><code>/login</code> をガードの中に入れてはいけない</div>
+          <p>
+            <strong>無限ループになる。</strong>未ログインで <code>/login</code> を開く → ガードが「未ログイン」と判断 →
+            <code>/login</code> へリダイレクト → またガードが動く → …
+          </p>
+          <p>
+            <strong>ログイン画面は、未ログインの人が見るための画面である。</strong>未ログインを弾く場所に置けない。
+            <strong>フォルダをどう切るかは、見た目の整理ではなくアクセス制御の設計そのもの。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">型は自動生成されない</div>
+          <p>
+            <code>app/layout.tsx</code> は <code>LayoutProps&lt;"/"&gt;</code> を使えるが、
+            <code>(protected)/layout.tsx</code> は <code>{ children }: { children: ReactNode }</code> と<strong>手書きが正しい</strong>。
+          </p>
+          <p>
+            <code>.next/types/routes.d.ts</code> を読むと <code>type LayoutRoutes = "/"</code> の1つだけ。
+            ルートグループはURL上 <code>/</code> と同じなので<strong>別エントリが生成されない</strong>——
+            <code>LayoutProps&lt;"/(protected)"&gt;</code> のような型は存在しない。
+            <strong>迷ったら生成物を読む</strong>（エントリ14）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 30 -->
+    <article class="entry" id="e30">
+      <div class="entry-no">30</div>
+      <div class="entry-body">
+        <h2>ページ同士はURLで繋がっている。ファイルの場所ではない</h2>
+
+        <p>
+          <code>/login</code> がログイン成功後に書いているのは、これだけ。
+        </p>
+<pre><code>router.replace("/");</code></pre>
+        <p>
+          <strong>渡しているのはURLであって、ファイルパスではない。</strong>
+          <code>app/login/page.tsx</code> は <code>app/(protected)/page.tsx</code> というファイルの存在を<strong>知らない</strong>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">実際に起きたこと</div>
+          <p>
+            <code>app/page.tsx</code> を <code>app/(protected)/page.tsx</code> へ<strong>移動した</strong>。
+            それでもURLは <code>/</code> のままなので、<strong><code>login/page.tsx</code> は1文字も直していない。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">「ファイルを動かしても平気」は無条件ではない</div>
+          <p>
+            壊れなかったのは<strong>URLが変わらない移動だったから</strong>。ルートグループが特別なだけで、
+            普通のフォルダへ移せば <code>app/dashboard/page.tsx</code> → <code>/dashboard</code> と<strong>URLは変わり、
+            <code>router.replace("/")</code> は別のページを指すことになる</strong>。
+          </p>
+          <p>
+            正しくはこう——<strong>ファイルの場所とURLは別の軸であり、繋がりを保証しているのはURLの方。</strong>
+            移動していいかどうかは「URLが変わるか」で判断する。
+          </p>
+        </div>
+
+        <p>
+          <strong>「どこにファイルがあるか」と「どのURLか」を分けて考える。</strong>
+          これは <code>@/</code> エイリアスで相対パスを避けた話（エントリ18）と根が同じで、
+          <strong>場所に依存した繋がりは、動かした瞬間に壊れる</strong>。
+        </p>
+      </div>
+    </article>
+
+    <!-- 31 -->
+    <article class="entry" id="e31">
+      <div class="entry-no">31</div>
+      <div class="entry-body">
+        <h2><code>return</code> は「何を描くか」、<code>router</code> は「どこに居るか」</h2>
+
+        <p>認証ガードの本体は3行しかない。</p>
+<pre><code>if (loading) return &lt;div&gt;読み込み中...&lt;/div&gt;;  // 確認中
+if (!user)   return null;                      // 未ログイン → 何も描かない
+return &lt;&gt;{children}&lt;/&gt;;                        // 確認済み＆ログイン済み</code></pre>
+        <p>
+          3行目に到達したということは、1行目と2行目を<strong>通り抜けた</strong>＝
+          「<code>loading</code> が <code>false</code> かつ <code>user</code> がある」が<strong>確定している</strong>。
+          <strong>だから <code>else</code> は要らない</strong>（<code>useAuth</code> の <code>throw</code> の後で <code>else</code> を消したのと同じ理屈）。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：「ローディング画面に遷移させる」と考えていた</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col"><code>loading</code> が true</th><th scope="col"><code>user</code> が null</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">URL</th><td><strong>変わらない</strong>（<code>/</code> のまま）</td><td><strong><code>/login</code> に変わる</strong></td></tr>
+                <tr><th scope="row">やっていること</th><td>描くものを差し替えただけ</td><td>ページ移動</td></tr>
+                <tr><th scope="row">担当</th><td><code>return</code></td><td><code>router.replace()</code>（<code>useEffect</code> の中）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>読み込み中は「遷移」ではない。</strong>同じページのまま中身だけ差し替えている。
+            だから <code>useEffect</code> に書くことは何もない。
+          </p>
+          <p>
+            <strong><code>return</code> で変えられるのは「何を描くか」だけ。「どこに居るか」を変えるのは <code>router</code> の仕事。</strong>
+            2つを混同すると「表示を変えたいのにリダイレクトを書く」「移動したいのに <code>return</code> を書く」という誤りになる。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②：説明用の擬似コードを JSX の中に貼ってしまった</div>
+          <dl class="wrong-right">
+            <dt><code>return (&lt;&gt; if (loading) { return ... } &lt;/&gt;)</code></dt>
+            <dd><code>if</code> は <strong>JSX の中には書けない</strong>。書いても実行されず、<strong><code>if (loading) {</code> という文字列がそのまま画面に表示される</strong></dd>
+          </dl>
+          <p>
+            <strong>JSX の中に書けるのは「式」だけで、「文」は書けない。</strong>
+            エントリ26で区別した式と文が、ここで効いてくる——
+            <strong>JSXの中の条件分岐に三項演算子や <code>&amp;&amp;</code> を使うのは、<code>if</code> が書けないから</strong>。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">例</th><th scope="col">JSXの中</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">式（値になる）</th><td>三項演算子、<code>&amp;&amp;</code>、変数、関数呼び出し</td><td><strong>書ける</strong></td></tr>
+                <tr><th scope="row">文（処理の単位）</th><td><code>if</code>、<code>for</code>、<code>return</code></td><td><strong>書けない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            早期リターンは <code>return</code> の<strong>前</strong>に置く。そして——
+            <strong><code>return</code> は関数の中に何個あってもいい。</strong>「最後に1つだけ」ではない。
+            上の3行は <code>return</code> が3つあり、<strong>どれに到達するかを <code>if</code> が決めている</strong>。
+          </p>
+        </div>
+
+        <h3>包まれている側は、何も書かなくてよくなる</h3>
+        <p>
+          <code>(protected)/page.tsx</code> のログアウトボタンには、<strong>遷移処理を一切書いていない</strong>。それでも <code>/login</code> へ飛ぶ。
+        </p>
+<pre><code>signOut()
+  → onAuthStateChanged が発火
+  → Context の user が null になる
+  → (protected)/layout.tsx の useEffect が反応
+  → router.replace("/login")</code></pre>
+        <p>
+          <strong>「ログアウトしたら画面を変える」処理を、ボタン側に書かなくて済む。</strong>
+          これが認証状態を Context に集約し、判断をレイアウトに寄せた見返り。<strong>ページが増えても、この配線は書き足す必要がない。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">ガードが2枚そろった</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ファイル</th><th scope="col">誰を弾くか</th><th scope="col">どこへ</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>app/login/page.tsx</code></th><td>ログイン済み</td><td><code>/</code></td></tr>
+                <tr><th scope="row"><code>app/(protected)/layout.tsx</code></th><td>未ログイン</td><td><code>/login</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>ログイン状態と、表示すべき画面が、常に一致する。</strong></p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">3つのファイルの役割分担</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ファイル</th><th scope="col">役割</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>contexts/AuthContext.tsx</code></th><td>認証状態を<strong>作る・配る</strong></td></tr>
+                <tr><th scope="row"><code>app/login/page.tsx</code></th><td>認証状態を<strong>変える</strong>（ログイン／新規登録）</td></tr>
+                <tr><th scope="row"><code>app/(protected)/layout.tsx</code></th><td>認証状態を<strong>読んで通行を判断する</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>作る・変える・読む が、それぞれ1箇所に分かれている。</strong></p>
+<pre><code>app/layout.tsx
+└─ &lt;AuthProvider&gt;                    ← 購読して user / loading を保持
+   ├─ /login  →  login/page.tsx      ← ガードの外
+   └─ /       →  (protected)/layout.tsx  ← ガード
+                 └─ (protected)/page.tsx</code></pre>
+          <p><strong><code>AuthProvider</code> が一番外側にいるから、どちらも <code>useAuth()</code> を使える。</strong></p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -2741,6 +3009,34 @@ app/layout.tsx           ← ページを起点にして
         </dd>
         <dt>再検討</dt>
         <dd>サーバー側でユーザーごとのデータを扱う必要が出たら (b) を検討する。そのときは Cookie の有効期限・更新・セキュリティ属性の設計が必要になる。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ガードの置き場所は、ルートグループ <code>(protected)/</code> の <code>layout.tsx</code> にする</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 各ページの先頭に <code>useAuth()</code> + <code>useEffect</code> のリダイレクトを書く
+          <b>(b)</b> <code>app/layout.tsx</code>（ルートレイアウト）でガードし、<code>/login</code> のときだけ例外にする
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>(a) は書き忘れが即そのまま脆弱性になる。</strong>仕様書のルーティング設計では保護対象が13ページあり、
+          <strong>1つ漏れれば、そのページだけ誰でも開ける</strong>。しかも漏れていることはテストしない限り分からない。
+          <strong>(b) は「例外」を条件分岐で表現することになり、ページが増えるたびに条件が育つ。</strong>
+          ルートグループなら<strong>「どちら側のフォルダに置くか」でガードの有無が決まる</strong>ので、条件分岐が存在しない。
+        </dd>
+        <dt>効果</dt>
+        <dd>
+          <code>(protected)/</code> に置くだけでガードされ、ページ側は<strong>認証を一切書かなくてよい</strong>。
+          <code>/login</code> はグループの外にあるため、<strong>構造上ガードされえない</strong>（中に入れると無限ループになる）。
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          「ログイン必須だが表示は別レイアウト」といった第3の区分が出たら、
+          <code>(protected)/</code> と並ぶルートグループをもう1つ作る。<strong>条件分岐を増やす方向には進まない。</strong>
+        </dd>
       </dl>
     </div>
 
