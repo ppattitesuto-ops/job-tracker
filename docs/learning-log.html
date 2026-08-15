@@ -527,7 +527,7 @@
 
   <header class="masthead">
     <div class="eyebrow">就活管理トラッカー ／ 開発学習ログ</div>
-    <h1>フェーズ1：土台づくり</h1>
+    <h1>フェーズ1〜2：認証とデータの土台</h1>
     <p class="standfirst">
       Next.js と Tailwind CSS の習得を目的に開発している就活管理トラッカーの、学習記録。
       確定した理解だけでなく、<strong>自分が誤解していた内容とその訂正</strong>を対で残す。
@@ -535,9 +535,9 @@
     </p>
     <div class="meta">
       <span>最終更新 <b>2026-08-14</b></span>
-      <span>エントリ <b>39</b></span>
-      <span>決定記録 <b>10</b></span>
-      <span>進捗 <b>フェーズ1 完了 → フェーズ2（Firestore）へ</b></span>
+      <span>エントリ <b>43</b></span>
+      <span>決定記録 <b>12</b></span>
+      <span>進捗 <b>セキュリティルール 完了 → データ取得層の実装へ</b></span>
     </div>
   </header>
 
@@ -583,6 +583,10 @@
       <li><a href="#e37">秘密を送らずに、持っていることを証明する</a></li>
       <li><a href="#e38">git add はスナップショットである</a></li>
       <li><a href="#e39">打ち間違いは、必ずしもエラーにならない</a></li>
+      <li><a href="#e40">セキュリティルールは「場所」と「条件」で書く</a></li>
+      <li><a href="#e41">認証と認可は、別の問いである</a></li>
+      <li><a href="#e42">置き場所が、所有者を表している</a></li>
+      <li><a href="#e43">「無くても動く」かどうかは、コードを読めば分かる</a></li>
     </ol>
   </nav>
 
@@ -3445,6 +3449,351 @@ git ls-remote --heads origin    # 何も出なければ成功（リポジトリ�
       </div>
     </article>
 
+    <!-- 40 -->
+    <article class="entry" id="e40">
+      <div class="entry-no">40</div>
+      <div class="entry-body">
+        <h2>セキュリティルールは「場所」と「条件」で書く</h2>
+
+<pre><code>match /users/{userId}/companies/{companyId} {
+  allow read, write: if request.auth != null
+                     &amp;&amp; request.auth.uid == userId;
+}</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">構文</th><th scope="col">役割</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>match /パス</code></th><td><strong>どこ</strong>に対するルールか</td></tr>
+              <tr><th scope="row"><code>allow 操作: if 条件</code></th><td>そこで<strong>何を</strong>、<strong>どんなときに</strong>許すか</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>{userId}</code> は<strong>変数の宣言</strong>。<code>users/abc123/companies/xyz</code> へのアクセスなら
+          <code>userId</code> に <code>"abc123"</code> が入り、それを条件式で使える。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>if</code> の後ろにパスを書いた</div>
+          <dl class="wrong-right">
+            <dt><code>allow read, write: if users/{uid}/companies/{companyId}</code></dt>
+            <dd><code>if</code> の後ろに来るのは<strong>真偽値の条件式</strong>。パスを書く場所は <code>match</code>。<strong><code>match</code> と <code>allow</code> は必ずセットで、<code>match</code> の中に <code>allow</code> を書く</strong></dd>
+          </dl>
+        </div>
+
+        <h3>ルールは連鎖しない</h3>
+        <p>
+          <strong>親のパスに書いたルールは、子のコレクションに自動では適用されない。</strong>
+          効かせるには <code>{document=**}</code> という再帰ワイルドカードが要るが、<code>CLAUDE.md</code> で使わないと決めている。
+        </p>
+        <p>
+          まとめて書くと<strong>「どのコレクションに何が許可されているか」がルールを読んでも分からなくなる</strong>。
+          コレクションごとに書けば、<strong>書かれていないものは許可されていない</strong>と一目で分かる——ここでも「デフォルトで拒否」。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">ルールはフィルタではない</div>
+          <dl class="wrong-right">
+            <dt>自分のデータだけを選んで返してくれる</dt>
+            <dd><strong>読めないものが含まれうるクエリは、丸ごと拒否される</strong></dd>
+          </dl>
+          <p>
+            Firestore はルールに合う分だけを抜き出して渡さない。
+            <strong>クエリが返しうる文書の中に1つでも読めないものがあれば、そのクエリ全体がエラーになる。</strong>
+          </p>
+          <p>
+            だから<strong>クエリの側でも最初から <code>users/{自分のuid}/</code> 配下だけを指定する必要がある。</strong>
+            ルールが「守り」、クエリが「守りに合わせた要求の出し方」——<strong>両方が揃って初めて動く。</strong>
+          </p>
+        </div>
+
+        <h3>ルールとクエリは、立っている場所が違う</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">ルール</th><th scope="col">クエリ</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">どこにある</th><td><strong>Firestore（サーバー）側</strong></td><td>ブラウザ側</td></tr>
+              <tr><th scope="row">誰が書き換えられる</th><td><strong>自分だけ</strong>（デプロイが必要）</td><td><strong>誰でも</strong></td></tr>
+              <tr><th scope="row">何を表す</th><td><strong>何を許すか</strong></td><td>何を求めるか</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          図書館で言えば、ルールが<strong>「利用者は自分の棚の本だけ借りられる」という規則</strong>、
+          クエリが<strong>「この本をください」という申請</strong>。
+          司書は規則に照らして許可か拒否かを決めるだけで、<strong>規則に合う本だけを選んで渡してはくれない。</strong>
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">危うかったこと：<code>firebase init</code> がルールを上書きしようとした</div>
+<pre><code>File firestore.rules already exists. Do you want to overwrite it
+with the Firebase default? (y/N)</code></pre>
+          <p>
+            <strong><code>y</code> を押していたら、書いたルールが雛形で消えていた。</strong>
+          </p>
+          <p>
+            <code>(y/N)</code> の<strong>大文字の方が既定値</strong>という慣習がある。何も入力せず Enter なら <code>N</code>。
+            <code>(Y/n)</code> なら逆。<strong>破壊的な操作ほど、既定値は安全側に置かれている</strong>ので、
+            <strong>この大文字小文字を読む癖をつける。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">「デプロイ成功」は「守れている」ではない</div>
+          <p>
+            コンソールの<strong>ルールプレイグラウンド</strong>で3パターンを実際に試した。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">認証</th><th scope="col">パス</th><th scope="col">結果</th><th scope="col">確かめたこと</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">なし</th><td><code>/users/abc/...</code></td><td>拒否</td><td><code>request.auth != null</code>（認証）</td></tr>
+                <tr><th scope="row">uid=abc</th><td><code>/users/abc/...</code></td><td>許可</td><td><strong>締めすぎて本人まで弾いていないか</strong></td></tr>
+                <tr><th scope="row">uid=abc</th><td><code>/users/xyz/...</code></td><td>拒否</td><td><code>uid == userId</code>（認可）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>拒否のケースだけでは足りない。</strong>「全部拒否」でも1番と3番は通る。
+            <strong>許可のケースがあって初めて「正しく開いていて、正しく閉じている」と言える。</strong>
+            テストも同じで、<strong>失敗のケースと成功のケースを両方確かめる。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 41 -->
+    <article class="entry" id="e41">
+      <div class="entry-no">41</div>
+      <div class="entry-body">
+        <h2>認証と認可は、別の問いである</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">英語</th><th scope="col">問い</th><th scope="col">このアプリでの担当</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><strong>認証</strong></th><td>Authentication</td><td><strong>あなたは誰か</strong></td><td>Firebase Authentication</td></tr>
+              <tr><th scope="row"><strong>認可</strong></th><td>Authorization</td><td><strong>あなたは何をしてよいか</strong></td><td><code>firestore.rules</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          ホテルで言えば、<strong>認証</strong>がフロントで身分証を見せて宿泊者本人だと確認されること、
+          <strong>認可</strong>が渡されたカードキーが<strong>自分の部屋だけ</strong>開くこと。
+          <strong>チェックインできたからといって、全部屋に入っていいわけではない。</strong>
+        </p>
+
+<pre><code>request.auth != null          // 認証：ログインしているか
+request.auth.uid == userId    // 認可：この文書を触る資格があるか</code></pre>
+
+        <div class="note warn">
+          <div class="note-label">片方だけでは足りない — それぞれ別の相手を弾いている</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書いた条件</th><th scope="col">弾く相手</th><th scope="col">欠けると</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>!= null</code> だけ</th><td>未ログインの第三者</td><td><strong>ログインさえすれば他人のデータを全部読める</strong></td></tr>
+                <tr><th scope="row"><code>== userId</code> だけ</th><td>ログイン済みの「他人」</td><td>未ログイン時に <code>null.uid</code> の評価でルールが失敗する</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3>混同が、そのまま脆弱性になる</h3>
+        <p>典型がこれ——<strong>「ログインしていれば見せる」。認証だけで済ませ、認可をしていない。</strong></p>
+        <p>
+          <code>/companies/123</code> というURLの <code>123</code> を <code>124</code> に書き換えたら他人のデータが見えてしまう、という事故。
+          <strong>ログインは通っているので認証は成功している。足りないのは「あなたのものですか」という問いの方。</strong>
+        </p>
+        <p>
+          これを <strong>IDOR（安全でない直接オブジェクト参照）</strong> と呼び、Web の脆弱性として最も頻出の部類。
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">HTTP のステータスコードにも現れている</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">コード</th><th scope="col">名前</th><th scope="col">実際の意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">401</th><td><code>Unauthorized</code></td><td><strong>認証がない</strong>（誰か分からない）</td></tr>
+                <tr><th scope="row">403</th><td><code>Forbidden</code></td><td><strong>認証はあるが認可がない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>401 の名前が <code>Unauthorized</code>（未認可）なのは歴史的な誤りで、実際には「未認証」を指す。</strong>
+            この紛らわしさ自体が、両者の混同されやすさを物語っている。
+          </p>
+          <p>
+            <strong>「ログインしているか」を確認したら、次に必ず「この人がこれを触ってよいか」を確認する。</strong>
+            この2段構えが、セキュリティルールの正体。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 42 -->
+    <article class="entry" id="e42">
+      <div class="entry-no">42</div>
+      <div class="entry-body">
+        <h2>置き場所が、所有者を表している</h2>
+
+        <p>
+          <strong>ルールが3行で済んでいるのは、データの置き方をそう決めたから。</strong>
+          同じデータでも置き方は2通りある。
+        </p>
+
+        <h3>採用した置き方（階層型）</h3>
+<pre><code>users/
+  ├─ akira123/                        ← Firebase Auth の uid そのもの
+  │    └─ companies/
+  │         ├─ c1 { name: "Yahoo" }
+  │         └─ c2 { name: "楽天" }
+  └─ tanaka456/
+       └─ companies/
+            └─ c3 { name: "メルカリ" }</code></pre>
+        <p><strong>人ごとに家が分かれている。「誰のものか」は場所が語っている。</strong></p>
+        <p>
+          <strong>uid をパスに使えるのは、uid が「推測できない」かつ「変わらない」から。</strong>
+          メールアドレスは変更でき、連番は総当たりできる。
+        </p>
+
+        <h3>採用しなかった置き方（フラット型）</h3>
+<pre><code>companies/
+  ├─ c1 { name: "Yahoo",   ownerId: "akira123" }
+  ├─ c2 { name: "楽天",     ownerId: "akira123" }
+  └─ c3 { name: "メルカリ", ownerId: "tanaka456" }</code></pre>
+        <p><strong>全員の荷物が1つの倉庫に混ざっている。「誰のものか」は中身の名札が語っている。</strong></p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">階層型（採用）</th><th scope="col">フラット型</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">読むときのルール</th><td><code>request.auth.uid == userId</code><br><strong>パスと比べるだけ</strong></td><td><code>resource.data.ownerId == request.auth.uid</code><br><strong>文書を開いて中を見る</strong></td></tr>
+              <tr><th scope="row">書くときのルール</th><td>同上。<strong>追加で何も要らない</strong></td><td><strong>さらに検査が必要</strong>（下記）</td></tr>
+              <tr><th scope="row">全ユーザー横断の集計</th><td><strong>苦手</strong>（<code>collectionGroup</code> が必要）</td><td>得意</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">フラット型の「他人のデータの混入」とは</div>
+          <p>保存するデータの <code>ownerId</code> は<strong>クライアントが自分で書いて送る</strong>。</p>
+<pre><code>{ name: "Yahoo", ownerId: "tanaka456" }   ← 他人の名札を付けて送れてしまう</code></pre>
+          <p>
+            <strong>間違いだけの話ではない。</strong>クライアントのコードは誰でも書き換えられるので、
+            <strong>意図的に他人の名札を付けて送れる</strong>（エントリ04）。
+            これを防ぐ <code>request.resource.data.ownerId == request.auth.uid</code> を書き忘れると、他人名義のデータを作られる。
+          </p>
+          <p>
+            階層型では<strong>そもそも他人の家に書き込めない</strong>ので、この心配自体が存在しない——<strong>書き忘れる余地がない。</strong>
+          </p>
+        </div>
+
+        <p>
+          <strong>フラット型が間違いなのではなく、選んだ置き方の分だけルールで補う仕事が増える</strong>という話。
+          <strong>設計で消せる仕事は、設計で消す</strong>（エントリ18「置き場所は設計の一部である」）。
+        </p>
+        <p>
+          そのかわり横断集計は苦手になるが、<strong>このアプリは個人が自分の就活を管理するもの</strong>で、
+          他人のデータと混ぜて集計する場面がない。<strong>得意なことと必要なことが一致しているので階層型を選ぶ。</strong>
+        </p>
+        <p>
+          <strong>どの設計が優れているかではなく、このアプリが何をするかで決まる。</strong>
+          面接で「なぜサブコレクションにしたのか」と聞かれたら、この比較表がそのまま答えになる。
+        </p>
+      </div>
+    </article>
+
+    <!-- 43 -->
+    <article class="entry" id="e43">
+      <div class="entry-no">43</div>
+      <div class="entry-body">
+        <h2>「無くても動く」かどうかは、コードを読めば分かる</h2>
+
+        <p>
+          <code>firebase-tools</code> の導入で <code>npm warn allow-scripts</code> が4件出た。
+          3件はエントリ09で判定済み、新しいのは <code>re2</code> だけ。
+        </p>
+
+<pre><code>"install": "install-from-cache --artifact build/Release/re2.node ...
+            || node-gyp -j max rebuild"</code></pre>
+        <p>
+          <strong>ビルド済みバイナリをダウンロードし、失敗したら手元で C++ をコンパイルする</strong>という内容。
+          これまでの3件と違い、明確に「重い」。
+        </p>
+
+        <h3>スキップしてよい理由を、2つともコードで確認した</h3>
+<pre><code>// node_modules/superstatic/package.json:72
+"optionalDependencies": {
+  "re2": "^1.17.7"          ← 作者自身が「無くてもよい」と宣言</code></pre>
+<pre><code>// node_modules/superstatic/lib/utils/patterns.js:22
+let RE2;
+try {
+    RE2 = require("re2");
+} catch (er) {
+    RE2 = null;             ← 無ければ null にして先へ進む
+}</code></pre>
+        <p>
+          同じファイルのコメントに <em>"falls over to PCRE if the import is unavailable"</em> と書いてある——
+          <strong>読み込めなければ JavaScript 標準の正規表現に切り替わる。</strong>
+        </p>
+        <p>
+          さらに <code>superstatic</code> は <strong>Firebase Hosting のローカルエミュレータ</strong>で、
+          <code>re2</code> はそこでのリダイレクト設定の正規表現マッチに使われる。
+          <strong>このアプリは Vercel にデプロイし、CLI は <code>firestore:rules</code> の反映にしか使わない。</strong>
+        </p>
+        <p><strong>「動くか」ではなく「自分が使うか」で判断する</strong>——エントリ09の判定手順の4番目。</p>
+
+        <div class="note check">
+          <div class="note-label"><code>npm audit</code> は、どこの話かを分けて読む</div>
+<pre><code>$ npm audit
+5 moderate severity vulnerabilities
+
+$ npm audit --omit=dev
+found 0 vulnerabilities        ← 本番に入るものだけを見た結果</code></pre>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">影響範囲</th><th scope="col">取った行動</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">本番の依存</th><td><strong>ユーザー全員</strong></td><td>0件。何もしない</td></tr>
+                <tr><th scope="row">開発の依存</th><td>自分のマシン / CI</td><td><strong>記録して放置。<code>--force</code> は使わない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            残りは <code>firebase-tools</code> の内部にあり、修正には <code>npm audit fix --force</code> が要る。
+            <strong><code>--force</code> はメジャーバージョンを跨いで上げるので、<code>firebase-tools</code> が動かなくなりうる。</strong>
+            <strong>警告を消すために、動いているものを壊すのは本末転倒。</strong>
+          </p>
+          <p>
+            <strong>開発用だから無視してよい、ではない。</strong>
+            「ユーザーに届くもの」と「自分の手元で動くもの」ではリスクの大きさが違うので、<strong>対応の優先度が違う</strong>という話。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">開発の道具は devDependencies へ</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">パッケージ</th><th scope="col">入る場所</th><th scope="col">意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>firebase</code></th><td><code>dependencies</code></td><td><strong>アプリの一部。</strong>ブラウザに配信される</td></tr>
+                <tr><th scope="row"><code>firebase-tools</code></th><td><code>devDependencies</code></td><td><strong>開発用の道具。</strong>アプリには一切含まれない</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            混ぜると、Vercel が本番ビルドのときに不要なものまでインストールする。
+            <strong>グローバルではなくプロジェクト内に入れたので、呼び出しは <code>npx</code> 経由</strong>
+            （<code>npx</code> ＝「<code>node_modules</code> にあるコマンドを実行する」）。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -3684,6 +4033,63 @@ git ls-remote --heads origin    # 何も出なければ成功（リポジトリ�
           22番ポートが塞がれた環境で作業する必要が出たら、SSH を 443番ポートで話す設定
           （<code>Host github.com</code> / <code>Hostname ssh.github.com</code> / <code>Port 443</code>）に切り替える。
           <strong>HTTPS + PAT へ戻すのではなく、SSH のまま経路を変える。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>セキュリティルールは Firebase CLI で反映する（コンソールへの貼り付けを採らない）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>Firebase コンソールのルールエディタに手で貼り付けて「公開」を押す</dd>
+        <dt>捨てた案の長所</dt>
+        <dd>今すぐできる。インストールも設定も不要で、依存が増えない</dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>貼り忘れると、リポジトリのファイルと実際に稼働しているルールが別物になる。</strong>
+          リポジトリには「守っているつもりのルール」が、Firestore には古いルールが残る——
+          <strong>しかも、ズレていることに気づく手段がない。</strong>
+          <code>CLAUDE.md</code> に「<code>firestore.rules</code> としてコード管理する」と書いた目的が半分失われる。
+          <strong>セキュリティに関わる成果物で、正がどこにあるか曖昧なのは許容できない。</strong>
+        </dd>
+        <dt>効果</dt>
+        <dd>
+          <code>firebase.json</code> の <code>"rules": "firestore.rules"</code> により、
+          <strong>リポジトリのファイルが唯一の正になる。</strong>
+          将来エミュレータで<strong>「他人の uid でアクセスしたら拒否されること」を自動テストとして書ける</strong>道も開く。
+        </dd>
+        <dt>コスト</dt>
+        <dd>
+          devDependency が1つ増え、<code>package-lock.json</code> が約9000行増えた。
+          インストールスクリプトの判断も1件増えた（<code>re2</code>／エントリ43）。
+          <strong>本番バンドルには影響しない</strong>ので、支払ってよいコストと判断した。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ブランチのマージは Pull Request を通す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>ローカルで <code>git merge --no-ff</code> して <code>main</code> を push する（フェーズ1まではこの方式）</dd>
+        <dt>理由</dt>
+        <dd>
+          コミットメッセージは「何を変えたか」しか残せない。
+          <strong>PR の本文には「なぜ・どう検証したか」を書ける</strong>ので、
+          <strong>リポジトリを見た人に、作業の考え方そのものが伝わる。</strong>
+          個人開発でも、実務と同じ流れを踏んでいることの証拠になる。
+        </dd>
+        <dt>運用</dt>
+        <dd>
+          本文には<strong>「行ったこと／理由／検証」の3項目</strong>を書く。
+          マージは <strong>Create a merge commit</strong>（<code>--no-ff</code> と同じ効果）を選び、
+          <strong>1つの作業が1つのまとまりとして履歴に残る</strong>形を維持する。
+        </dd>
+        <dt>注意</dt>
+        <dd>
+          <strong>PR の説明文は GitHub のデータなので、マージ後もいつでも編集できる。</strong>
+          対して<strong>マージコミットのメッセージは git の履歴</strong>で、直すには <code>main</code> の書き換えが要る——やらない。
+          <strong>「後から直せるもの」と「直せないもの」を区別する。</strong>
         </dd>
       </dl>
     </div>
