@@ -1,5 +1,4 @@
-// Firebaseから受け取ったエラーに関する設定
-
+// ⭐️Firebaseから受け取ったエラーに関する設定
 // Firebaseの例外かを判定するためのコード
 import { FirebaseError } from "firebase/app";
 // エラーコードを安全に書くために用意された定数を集めたオブジェクト

@@ -23,6 +23,7 @@
 | `npm run build` | 本番ビルド |
 | `npm run start` | 本番ビルドの起動 |
 | `npm run lint` | ESLint による検査 |
+| `npm run typecheck` | TypeScript の型検査のみ(ビルドより速い) |
 
 ## ドキュメント
 

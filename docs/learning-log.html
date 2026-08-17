@@ -535,9 +535,9 @@
     </p>
     <div class="meta">
       <span>最終更新 <b>2026-08-14</b></span>
-      <span>エントリ <b>43</b></span>
-      <span>決定記録 <b>12</b></span>
-      <span>進捗 <b>セキュリティルール 完了 → データ取得層の実装へ</b></span>
+      <span>エントリ <b>47</b></span>
+      <span>決定記録 <b>16</b></span>
+      <span>進捗 <b>企業一覧 完了 → 新規登録へ</b></span>
     </div>
   </header>
 
@@ -587,6 +587,10 @@
       <li><a href="#e41">認証と認可は、別の問いである</a></li>
       <li><a href="#e42">置き場所が、所有者を表している</a></li>
       <li><a href="#e43">「無くても動く」かどうかは、コードを読めば分かる</a></li>
+      <li><a href="#e44">同じ情報を2回書かない — 値から型を導出する</a></li>
+      <li><a href="#e45">非同期のエラーは、書いてあっても捕まらない</a></li>
+      <li><a href="#e46">React は中身ではなく「箱」を見ている</a></li>
+      <li><a href="#e47">型検査が届かない場所</a></li>
     </ol>
   </nav>
 
@@ -3794,6 +3798,428 @@ found 0 vulnerabilities        ← 本番に入るものだけを見た結果</c
       </div>
     </article>
 
+    <!-- 44 -->
+    <article class="entry" id="e44">
+      <div class="entry-no">44</div>
+      <div class="entry-body">
+        <h2>同じ情報を2回書かない — 値から型を導出する</h2>
+
+        <p>選考ステータスは7種類あり、<strong>2つの世界の両方で必要になる。</strong></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">使う場所</th><th scope="col">必要なもの</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">登録フォームの <code>&lt;select&gt;</code></th><td><strong>実行時に回せる配列</strong>（7個の <code>&lt;option&gt;</code> を描く）</td></tr>
+              <tr><th scope="row">型チェック</th><td><strong>コンパイル時のユニオン型</strong>（タイポを防ぐ）</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+<pre><code>export const COMPANY_STATUSES = [
+  "応募済", "書類選考中", "一次面接", "二次面接", "最終面接", "内定", "お断り",
+] as const;
+
+export type CompanyStatus = (typeof COMPANY_STATUSES)[number];</code></pre>
+
+        <h3>組み立ての順序</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書いたもの</th><th scope="col">やっていること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>COMPANY_STATUSES = [...]</code></th><td><strong>値</strong>を書いた。配列を作った</td></tr>
+              <tr><th scope="row"><code>as const</code></th><td>その値の型が <code>string</code> に<strong>広がるのを止めた</strong>（まだ型は作っていない）</td></tr>
+              <tr><th scope="row"><code>typeof ...</code></th><td>値の型を<strong>型の世界へ持ってきた</strong></td></tr>
+              <tr><th scope="row"><code>[number]</code></th><td>配列型に<strong>数値の添字でアクセスした結果</strong>を取り出した</td></tr>
+              <tr><th scope="row"><code>CompanyStatus</code></th><td>その結果に名前を付けた。<strong>ここで初めてユニオン型が完成する</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>as const</code> が無いと型は <code>string[]</code> に広がり（<strong>型の拡大</strong>）、
+          <code>[number]</code> の結果はただの <code>string</code> になる。<strong>7つのユニオンにならず、タイポが通る。</strong>
+        </p>
+        <p>
+          <code>[number]</code> は「数値型を付ける」ではなく<strong>「添字の型」</strong>。
+          <code>配列[0]</code> <code>配列[1]</code> …のどれが返るかは実行時にしか分からないので、TypeScript は<strong>ありうる全部</strong>を返す。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：「型の世界に2種類ある」</div>
+          <dl class="wrong-right">
+            <dt>型の世界に、実行時に残るものと消えるものの2種類がある</dt>
+            <dd><strong>世界が2つある。</strong>値の世界（実行時に残る）と型の世界（ビルド時に消える）。<strong>型の世界のものは例外なく全部消える</strong></dd>
+          </dl>
+          <p>
+            <strong><code>typeof</code> は、値の世界から型の世界へ渡る唯一の橋</strong>（逆方向の橋は無い——型から値は作れない）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②：「2つは別々に書く必要がある」</div>
+          <dl class="wrong-right">
+            <dt>値と型を両方書いて、後で内容を合わせる</dt>
+            <dd><strong>書くのは値だけ。</strong>型は導出する。<strong>片方しか書かないから、ズレようがない</strong></dd>
+          </dl>
+          <p>手で両方書く方式でも動く。ただし——</p>
+<pre><code>// 半年後、「辞退」を追加したとき
+export const COMPANY_STATUSES = [..., "お断り", "辞退"] as const;  // 追加した
+export type CompanyStatus = ... | "お断り";                        // 追加し忘れた</code></pre>
+          <p>
+            <code>&lt;select&gt;</code> には「辞退」が出るのに、<strong>保存しようとするとコンパイルエラーになる。</strong>
+            <strong>同じ情報が2箇所にあると、必ず片方が古くなる</strong>——エントリ38の「<code>git add</code> はスナップショット」と同じ構図。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">制約があるものだけ、型で表す</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">項目</th><th scope="col">取りうる値</th><th scope="col">型</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>name</code> / <code>memo</code></th><td><strong>何でもいい</strong></td><td><code>string</code></td></tr>
+                <tr><th scope="row"><code>status</code></th><td><strong>7つのどれか</strong></td><td><code>CompanyStatus</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>制約が無いものに型を作っても、守るものがない。</strong>
+            <code>useState&lt;"login" | "signup"&gt;</code> と同じ判断（エントリ28）。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">列挙型の値は「表示用の文字」ではなくデータそのもの</div>
+          <p>
+            この文字列は<strong>そのまま Firestore に保存される</strong>。
+            あとで <code>"応募済"</code> → <code>"応募済み"</code> と変えたら、
+            <strong>保存済みのデータがどのユニオンにも一致しなくなり、色分けも絞り込みも効かなくなる。</strong>
+            直すには保存済みデータ全件の書き換え（マイグレーション）が要る。
+          </p>
+          <p>
+            実務では<strong>保存する値を英語のコード（<code>"applied"</code> 等）にして、日本語は表示時に変換する</strong>設計もよく使う。
+            表記を変えてもデータを触らずに済むため。<strong>今回は変換の層が増える割に表記が変わる見込みが薄いので、日本語のまま採用した。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">置き場所</div>
+          <p>
+            <code>types/company.ts</code> に置いた。<code>lib/</code> は<strong>処理</strong>（実行されるコード）、
+            <code>types/</code> は<strong>型定義</strong>（ビルド時に消えるもの）。
+            <strong>動くコードと動かない定義を混ぜないことで、ファイルを開く前に何が書いてあるか分かる</strong>（エントリ18）。
+          </p>
+          <p>
+            使う側では <strong><code>import type { Company }</code></strong> と書く——
+            <strong>「これは実行時に残らない」ということがコードに現れる</strong>（<code>COMPANY_STATUSES</code> は値なので普通の <code>import</code>）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 45 -->
+    <article class="entry" id="e45">
+      <div class="entry-no">45</div>
+      <div class="entry-body">
+        <h2>非同期のエラーは、書いてあっても捕まらない</h2>
+
+        <p>企業一覧の取得でこう書いた。<strong>型検査も ESLint も通る。それでも壊れている。</strong></p>
+
+<pre><code>try {
+  load();              // ← async 関数を await せずに呼んでいる
+  setLoading(false);
+} catch {
+  setError("企業一覧の取得に失敗しました");
+}</code></pre>
+
+        <div class="note warn">
+          <div class="note-label">2つ同時に壊れていた</div>
+<pre><code>load() を呼ぶ         → 通信が始まる（まだ終わっていない）
+setLoading(false)     → 即座に実行される ← データはまだ無い
+try ブロックを抜ける   → catch の守備範囲が終わる
+              …数百ミリ秒後…
+Firestore が失敗       → もう誰も見ていない</code></pre>
+          <ol>
+            <li><strong><code>setLoading(false)</code> が早すぎる。</strong>データが来る前に「読み込み完了」になる</li>
+            <li><strong><code>catch</code> に届かない。</strong>エラーは画面に出ず、コンソールに「未処理の Promise」として流れるだけ</li>
+          </ol>
+          <p>
+            <strong><code>try / catch</code> は「同期的に実行される範囲」しか守らない。</strong>
+            <code>await</code> しない非同期関数は、その範囲の外で失敗する。
+          </p>
+          <p>
+            <strong>エントリ27「エラーは、書かなければ握り潰される」の非同期版。</strong>
+            今回は<strong>書いてあるのに握り潰されている</strong>——より気づきにくい。
+          </p>
+        </div>
+
+        <h3>直し方：守りたい処理と同じ関数の中に置く</h3>
+<pre><code>useEffect(() =&gt; {
+  if (!user) return;
+
+  const load = async () =&gt; {
+    setError("");
+    try {
+      setCompanies(await getCompanies(user.uid));
+    } catch {
+      setError("企業一覧の取得に失敗しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, [user]);</code></pre>
+        <p>
+          <strong><code>finally</code> は <code>try</code> でも <code>catch</code> でも必ず実行される。</strong>
+          <code>setLoading(false)</code> はどちらの場合も必要なので、2箇所に書かず <code>finally</code> に1回書く——
+          <strong>片方を消し忘れる・書き忘れる事故が構造的に起きなくなる。</strong>
+        </p>
+
+        <div class="note talk">
+          <div class="note-label">なぜ <code>useEffect(async () =&gt; ...)</code> と書けないのか</div>
+          <p>
+            <strong>React のルール：<code>useEffect</code> に渡した関数の返り値が「関数」なら、後始末関数として保存する。</strong>
+            <code>async</code> を付けると返り値は必ず <code>Promise</code> になる。関数ではないので React が警告する
+            （黙って壊れるのではなく、検知して警告する）。
+          </p>
+          <p>だから<strong>中で別の非同期関数を定義して呼ぶ</strong>形になる。</p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">後始末関数（クリーンアップ関数）とは</div>
+          <p><strong>「始めたものを、終わらせる」ための関数。</strong>すでに <code>AuthContext.tsx</code> で書いていた。</p>
+<pre><code>const unsubscribe = onAuthStateChanged(auth, ...);
+return unsubscribe;      // ← これが後始末関数</code></pre>
+          <p>
+            監視は始めたら止めないと、<strong>コンポーネントが消えた後も動き続け、消えたコンポーネントの <code>setState</code> を呼ぼうとする</strong>（メモリリーク）。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">始める</th><th scope="col">終わらせる</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>onAuthStateChanged(...)</code></th><td><code>unsubscribe()</code></td></tr>
+                <tr><th scope="row"><code>setInterval(...)</code></th><td><code>clearInterval(...)</code></td></tr>
+                <tr><th scope="row"><code>addEventListener(...)</code></th><td><code>removeEventListener(...)</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            逆に <code>getCompanies</code> のような<strong>1回きりの取得には後始末が要らない</strong>——動き続けているものが無いから。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>await</code> は「ブラウザを止める」</div>
+          <dl class="wrong-right">
+            <dt>データを取ってくるまで、そこで止めておく処理</dt>
+            <dd>止まるのは<strong>その関数の中の流れだけ</strong>。ブラウザ全体は動き続ける（ボタンも押せる、他の描画もできる）</dd>
+          </dl>
+          <p>
+            <code>await</code> は「<strong>この関数はここで一旦席を外し、返事が来たら続きから再開する</strong>」という意味。
+            <strong>もしブラウザ全体が止まったら、通信中はページが固まって何も操作できない</strong>——
+            エントリ08で IndexedDB が非同期である理由として書いた「UI をブロックしない」がこれ。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 46 -->
+    <article class="entry" id="e46">
+      <div class="entry-no">46</div>
+      <div class="entry-body">
+        <h2>React は中身ではなく「箱」を見ている</h2>
+
+<pre><code>const a = [1, 2, 3];
+const b = [1, 2, 3];
+a === b     // false ← 中身は完全に同じなのに「違う」
+
+const c = a;
+a.push(4);  // 中身を書き換えた
+c === a     // true  ← 中身が変わっても「同じ」</code></pre>
+
+        <p>
+          <strong>「変わったか」を判断しているのではなく、「別物か」を判断している。</strong>
+          要素が1万個あっても一瞬で判定できる。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">だから破壊的メソッドは効かない</div>
+<pre><code>items.push(4);
+setItems(items);          // ❌ 同じ箱が来たので、React は再描画しない
+
+setItems([...items, 4]);  // ✅ 別の箱なので、変化を検知して再描画する</code></pre>
+          <p>
+            <strong>速さのために「参照で比べる」を選び、その代償として「必ず新しいものを作る」という規律が要求されている。</strong>
+            <strong>規約ではなく、仕組みから来る要請。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ①：<code>filter</code> は破壊的メソッド</div>
+          <dl class="wrong-right">
+            <dt><code>filter</code> などは破壊的メソッドだからダメ</dt>
+            <dd><strong><code>filter</code> は非破壊。</strong>むしろ推奨される側</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">非破壊（新しい配列を返す）</th><th scope="col">破壊的（元を書き換える）</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>map</code></th><td><code>push</code> / <code>pop</code></td></tr>
+                <tr><th scope="row"><code>filter</code></th><td><code>shift</code> / <code>unshift</code></td></tr>
+                <tr><th scope="row"><code>slice</code></th><td><code>splice</code></td></tr>
+                <tr><th scope="row"><code>concat</code> / <code>[...arr]</code></th><td><strong><code>sort</code> / <code>reverse</code></strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong><code>sort</code> と <code>reverse</code> が破壊的なのが最大の罠。</strong>名前から想像しにくい。
+            <code>[...companies].sort(...)</code> とコピーしてから使う。
+            （<code>slice</code> と <code>splice</code> も1文字違いで、片方は非破壊、片方は破壊的。）
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正 ②：<code>error</code> や <code>mode</code> は「値が変わらないから」意識不要だった</div>
+          <dl class="wrong-right">
+            <dt><code>error</code> や <code>mode</code> は最初から決められた値だから、気にする必要がなかった</dt>
+            <dd>どちらも頻繁に変わる。違うのは<strong>型の種類</strong></dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">種類</th><th scope="col">例</th><th scope="col">比較</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">プリミティブ</th><td><code>string</code> / <code>number</code> / <code>boolean</code></td><td><strong>値そのもの</strong>で比較</td></tr>
+                <tr><th scope="row">オブジェクト</th><td>配列 / オブジェクト</td><td><strong>箱</strong>で比較</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>文字列には「箱の中身を書き換える」という操作が存在しない。</strong>
+            だから <code>setError("失敗")</code> は必ず新しい値になり、イミュータブルを意識する必要がなかった。
+            <strong>配列とオブジェクトを state に入れた瞬間から、意識が必要になる。</strong>
+          </p>
+        </div>
+
+        <h3><code>key</code> に添字を使ってはいけないのも同じ理由</h3>
+<pre><code>{companies.map((company) =&gt; (
+  &lt;div key={company.id}&gt;...&lt;/div&gt;      // ✅
+))}
+
+{companies.map((company, index) =&gt; (
+  &lt;div key={index}&gt;...&lt;/div&gt;           // ❌
+))}</code></pre>
+        <p>
+          <strong>React は配列の要素が「前回のどれと同じものか」を <code>key</code> で判断する。</strong>
+          ここでも中身は比べていない。
+        </p>
+        <p>
+          <strong>添字は「何番目か」であって「どれか」ではない。</strong>
+          先頭を削除すると2番目だった要素の添字が 0 になり、React は「<code>key=0</code> の中身が書き換わった」と解釈する。
+          <strong>別の企業なのに同じ要素として扱われ、入力中のフォームやチェック状態が隣の行に引き継がれる</strong>——原因の分かりにくいバグになる。
+        </p>
+        <div class="note check">
+          <div class="note-label">伏線の回収</div>
+          <p>
+            <code>getCompanies</code> で <code>doc.id</code> を型に合成したのは、<strong>まさにこのため</strong>だった。
+            一意で、変わらず、その企業だけを指す。<strong>あそこで捨てていたら、いま <code>key</code> に使えるものが無い。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 47 -->
+    <article class="entry" id="e47">
+      <div class="entry-no">47</div>
+      <div class="entry-body">
+        <h2>型検査が届かない場所</h2>
+
+        <p>この日、<strong>型検査も ESLint も通るのに間違っているコード</strong>を3種類書いた。共通点は「引用符の中」と「外から来る値」。</p>
+
+        <h3>① 引用符の中は、検査されない</h3>
+<pre><code>&lt;Link href="/companies/${conpany.id}"&gt;      // ❌ 型検査を通過する</code></pre>
+        <p>
+          <strong>2つ間違っているのに、どちらも検出されない。</strong>
+          <code>"..."</code> の中の <code>${...}</code> はただの文字なので展開されず、
+          リンク先は文字通り <code>/companies/${conpany.id}</code> になる。
+          <strong><code>conpany</code> という綴り間違いも、文字列の中なので誰も見ていない。</strong>
+        </p>
+<pre><code>&lt;Link href={`/companies/${company.id}`}&gt;     // ✅</code></pre>
+        <ul>
+          <li><strong>バッククォート</strong> — <code>${}</code> を展開できる文字列（テンプレートリテラル）</li>
+          <li><strong><code>{}</code> で囲む</strong> — JSX の属性に<strong>式</strong>を渡すため（エントリ31）</li>
+        </ul>
+        <p>
+          <strong><code>{}</code> で囲んだ瞬間に、TypeScript が「そんな変数は無い」と教えてくれる。</strong>
+          エントリ34では「引用符の中身は必ずユーザーの目に触れる」と書いた。今回はその逆側——
+          <strong>引用符の中身は、型検査から守られない。</strong>
+        </p>
+
+        <h3>② 外から来る値は、型を名乗っているだけ</h3>
+        <p>
+          Firestore の <code>status</code> に <code>"応募中"</code>（存在しない値）を手で入れても、<strong>アプリは何事もなく表示する。</strong>
+          <code>CompanyStatus</code> は7つのユニオンなのに、誰も止めない。
+        </p>
+        <p>
+          <strong>決定記録の「<code>as</code> は何も検査していない」の実物。</strong>
+          <strong>型が守るのは自分が書いたコードの中だけで、外から入ってくるデータは守備範囲の外にある。</strong>
+        </p>
+
+        <h3>③ エラーの「系統」が違うと、静かに嘘をつく</h3>
+<pre><code>catch (e) {
+  setError(getAuthErrorMessage(e));   // ❌ Firestore の失敗に使ってはいけない
+}</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">系統</th><th scope="col">エラーコードの形</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">認証</th><td><code>auth/wrong-password</code> — <code>auth/</code> で始まる</td></tr>
+              <tr><th scope="row">Firestore</th><td><code>permission-denied</code> / <code>unavailable</code> / <code>not-found</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>switch</code> のどれにも当たらず <code>default</code> に落ちて、
+          <strong>データ取得の失敗なのに「ログインに失敗しました」と表示される。</strong>
+          <strong>キャンセルを「失敗」と表示したのと同じ種類の嘘</strong>（エントリ34）。
+        </p>
+        <p>
+          <strong>いまは切り出さず、その場に <code>setError("企業一覧の取得に失敗しました")</code> と書いた。</strong>
+          Firestore 用の変換が要るかは、2箇所目が出てから判断する（エントリ28）。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">逆に、型検査が確実に効く場所</div>
+<pre><code>const [companies, setCompanies] = useState([]);   // never[] と推論される
+setCompanies([{ id: "x", ... }]);                 // ❌ never には何も入らない</code></pre>
+          <p>
+            <strong>空の配列には推論する材料が無い</strong>ので、TypeScript は「何も入りえない配列」＝<code>never[]</code> と判断する。
+            <code>useState&lt;Company[]&gt;([])</code> と型引数を明示する。
+            エントリ28の <code>useState(null)</code> と同じ状況——<strong>推論が意図と違うときに書く。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">自分の癖：説明とコードを混同する</div>
+          <p>この日までに<strong>3回</strong>同じ間違いをした。</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">場面</th><th scope="col">貼ってしまったもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>(protected)/layout.tsx</code></th><td>擬似コードを JSX の中に</td></tr>
+                <tr><th scope="row"><code>lib/authErrors.ts</code></th><td>コメントの文章を <code>return ""</code> の中に</td></tr>
+                <tr><th scope="row"><code>companies/page.tsx</code></th><td>手順の説明を関数の中に／ラベルを <code>{company.name}</code> の代わりに</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>手が動く前に、それが「説明」か「命令」かを判断する。</strong>
+            「企業名」は日本語の説明で、コードは <code>{company.name}</code>。
+            <strong>知識の問題ではなく、読む手順の問題。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -4090,6 +4516,134 @@ found 0 vulnerabilities        ← 本番に入るものだけを見た結果</c
           <strong>PR の説明文は GitHub のデータなので、マージ後もいつでも編集できる。</strong>
           対して<strong>マージコミットのメッセージは git の履歴</strong>で、直すには <code>main</code> の書き換えが要る——やらない。
           <strong>「後から直せるもの」と「直せないもの」を区別する。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3><code>appliedAt</code> は Timestamp ではなく <code>YYYY-MM-DD</code> の文字列で持つ</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          <strong>仕様書の中に矛盾を見つけた。</strong>5章のデータ設計は <code>appliedAt: timestamp</code> と書いているが、
+          同じ5章の <code>schedules.date</code> は <code>string (YYYY-MM-DD)</code>、
+          8章の改善方針は「日付フォーマットを <code>YYYY-MM-DD</code> に統一する」。<strong><code>appliedAt</code> だけ揃っていない。</strong>
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>仕様書5章の記述どおり Firestore の <code>Timestamp</code> 型を使う</dd>
+        <dt>理由</dt>
+        <dd>
+          <b>(a)</b> 8章の「統一する」が全体方針であり、<code>appliedAt</code> だけ Timestamp にすると
+          <strong>前作の失敗（Firestore と state でフォーマットが分かれる）の再現になる</strong>
+          <b>(b)</b> <code>&lt;input type="date"&gt;</code> が返すのは <code>"YYYY-MM-DD"</code> の文字列。
+          Timestamp にすると<strong>フォーム↔state↔Firestore の3箇所で変換</strong>が必要になる
+          <b>(c)</b> このアプリは日付の演算をしない。必要なのは表示と並び替えだけで、
+          <strong>桁が固定の <code>"YYYY-MM-DD"</code> は文字列のまま比較しても時系列順に並ぶ</strong>
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          「応募から何日経ったか」のような日付演算や、タイムゾーンを跨ぐ要件が出たら Timestamp を検討する。
+          その時は<strong>3コレクションすべてを同時に移行する</strong>——片方だけ変えない。
+        </dd>
+        <dt>学び</dt>
+        <dd>
+          <strong>仕様書は絶対ではない。</strong>矛盾を見つけたら、どちらの意図が優先されるかを判断し、理由とともに記録する。
+          <strong>仕様書そのものを書き換えて辻褄を合わせることはしない</strong>——
+          「最初からそう決まっていた」ことになり、<strong>矛盾に気づいたという事実ごと消える</strong>ため。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>企業一覧は応募日の降順で並べる</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd><strong>仕様書3-2 に並び順の記載がない（決め漏れ）。</strong></dd>
+        <dt>理由</dt>
+        <dd>
+          就活中に見たいのは<strong>最近応募した企業</strong>が中心で、古い応募ほど関心が薄れる。
+          <code>orderBy("appliedAt", "desc")</code> で表現でき、
+          <strong><code>appliedAt</code> を文字列にした利点（辞書順＝時系列順）がそのまま効く。</strong>
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          ステータス順（選考が進んでいる順）に並べたくなる可能性はある。
+          ただし<strong>7段階に自然な優先順位を定義する必要がある</strong>ので、必要になってから決める。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>Firestore から読んだデータは <code>as</code> で型を付け、実行時の検証はしない</h3>
+      <dl>
+        <dt>前提</dt>
+        <dd>
+          <code>doc.data()</code> の型は <code>DocumentData</code>——実質「何でも入っている」。
+          <strong>保存されているのはただの JSON で、TypeScript はビルド時に消えているので、
+          実行時に「これは Company である」と検査する仕組みが存在しない</strong>（エントリ33）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>zod</code> 等で実行時にスキーマ検証する
+          <b>(b)</b> Firestore の <code>FirestoreDataConverter</code> を書く
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>書き込むのも読み込むのも自分のアプリだけ</strong>で、形が食い違う経路が事実上ない。
+          (a) は依存が増え、(b) は記述量が増える割に、v1 では守る対象がない。
+        </dd>
+        <dt>自覚しておくこと</dt>
+        <dd>
+          <strong><code>as</code> は「変換」ではなく「TypeScript を黙らせる」操作。</strong>
+          <code>instanceof FirebaseError</code> のような<strong>実行時の検査とは根本的に違う</strong>——
+          あちらは本当に確かめているが、<code>as</code> は何も確かめない。
+          <strong>Firestore の中身が型と食い違っていても、誰も気づかないまま画面まで届く。</strong>
+        </dd>
+        <dt>再検討</dt>
+        <dd>
+          データ構造を変更してマイグレーションが必要になったとき、
+          あるいは複数の書き込み経路（管理画面・バッチ・他アプリ）ができたときに (a) を入れる。
+          <strong>「書き込む口が増えた瞬間」が境界。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ローディング表示は <code>loading.tsx</code> ではなくコンポーネント内の state で行う</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          <strong>仕様書3-7 の記述が、この構成では正確でない。</strong>
+          「<code>loading.tsx</code> を配置するだけで自動的にローディングUIが適用される」とあるが、
+          <code>loading.tsx</code> が表示されるのは<strong>サーバー側でページの準備を待っている間</strong>。
+        </dd>
+        <dt>なぜ効かないか</dt>
+        <dd>
+<pre><code>1. サーバーがページのHTMLを返す   ← loading.tsx の出番はここで終わる
+2. ブラウザで useEffect が動く
+3. Firestore に問い合わせる        ← この待ち時間には効かない
+4. データが来て再描画</code></pre>
+          <strong>3の待ち時間を埋めるのは <code>loading.tsx</code> ではなくコンポーネント内の state。</strong>
+          ログイン状態はブラウザの IndexedDB にあり、<code>uid</code> が取れるのはブラウザだけなので、
+          <strong>データ取得は必ずクライアント側で起きる</strong>（エントリ08）。
+        </dd>
+        <dt>根はどこか</dt>
+        <dd>
+          仕様書2章の「<strong>独自バックエンドを作らず Firebase を BaaS として使う</strong>」という決定の帰結。
+          <strong>middleware で認証ガードを作れなかったのと、<code>"use client"</code> が要るのと、<code>loading.tsx</code> が効かないのは、すべて同じ1つの選択から来ている。</strong>
+          設計は間違っていない——<strong>正確でないのは3-7 の書き方だけ。</strong>
+        </dd>
+        <dt>どうするか</dt>
+        <dd>
+          <b>(1)</b> コンポーネント内の <code>loading</code> state で Firestore の待ち時間を埋める（本命）
+          <b>(2)</b> <code>loading.tsx</code> も置く——ページ遷移時には効く。学習目的も兼ねる
+          <b>(3)</b> <strong><code>error.tsx</code> はクライアントコンポーネントでも効く</strong>（描画中の例外を受け止める）ので、仕様書の記述通りに機能する
+        </dd>
+        <dt>もしサーバーコンポーネント構成だったら</dt>
+        <dd>
+          データ取得がサーバーで完了してから HTML が届くので、待ち時間はすべてサーバー側にあり、
+          <strong><code>loading.tsx</code> が主役になっていた。</strong>
+          <strong>この対比を説明できることが、「サーバーコンポーネントとクライアントコンポーネントの使い分け」の中身。</strong>
         </dd>
       </dl>
     </div>
