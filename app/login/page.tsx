@@ -23,14 +23,12 @@ export default function LoginPage() {
   const router = useRouter();
   // ※フックは必ずトップレベルに、じゃないと状態の順番が変わる
 
-
   useEffect(() => {
     if (!loading && user) {
       // これにより今のURLをapp/page.tsxに変える、replaceはURLを変えてそのURLに対応するページを表示する。
       router.replace("/");
     }
   }, [user, loading, router])
-
 
   const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,4 +91,4 @@ export default function LoginPage() {
       </div>
     </form>
   );
-} 
+}

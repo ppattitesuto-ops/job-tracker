@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
       setLoading(false);
     });
+    // クリーンアップ関数(後始末関数):これがないと上で読んだログイン状態を見張るロボットがこのファイルが描画されてなくても動き続けて、監視が積み重なると余計に重くなる→何かを監視する自動ロボットを作った場合はそれを終わらす処理も必要
     return unsubscribe;
   }, [])
 
