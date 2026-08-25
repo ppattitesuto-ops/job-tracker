@@ -534,10 +534,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-08-14</b></span>
-      <span>エントリ <b>47</b></span>
-      <span>決定記録 <b>16</b></span>
-      <span>進捗 <b>企業一覧 完了 → 新規登録へ</b></span>
+      <span>最終更新 <b>2026-08-25</b></span>
+      <span>エントリ <b>57</b></span>
+      <span>決定記録 <b>21</b></span>
+      <span>進捗 <b>企業の新規登録 完了 → 詳細・編集・削除へ</b></span>
     </div>
   </header>
 
@@ -591,6 +591,16 @@
       <li><a href="#e45">非同期のエラーは、書いてあっても捕まらない</a></li>
       <li><a href="#e46">React は中身ではなく「箱」を見ている</a></li>
       <li><a href="#e47">型検査が届かない場所</a></li>
+      <li><a href="#e48">「無い」と「空」は別物である</a></li>
+      <li><a href="#e49">キーだけを借りる — Record と keyof</a></li>
+      <li><a href="#e50">型で守れないときは、約束の数を減らす</a></li>
+      <li><a href="#e51">「URLとして正しいか」と「開いて安全か」は別の問い</a></li>
+      <li><a href="#e52">定義の場所は、実行のタイミングを決めない</a></li>
+      <li><a href="#e53">初期値は、追随しない</a></li>
+      <li><a href="#e54">他から計算できるものは、state にしない</a></li>
+      <li><a href="#e55">純粋な計算は本体へ、副作用はハンドラへ</a></li>
+      <li><a href="#e56">更新はまとめられ、画面は一度だけ描かれる</a></li>
+      <li><a href="#e57">推測が割れたら、測る</a></li>
     </ol>
   </nav>
 
@@ -4220,6 +4230,573 @@ setCompanies([{ id: "x", ... }]);                 // ❌ never には何も入�
       </div>
     </article>
 
+    <!-- 48 -->
+    <article class="entry" id="e48">
+      <div class="entry-no">48</div>
+      <div class="entry-body">
+        <h2>「無い」と「空」は別物である</h2>
+
+        <p>
+          入力エラーを持つ形を決めるとき、2つの案があった。
+        </p>
+<pre><code>// 案X：常に6項目そろっている（エラー無しは空文字）
+{ name: "", position: "職種を…", appliedAt: "", status: "", jobUrl: "", memo: "" }
+
+// 案A：エラーのある項目だけ存在する
+{ position: "職種を入力してください" }</code></pre>
+        <p>
+          <strong>案Xの問題は「エラーが無い」を空文字で表していること。</strong>
+          その取り決めは<strong>型のどこにも書けない</strong>。人間が覚えておく約束にすぎず、破っても TypeScript は何も言わない。
+        </p>
+
+        <h3>案Xを選んでいたら、実際に何が壊れたか</h3>
+<pre><code>if (Object.keys(errors).length &gt; 0) return;   // キーの「存在」だけを数える</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">もし <code>errors.name = ""</code> が入ったら</th><th scope="col">結果</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>Object.keys(errors).length</code></th><td><strong>1</strong> → 送信が止まる</td></tr>
+              <tr><th scope="row"><code>{fieldErrors.name &amp;&amp; &lt;p&gt;…&lt;/p&gt;}</code></th><td><code>""</code> は falsy → <strong>何も表示されない</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>ボタンを押しても何も起きず、理由もどこにも出ない。</strong>
+          さらに <code>errors.jobUrl = ""</code> は「エラーが無い」のか「メッセージを入れ忘れた」のか<strong>判別できない</strong>。
+        </p>
+        <p>
+          <strong>キーの不在なら、意味は1つしかない。</strong>曖昧さの入り込む隙間が無い。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">誤解していたこと：「空文字」と「空白」を3回混同した</div>
+          <p>
+            <code>appliedAt</code> の検証を書くとき「<code>type="date"</code> なので<strong>空文字にならない</strong>」と説明した。
+            <strong>間違い。</strong>ユーザーはカレンダーの値をクリアできる——だから <code>=== ""</code> の検査が必要で、実際そう書いてある。
+            <strong>言っていることと書いていることが矛盾していた。</strong>
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">問い</th><th scope="col">答え</th><th scope="col">帰結</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">空文字になるか</th><td><code>name</code> も <code>appliedAt</code> も<strong>なる</strong></td><td>両方 <code>=== ""</code> を検査する</td></tr>
+                <tr><th scope="row">前後に空白が付くか</th><td><code>name</code> は付く／<code>appliedAt</code> は付かない</td><td><strong><code>trim()</code> の有無が分かれる</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>2つの軸を1つにまとめようとしたのが原因。</strong>分けて考えれば矛盾しない。</p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">同じ判断が、必須項目と任意項目で逆向きになる</div>
+<pre><code>if (data.name.trim() === "") { … }      // 空なら → エラー（必須）
+if (data.jobUrl.trim() !== "") { … }    // 空でなければ → 検査（任意）</code></pre>
+          <p>
+            <strong>「入力されていること」と「入力の中身が正しいこと」は別の検査。</strong>
+            任意項目でこの <code>if</code> を書き忘れると、<code>new URL("")</code> が例外になり
+            <strong>「入力していない人全員に、毎回エラーが出る」</strong>——必須でもないのに事実上必須になる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 49 -->
+    <article class="entry" id="e49">
+      <div class="entry-no">49</div>
+      <div class="entry-body">
+        <h2>キーだけを借りる — <code>Record</code> と <code>keyof</code></h2>
+
+<pre><code>type CompanyInputErrors = Partial&lt;Record&lt;keyof CompanyInput, string&gt;&gt;;</code></pre>
+
+        <p><strong>なぜ <code>CompanyInput</code> をそのまま使わないのか。</strong>実際に書いてみると詰まる。</p>
+<pre><code>type CompanyInputErrors = Partial&lt;CompanyInput&gt;;
+errors.status = "選考ステータスを選んでください";
+//     ^^^^^^ 型エラー：status に入れられるのは7つの語だけ</code></pre>
+        <p>
+          <code>CompanyInput</code> の <code>status</code> は <code>CompanyStatus</code> 型（エントリ44）。
+          <strong>キーは同じでも、値の意味がまったく別物。</strong>
+          <code>CompanyInput</code> は「企業のデータ」を表す型で、エラーの一覧は企業のデータではない。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">案</th><th scope="col">型</th><th scope="col">評価</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">(a)</th><td><code>{ name?: string; position?: string; … }</code> を手書き</td><td>動く。ただし <code>Company</code> を変えたとき<strong>人間が直しに来ないとずれる</strong></td></tr>
+              <tr><th scope="row">(b)</th><td><code>Partial&lt;CompanyInput&gt;</code></td><td><strong>値の型まで借りてしまう</strong> → <code>status</code> に文字列が入らない</td></tr>
+              <tr><th scope="row">(c)</th><td><code>Partial&lt;Record&lt;keyof CompanyInput, string&gt;&gt;</code></td><td><strong>キーだけ借りて、値は差し替える</strong> ✅</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <strong><code>Record</code> の存在意義は、「キーの集合」と「値の型」を別々に指定できること。</strong>
+          <code>keyof</code> が借りているのは<strong>キーだけ</strong>なので、自動で追随するのは<strong>項目の増減</strong>であり、値の型の変更ではない。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"><code>Company</code> に起きたこと</th><th scope="col"><code>CompanyInputErrors</code> は</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>industry: string</code> を追加</th><td><strong>自動で <code>industry?: string</code> が増える</strong></td></tr>
+              <tr><th scope="row"><code>status</code> の型を変更</th><td><strong>何も変わらない</strong>（もともと借りていない）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>値の型を借りないのは欠点ではなく狙い。</strong>借りてしまうのが (b) で、それが詰まった原因だった。</p>
+
+        <div class="note warn">
+          <div class="note-label">誤解していたこと：<code>Partial</code> は「禁止」ではなく「許可」</div>
+          <p>
+            「<code>Partial</code> が無いと型チェックが入らない」と考えたが<strong>逆</strong>。
+            <strong>チェックが厳しすぎて、正しいコードが書けなくなる。</strong>
+          </p>
+<pre><code>const errors: Record&lt;keyof CompanyInput, string&gt; = {};
+//    ^^^^^^ エラー：name, position, appliedAt, status, jobUrl, memo が足りません</code></pre>
+          <p>
+            <code>Record</code> は「6つのキーが<strong>全部ある</strong>」と宣言している。だから <code>{}</code> は型違反。
+            <code>Partial&lt;T&gt;</code> は全プロパティに <code>?</code> を付けた型を返し、<strong>キーの組み合わせが 2⁶ 通りどれでも通る</strong>ようにする。
+          </p>
+          <p>
+            <strong>「空文字を防いでいる」のでもない。</strong><code>errors.name = ""</code> は型としては書ける。
+            <code>Partial</code> が保証するのは「無くてよい」だけで、空文字を置かないのは<strong>こちらが守る設計上の約束</strong>。
+            <strong>この取り違えを3回した</strong>——<code>Readonly</code> や <code>Required</code> でも同じ勘違いをしないよう、
+            <strong>ユーティリティ型は「何を許可するか」で読む。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">型が許すことと、実際に起きることのずれ</div>
+          <p>
+            <code>keyof CompanyInput</code> は6キー全部を含むので、<code>fieldErrors.memo</code> と書いても型検査は通る。
+            だが <code>memo</code> と <code>status</code> は検証していないので<strong>絶対に生えない</strong>。
+            キーを <code>"name" | "position" | "appliedAt" | "jobUrl"</code> と手書きすれば厳しくできるが、
+            <strong><code>keyof</code> を使った意味が消える</strong>ので採らなかった。
+            <strong>型は万能ではない、という自覚とセットで (c) を選んでいる。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 50 -->
+    <article class="entry" id="e50">
+      <div class="entry-no">50</div>
+      <div class="entry-body">
+        <h2>型で守れないときは、約束の数を減らす</h2>
+
+        <p>
+          検証と保存で見ている値が違っていた。<strong>これはバグの型そのもの。</strong>
+        </p>
+<pre><code>const errors = validateCompanyInput(newData);   // .trim() した値で判定
+await addCompany(user.uid, newData);            // trim していない値を保存</code></pre>
+        <p>
+          <code>"  ヤフー  "</code> と入力すると<strong>検証は通り、空白ごと保存される</strong>。
+          見た目には空白が見えないので原因にたどり着けない。
+        </p>
+
+        <h3>直し方 — 正規化を独立させ、同じ値を配る</h3>
+<pre><code>handleSubmit                    ← ここで1回だけ正規化
+  ├─ validateCompanyInput(normalized)
+  └─ addCompany(uid, normalized)</code></pre>
+        <p>
+          <strong>「送信するところ」だから選んだのではない。検証と保存の共通の親だから。</strong>
+          枝の中で各自が計算すると「同じ値のはず」が保証されない。
+        </p>
+        <p>
+          壊れるのは変更したとき。後日「全角スペースも落とす」と決めて<strong>片方だけ直し忘れる</strong>と、
+          <strong>検証を通った値と保存された値が別物になる</strong>——しかも型検査も ESLint も何も言わない。
+          <strong>同じ計算を2箇所に書くと、いつか片方だけ変わる。</strong>
+        </p>
+
+        <h3>それでも <code>validate</code> の中の <code>.trim()</code> は残す</h3>
+        <p>
+          正規化済みが渡る通常経路では、この <code>.trim()</code> は<strong>何も変えない。冗長</strong>。
+          外すと <code>validateCompanyInput</code> は「正規化済みで渡してもらう前提」を持つが、
+          <strong>その前提はコードのどこにも書けない。</strong>
+        </p>
+<pre><code>normalizeCompanyInput(newData)   // 型は CompanyInput
+newData                          // 型も CompanyInput  ← まったく同じ</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">選択</th><th scope="col">代償</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>.trim()</code> を外す</th><td>短い。ただし「呼ぶ順番」という<strong>書かれていない約束</strong>が生まれる</td></tr>
+              <tr><th scope="row"><code>.trim()</code> を残す</th><td>冗長。ただし<strong>どう呼ばれても単独で正しい</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>「約束事で守るより、型で守れるなら型で守る」（エントリ21）の続き。</strong>
+          ここは型で守れない（両方 <code>CompanyInput</code> だから）。
+          <strong>型で守れないときは、約束を減らす方を選ぶ。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">「調べる」と「作り変える」を分ける</div>
+          <p>
+            <code>validateCompanyInput</code> の中で正規化して済ませることもできた。しない理由は2つ。
+          </p>
+          <ul>
+            <li><strong>名前と動きがずれる。</strong>validate（検証）が値を書き換えて返すのは、名前が嘘をついている</li>
+            <li>
+              <strong>結果が取り出せない。</strong>validate が返すのはエラーだけなので、
+              保存用の値は <code>handleSubmit</code> でもう一度計算することになる——<strong>2箇所に同じ計算</strong>が戻ってくる
+            </li>
+          </ul>
+          <p><code>handleSubmit</code> が送信を止め、<code>validateCompanyInput</code> は判定材料を返すだけ。<strong>同じ線引き。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 51 -->
+    <article class="entry" id="e51">
+      <div class="entry-no">51</div>
+      <div class="entry-body">
+        <h2>「URLとして正しいか」と「開いて安全か」は別の問い</h2>
+
+<pre><code>new URL("javascript:alert(1)")   // ← 成功する。これは合法な URL</code></pre>
+        <p>
+          そのまま保存して詳細ページで <code>&lt;a href={company.jobUrl}&gt;</code> に渡すと、
+          <strong>クリックした瞬間にそのスクリプトが自分の画面で動く</strong>（XSS）。
+          <strong>React は本文の文字列はエスケープするが、<code>href</code> の中身までは検査しない。</strong>
+        </p>
+        <p>だから <code>http:</code> と <code>https:</code> だけを許可する。<strong>解析できるかではなく、開いて安全かを見る。</strong></p>
+
+        <h3><code>new URL()</code> は1行で2つの仕事をしている</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">検査</th><th scope="col">仕組み</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">形式</th><td>解析できなければ<strong>例外を投げる</strong> → <code>catch</code> に落ちる</td></tr>
+              <tr><th scope="row">内容</th><td>解析できれば <code>protocol</code> が取り出せる → <code>if</code> で判定</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong><code>try/catch</code> と <code>if</code> の両方が要る。</strong>
+          <code>try/catch</code> だけなら <code>javascript:</code> は通ってしまい、<code>if</code> だけなら壊れた文字列で例外が飛んでページが落ちる。
+        </p>
+        <p>
+          <strong><code>try</code> の範囲は、例外を投げうる処理ぴったりに絞る。</strong>
+          関数全体を包むと、必須チェックで起きたバグまで <code>catch</code> が飲み込んで<strong>無かったことにする</strong>。
+        </p>
+
+        <h3>文字列操作では足りない</h3>
+<pre><code>new URL("HTTPS://Example.COM").protocol   // "https:" ← 小文字に正規化される</code></pre>
+        <p>
+          <code>startsWith("https://")</code> だと<strong>大文字で書かれた正しい URL を弾く</strong>。
+          <code>//</code> の数、ポート、日本語ドメイン——<strong>仕様は自分で思うより複雑。</strong>
+          <code>new URL()</code> はブラウザが持つ URL 仕様の実装そのもので、自作の判定より確実に正しい。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">1文字の位置で、意味が反転した</div>
+<pre><code>if (url.protocol! == "http:" &amp;&amp; url.protocol !== "https:")   // ❌</code></pre>
+          <p>
+            <code>!==</code> が <code>!</code>（non-null 表明）と <code>==</code>（緩い等価）に<strong>割れていた</strong>。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">入力</th><th scope="col">結果</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>http://…</code></th><td><strong>エラー扱い</strong> ← 正常な URL を弾く</td></tr>
+                <tr><th scope="row"><code>javascript:alert(1)</code></th><td><strong>通す</strong> ← 防ごうとしていた当のもの</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>弾きたかったものが通り、通したかったものが弾かれた。</strong>型検査も ESLint も無言（エントリ47）。
+            <code>==</code> は型が違うと勝手に変換する（<code>0 == ""</code> が <code>true</code>）ので、
+            <strong>常に <code>===</code> / <code>!==</code> を使えばこの問題自体が消える。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 52 -->
+    <article class="entry" id="e52">
+      <div class="entry-no">52</div>
+      <div class="entry-body">
+        <h2>定義の場所は、実行のタイミングを決めない</h2>
+
+        <p>
+          「コンポーネントの外に定義した関数は、マウント時にだけ呼ばれる」と考えていた。<strong>間違い。</strong>
+        </p>
+<pre><code>function todayString() { … }        // ← 定義：外
+
+export default function NewCompanyPage() {
+  useState(todayString())           // ← 呼び出し：中  ★ここが実行される
+}</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">何が</th><th scope="col">何を決めるか</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">定義の場所</th><td>描画のたびに関数オブジェクトを作り直すか。state に触れられるか</td></tr>
+              <tr><th scope="row"><strong>呼び出し式の場所</strong></th><td><strong>いつ、何回実行されるか</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>判定は括弧の有無だけ。</strong><code>normalizeCompanyInput(newData)</code> は呼んでいる。
+          <code>handleSubmit</code> の中の <code>errors</code> は<strong>変数名</strong>であって、読んでいるだけ。
+        </p>
+
+        <h3>実行順が、それを証明している</h3>
+<pre><code>const errors = validateCompanyInput(normalized);   // 95行目 ← ここで実行
+
+const handleSubmit = async (e) =&gt; { … };           // 99行目 ← まだ定義されただけ</code></pre>
+        <p>
+          <strong><code>errors</code> が計算される時点で <code>handleSubmit</code> はまだ存在しない。</strong>
+          「<code>handleSubmit</code> の中の <code>errors</code> から連鎖的に呼ばれる」は順番として成り立たない。
+          <code>handleSubmit</code> が動くのは送信時で、そのとき <code>errors</code> は<strong>計算済みの値</strong>としてそこにある（クロージャ）。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">呼び出しには2種類ある</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書かれている場所</th><th scope="col">いつ実行されるか</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">本体に直接 — <code>useState(todayString())</code></th><td><strong>本体が走るたび、その場で即座に。</strong>誰の発火も待たない</td></tr>
+                <tr><th scope="row">ハンドラの中 — <code>addCompany(…)</code></th><td>イベントが起きたときだけ</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong><code>addCompany</code> も外に定義されている。</strong>
+            もし「外にあるから描画時に走る」なら、<strong>キーを打つたびに Firestore に保存されているはず</strong>——そうなっていない。
+            <strong>定義の場所は一度も効いていない。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 53 -->
+    <article class="entry" id="e53">
+      <div class="entry-no">53</div>
+      <div class="entry-body">
+        <h2>初期値は、追随しない</h2>
+
+        <p>
+          <code>todayString()</code> は<strong>描画のたびに実行され、2回目以降は結果が捨てられている</strong>。
+          呼ばれていないのではなく、<strong>呼ばれて、捨てられている。</strong>
+        </p>
+<pre><code>useState(todayString())   // 引数は、useState が呼ばれる前に必ず評価される</code></pre>
+        <p>捨てているのは <code>useState</code>。<strong>差分検知（JSX の比較）とは別の層の話</strong>で、そこまで届く前に終わっている。</p>
+
+        <h3>捨てないと state が壊れる</h3>
+        <p>
+          <code>name</code> の初期値は <code>""</code>。<strong>毎回この引数で上書きしていたら</strong>——
+          「ヤ」と打つ → 本体が再実行 → <code>""</code> に戻る。<strong>1文字も入力できない。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">「日付が変わったらずれるのでは？」——ずれるのが正しい</div>
+          <p>
+            ページを開いたまま日付をまたぐと <code>appliedAt</code> は開いた日のまま。<strong>それでいい。</strong>
+            もし追随したら、ユーザーが手で <code>2026-08-20</code> に変更していた場合、
+            <strong>日付が変わった瞬間に勝手に今日へ書き戻される。</strong>入力した値が消える。
+          </p>
+          <p><strong>「初期値」は最初に一度だけ提示する候補であって、正解を配り続ける仕組みではない。</strong></p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">コメントが、測る前の思い込みのまま残っていた</div>
+          <p>
+            「コンポーネントが描画されるときに関数を呼び、<strong>その時点の日付を入れる</strong>」と書いてあった。
+            <code>console.log</code> で測ったら、入力のたび・送信のたびに呼ばれていた。
+            <strong>測って分かったことを、そのままコメントに書き直した。</strong>
+          </p>
+          <p>
+            本当に初回だけ呼びたいなら <code>useState</code> には<strong>値ではなく「値を作る関数そのもの」</strong>を渡せる（遅延初期化）。
+            括弧が1組あるかないかの差。<strong>今回は日付を組み立てるだけなので採らない。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 54 -->
+    <article class="entry" id="e54">
+      <div class="entry-no">54</div>
+      <div class="entry-body">
+        <h2>他から計算できるものは、state にしない</h2>
+
+        <p>
+          <code>fieldErrors</code> を <code>useState</code> で持ち、<code>handleSubmit</code> の中で <code>setFieldErrors(errors)</code> していた。
+          <strong>この state を丸ごと廃止した。</strong>
+        </p>
+<pre><code>newData ──┐
+          ├──→ errors      // 必ず求まる
+hasSubmitted ─┘</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">値</th><th scope="col">他から導き出せるか</th><th scope="col">判断</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>newData</code></th><td><strong>不可能。</strong>ユーザーが打った文字は計算では復元できない</td><td>state</td></tr>
+              <tr><th scope="row"><code>hasSubmitted</code></th><td><strong>不可能。</strong>「過去に押した」事実は画面に痕跡がない</td><td>state</td></tr>
+              <tr><th scope="row"><code>errors</code></th><td><strong>可能。</strong>上の2つがあれば必ず求まる</td><td><strong>state にしない</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong><code>useState</code> が要るのは「描画をまたいで覚えておかないと失われる」ものだけ。</strong>
+        </p>
+
+        <h3>何が変わったか</h3>
+        <ul>
+          <li>
+            <strong>バグの可能性が「消えた」——直したのではない。</strong>
+            以前は「<code>setFieldErrors</code> を呼び忘れた経路が1つでもあれば、画面は古いエラーを出し続ける」危険があった。
+            いま<strong>その関数自体が存在しない</strong>ので、経路も存在しない
+          </li>
+          <li>
+            <strong>「入力のたびに再検証」を1行も書かずに手に入れた。</strong>
+            <code>onChange</code> を6箇所いじってもいないし、<code>useEffect</code> も書いていない。
+            <strong>呼び出し式を2行、内側から外側へ動かしただけ</strong>で、関数の中身は1文字も変えていない
+          </li>
+          <li><strong>覚えているものが1つ減った</strong>＝食い違う組み合わせが減った</li>
+        </ul>
+        <p>
+          <strong>「やることを増やす」より「置き場所を正す」方が、たいてい正解。</strong>
+          エントリ50の「同じ計算を2箇所に書かない」と同じ形——<strong>1箇所を正とし、残りは計算で導く。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">判断の理由を取り違えていた</div>
+          <p>
+            「<code>errors</code> はユーザーの入力や状態から<strong>導き出されるものではない</strong>から state にしない」と説明したが<strong>逆</strong>。
+            <code>errors</code> は<strong>まさに</strong> <code>newData</code> と <code>hasSubmitted</code> から導き出される。
+            <strong>導き出せるから、持たない。</strong>導き出せないものだけが state になる。
+          </p>
+          <p>
+            なお <strong><code>errors</code> を state に持っても動く</strong>——現に動いていた。
+            <strong>問題は「動くかどうか」ではなく「壊れうるかどうか」。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 55 -->
+    <article class="entry" id="e55">
+      <div class="entry-no">55</div>
+      <div class="entry-body">
+        <h2>純粋な計算は本体へ、副作用はハンドラへ</h2>
+
+        <p>
+          <code>console.log</code> を仕込んだら、<code>todayString</code> が<strong>2回ずつ</strong>出た。
+          <strong>バグではなく React の Strict Mode。</strong>開発中だけ、コンポーネントの本体をわざと2回実行する。
+        </p>
+        <p>目的は<strong>「本体が純粋か」を検証すること</strong>。2回実行で症状が出るのはこういうコード。</p>
+        <ul>
+          <li>通信や書き込みをする → <strong>2回起きる</strong></li>
+          <li>外の変数を書き換える → <strong>2回加算される</strong></li>
+          <li>乱数や現在時刻を使う → <strong>1回目と2回目で結果が違う</strong></li>
+        </ul>
+        <p>本番ビルドでは1回。<strong>Strict Mode の目的は「分けること」ではなく「混ざっていたら症状を出すこと」</strong>で、結果として境界が守られる。</p>
+
+        <h3>リファクタ後の <code>handleSubmit</code> に残ったもの</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">残った行</th><th scope="col">性質</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>setHasSubmitted</code> / <code>setSubmitting</code> / <code>setSubmitError</code></th><td>state を変える</td></tr>
+              <tr><th scope="row"><code>addCompany(…)</code></th><td>Firestore に書く</td></tr>
+              <tr><th scope="row"><code>router.push(…)</code></th><td>ページを移動する</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>全部「外の世界を変える」処理で、値を求める行は1つも残っていない。</strong>
+          <code>validateCompanyInput</code> は何回呼んでも同じ結果で何も壊さないので、本体に置いて安全。
+          逆に <code>addCompany</code> を本体に書いたら<strong>画面を描くたびにデータが増える</strong>。
+        </p>
+      </div>
+    </article>
+
+    <!-- 56 -->
+    <article class="entry" id="e56">
+      <div class="entry-no">56</div>
+      <div class="entry-body">
+        <h2>更新はまとめられ、画面は一度だけ描かれる</h2>
+
+<pre><code>setHasSubmitted(true);
+if (Object.keys(errors).length &gt; 0) return;
+setSubmitting(true);
+setSubmitError("");</code></pre>
+        <p>
+          <strong>state を変える関数を3回呼んでいるが、再描画は1回。</strong>
+          React は1つのイベントの中で起きた更新を<strong>まとめてから、最後に一度だけ描き直す</strong>（バッチ処理）。
+        </p>
+        <p>
+          3回呼ぶたびに描いていたら、<strong><code>hasSubmitted</code> だけ <code>true</code> で <code>submitting</code> はまだ <code>false</code></strong>
+          という中途半端な画面が挟まる。<strong>そんな状態はユーザーに見せたくない。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">実測が、それを裏付けた</div>
+          <p>
+            送信時に <code>validateCompanyInput</code> は<strong>2回</strong>出た。
+            もし更新ごとに描画していたら <strong>3描画 × Strict Mode ＝ 6回</strong>になっていたはず。
+            <strong>2回だったということは、描画は1回にまとめられたということ。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 57 -->
+    <article class="entry" id="e57">
+      <div class="entry-no">57</div>
+      <div class="entry-body">
+        <h2>推測が割れたら、測る</h2>
+
+        <p>
+          「4つの関数はそれぞれ1回ずつ呼ばれる」と答えた。<strong>4つとも違った。</strong>
+          <code>console.log</code> を1行ずつ入れて、開発者ツールで実際の回数を見た。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">関数</th><th scope="col">実測</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>todayString</code></th><td>マウント時・入力時・送信時に<strong>毎回</strong>（Strict Mode で2回ずつ）</td></tr>
+              <tr><th scope="row"><code>normalizeCompanyInput</code> / <code>validateCompanyInput</code></th><td>移動<strong>前</strong>は送信時のみ／移動<strong>後</strong>は1文字ごと</td></tr>
+              <tr><th scope="row"><code>addCompany</code></th><td>送信して、検証を通り、通信が成功したときだけ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>関数の中身は1文字も変えていない。</strong>呼び出し式を移しただけで実行回数が変わった——エントリ52が、数字で見えた瞬間。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">測る手段は他にもある</div>
+          <ul>
+            <li><strong>React DevTools の Profiler</strong> — どのコンポーネントの描画に何ミリ秒かかったか</li>
+            <li><strong><code>console.log</code></strong> — 何が何回・どの順で走ったか</li>
+          </ul>
+          <p>
+            「毎描画で検証するのは重いのでは」と感じたが、実際に走るのは
+            <strong><code>trim()</code> 4回・文字列比較3回・<code>new URL()</code> 1回</strong>——マイクロ秒の世界。
+            人間は1秒に10文字も打てず、1フレームは16ms。
+            <strong>同じ描画で走る React 自身の JSX 生成と差分検出の方がはるかに重い。</strong>
+          </p>
+          <p>
+            本当に重いのは「数千件を毎描画で <code>sort</code>」「壊滅的にバックトラックする正規表現」など。
+            そのとき <code>useMemo</code> を使うが、<strong><code>useMemo</code> 自体にもコストがある</strong>ので軽い計算に付けると逆に遅くなる。
+            <strong>測る前に最適化しない。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">この日、確認して確定したこと</div>
+          <p>
+            <strong>ブラウザで実際に触って確かめた</strong>——開いた直後にエラーが出ないこと、空欄送信で3項目にエラーが出ること、
+            <strong>1文字打つと該当項目のエラーだけ即座に消えること</strong>、<code>javascript:alert(1)</code> が弾かれること。
+            <strong>Firestore のコンソールで、前後に空白を付けて登録した企業名から空白が消えていることも確認した</strong>——
+            正規化が効いているかは、そこでしか分からない。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -4235,6 +4812,13 @@ setCompanies([{ id: "x", ... }]);                 // ❌ never には何も入�
         <strong>企業を削除したとき、紐づく予定・振り返りをどう扱うか</strong>（仕様書3-6）。
         一緒に削除するか／参照だけ外すか／紐づくデータがあるうちは削除させないか。
         <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
+      </li>
+      <li>
+        <strong>詳細ページで <code>jobUrl</code> を <code>&lt;a href&gt;</code> に渡すとき、保存済みの値をもう一度検証するか</strong>（エントリ51）。
+        入力時に <code>javascript:</code> を弾いても、<strong>Firestore のコンソールから手で書き込まれた値は素通りする</strong>——
+        エントリ47の「外から来る値は、型を名乗っているだけ」がそのまま当てはまる。
+        表示側でも <code>protocol</code> を確認するか、それとも入口の検証だけで足りるとみなすか。
+        <strong>あわせて <code>target="_blank"</code> と <code>rel="noopener noreferrer"</code> の要否も決める。</strong>
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
@@ -4686,6 +5270,134 @@ setCompanies([{ id: "x", ... }]);                 // ❌ never には何も入�
         </dd>
         <dt>再検討</dt>
         <dd>過去4コミットには残っているが、履歴を書き換えるコストに見合わないためそのままにする。次のコミットから適用する。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>入力エラーは <code>Partial&lt;Record&lt;keyof CompanyInput, string&gt;&gt;</code> で持つ</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>nameError</code> / <code>positionError</code> … と項目ごとに <code>useState</code> を並べる
+          <b>(b)</b> 6項目を常にそろえ、エラー無しは空文字にする
+          <b>(c)</b> <code>Partial&lt;CompanyInput&gt;</code> をそのまま使う
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          仕様書3-6-2の「<strong>どの項目が未入力かが分かるよう、該当の入力欄の近くにも表示する</strong>」を満たすには、
+          単一の <code>error: string</code> では足りない。(a) は項目が増えるたびに <code>useState</code> が増える。
+          (b) は「エラー無し＝空文字」という<strong>型に書けない約束</strong>が生まれ、<code>Object.keys().length</code> が壊れる。
+          (c) は <code>status</code> の値の型が <code>CompanyStatus</code> なので<strong>エラーメッセージが入らない</strong>。
+          <strong>キーだけ <code>keyof</code> で借り、値は <code>string</code> に差し替える</strong>のが (c) の詰まりを解く唯一の形。
+        </dd>
+        <dt>弱点</dt>
+        <dd>
+          <code>keyof</code> は6キー全部を含むので、検証していない <code>status</code> / <code>memo</code> のエラーも
+          <strong>型の上では書けてしまう</strong>。キーを手書きすれば厳しくできるが <code>keyof</code> を使う意味が消えるので採らない。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ブラウザの標準検証を切る（<code>&lt;form noValidate&gt;</code>）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>形式検証（<code>type="url"</code>）と必須（<code>required</code>）はブラウザに任せ、足りない部分だけ自前で書く</dd>
+        <dt>理由</dt>
+        <dd>
+          仕様書3-6-2は「<strong>エラーは <code>alert</code> ではなく画面内に表示する</strong>」と言っている。
+          ブラウザの吹き出しは <code>alert</code> ではないが、<strong>見た目を制御できず・1件目しか出さず・文言も環境任せ</strong>。
+          任せると<strong>エラー表示が2種類混在</strong>し、統一という仕様の意図を満たせない。実装量は増えるが、説明できるのはこちら。
+        </dd>
+        <dt><code>type="url"</code> を残す理由が変わった</dt>
+        <dd>
+          検証は動かなくなったが、<b>(1)</b> スマートフォンの仮想キーボードが URL 向けに変わる
+          <b>(2)</b> ブラウザの自動入力の候補が出やすくなる
+          <b>(3)</b> <strong>この欄が URL であることをコード上で表明する</strong>——3つ目が一番効く。
+          <code>type="text"</code> だと、なぜ URL の検証があるのかがコードから読み取れない。
+        </dd>
+        <dt>訂正</dt>
+        <dd>
+          当初「支援技術に伝わる」と書いたが<strong>言い過ぎ</strong>。<code>type="url"</code> に専用の ARIA ロールは無く、
+          読み上げ方はソフトとブラウザの組み合わせ次第で<strong>保証されない</strong>。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>検証結果を表示するのは、一度送信を試みた後から（<code>hasSubmitted</code>）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 送信時だけ検証する（＝直しても赤いまま消えない）
+          <b>(b)</b> 入力のたびに常に表示する
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (b) は<strong>1文字も打っていないのに「入力されていません」</strong>が出る——
+          <strong>「まだ入力していない」と「入力し忘れた」を区別していない</strong>。
+          エラーは、ユーザーが「終わったつもり」になって初めて意味を持つ。<strong>境界は「入力」ではなく「送信」。</strong>
+        </dd>
+        <dt>役割分担</dt>
+        <dd>
+          <code>hasSubmitted</code> は<strong>「黙っている期間が終わったか」だけ</strong>を表す一方通行のスイッチで、<code>false</code> に戻すことはない。
+          <strong>エラーを消すのは <code>errors</code> の仕事</strong>——毎描画で計算し直されるので、入力した瞬間に生えなくなる。
+        </dd>
+        <dt>仕様書に書かれていなかったこと</dt>
+        <dd>仕様書3-6-2は<strong>「いつ検証するか」を書いていない</strong>。決め漏れとしてここに記録し、こちらで決めた。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>正規化は <code>handleSubmit</code> で1回だけ行い、検証と保存に同じ値を渡す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>validateCompanyInput</code> の中で正規化する
+          <b>(b)</b> 検証時と保存時にそれぞれ正規化する
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は validate（検証）が値を書き換える形になり<strong>名前と動きがずれる</strong>。
+          さらに<strong>正規化の結果が関数の中に閉じ込められて外から取れない</strong>ので、保存用に結局もう一度計算することになる。
+          (b) は<strong>同じ計算が2箇所</strong>にあり、片方だけ変更されたとき
+          <strong>「検証を通った値」と「保存された値」が別物になる</strong>——型検査も ESLint も検出しない。
+        </dd>
+        <dt>置き場所の基準</dt>
+        <dd>
+          「送信するところだから」ではなく<strong>「検証と保存の共通の親だから」</strong>。
+          <strong>1回計算して、結果を配る。</strong>
+        </dd>
+        <dt>冗長さを受け入れた点</dt>
+        <dd>
+          <code>validateCompanyInput</code> の中の <code>.trim()</code> は<strong>残す</strong>。
+          外すと「正規化済みで渡すこと」という<strong>型に書けない前提</strong>が生まれる
+          （<code>normalizeCompanyInput(x)</code> も <code>x</code> も型は同じ <code>CompanyInput</code>）。
+          <strong>ブランド型で表現する手はあるが、この規模には重すぎる。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>選考ステータスの必須チェックは書かない（仕様書との不一致）</h3>
+      <dl>
+        <dt>仕様書の記述</dt>
+        <dd>仕様書3-6-2は必須項目を<strong>企業名・職種・応募日・選考ステータス</strong>の4つとしている。</dd>
+        <dt>実際</dt>
+        <dd>
+          <code>status</code> は <code>&lt;select&gt;</code> で初期値 <code>"応募済"</code>。<strong>空になる経路が無い。</strong>
+          チェックを書いても必ず通る<strong>動かない分岐</strong>になる。
+        </dd>
+        <dt>どちらを優先したか</dt>
+        <dd>
+          <strong><code>&lt;select&gt;</code> を優先する。</strong>仕様書は「4項目ともテキスト入力」を前提に書かれており、
+          選択肢が決まっている値を自由入力に戻すのは<strong>退化</strong>。<code>memo</code> も同じ理由で検証しない。
+        </dd>
+        <dt>コードに残したこと</dt>
+        <dd>
+          <strong>「なぜ検証しないか」をコメントで残した。</strong>
+          「書き忘れ」と「意図的に書かなかった」は、後から見分けがつかない。
+        </dd>
       </dl>
     </div>
   </section>
