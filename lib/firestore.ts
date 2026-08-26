@@ -1,7 +1,7 @@
 // ⭐️ここは実際にfirestoreで扱うデータの処理を書くところ
-import type { Company } from "@/types/company";
+import type { Company, CompanyInput } from "@/types/company";
 // collection:どこにデータがあるかを示すオブジェクト
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { addDoc, collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 // 引数の名前が uid、その型が string。「この関数は文字列を1つ受け取る」
@@ -19,8 +19,15 @@ export async function getCompanies(uid: string): Promise<Company[]> {
   // docs:snapshotが持つプロパティ,Firebaseが決めてる、doc:自分で決めた変数名
   return snapshot.docs.map((doc) => ({
     id: doc.id,
-    // ...のスプレット構文でdoc.dataを展開しながら、as Omit<Company, "id">によってこの中身はCompanyの型からIDを除いたものだよと宣言している
-    // as:後ろのConpanyからIDを除いた型で前のデータを判定しろという宣言。検査をするわけじゃない
-    ...(doc.data() as Omit<Company, "id">),
+    // ...のスプレット構文でdoc.dataを展開。
+    // as:後ろのCompanyからIDを除いた型で前のデータを判定しろという宣言。検査をするわけじゃない
+    ...(doc.data() as CompanyInput),
   }));
+}
+// 引数にユーザーの識別子とIDがまだない状態のデータが使われる。→IDは中身ではなく、置き場所
+export async function addCompany(uid: string, data: CompanyInput): Promise<void> {
+  const companiesRef = collection(db, "users", uid, "companies");
+  // queryもorderByもいらない。なぜなら、データを置きにいくだけだから。
+  // addDocは新しいドキュメントの参照を返す。つまり、データを保存しにいく際に自動で決められるドキュメントのIDを関数の返り値として返すということ。しかし、設計上データの登録後は一覧ページに飛ぶため、それがいらない。使わないため上のPromise<void>でこの関数は何も返さないと明示的に示した。
+  await addDoc(companiesRef, data);
 }
