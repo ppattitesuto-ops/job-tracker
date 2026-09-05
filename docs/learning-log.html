@@ -534,10 +534,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-08-25</b></span>
-      <span>エントリ <b>57</b></span>
-      <span>決定記録 <b>21</b></span>
-      <span>進捗 <b>企業の新規登録 完了 → 詳細・編集・削除へ</b></span>
+      <span>最終更新 <b>2026-09-05</b></span>
+      <span>エントリ <b>67</b></span>
+      <span>決定記録 <b>26</b></span>
+      <span>進捗 <b>企業詳細 完了 → 編集・削除へ</b></span>
     </div>
   </header>
 
@@ -601,6 +601,16 @@
       <li><a href="#e55">純粋な計算は本体へ、副作用はハンドラへ</a></li>
       <li><a href="#e56">更新はまとめられ、画面は一度だけ描かれる</a></li>
       <li><a href="#e57">推測が割れたら、測る</a></li>
+      <li><a href="#e58">括弧の種類で、フォルダの意味が変わる</a></li>
+      <li><a href="#e59">同じフックが、どのルートから呼ばれるか知らない</a></li>
+      <li><a href="#e60"><code>=</code> と <code>===</code> は、型検査をすり抜ける</a></li>
+      <li><a href="#e61">名前が似ている2つの関数で、片方はデータを壊す</a></li>
+      <li><a href="#e62">Firestore は「通信できない」を失敗と扱わない</a></li>
+      <li><a href="#e63">「含む」と「である」は別の判定</a></li>
+      <li><a href="#e64">早期リターンの条件は、進める条件の否定</a></li>
+      <li><a href="#e65">判定する人と、判定結果を使う人を分ける</a></li>
+      <li><a href="#e66">条件式そのものが、すでに答えである</a></li>
+      <li><a href="#e67">壊れた状況を作れないなら、壊れたふりをさせる</a></li>
     </ol>
   </nav>
 
@@ -4797,6 +4807,531 @@ setSubmitError("");</code></pre>
       </div>
     </article>
 
+    <!-- 58 -->
+    <article class="entry" id="e58">
+      <div class="entry-no">58</div>
+      <div class="entry-body">
+        <h2>括弧の種類で、フォルダの意味が変わる</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書き方</th><th scope="col">URL への現れ方</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>(protected)/</code></th><td><strong>URLに現れない</strong>（ルートグループ）</td></tr>
+              <tr><th scope="row"><code>[id]/</code></th><td><strong>URLの一部を変数として受け取る</strong>（動的セグメント）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>丸括弧と角括弧で、正反対のことをしている。</strong></p>
+
+        <h3>静的が優先される</h3>
+<pre><code>app/(protected)/companies/new/page.tsx    ← /companies/new
+app/(protected)/companies/[id]/page.tsx   ← /companies/それ以外</code></pre>
+        <p>
+          <code>/companies/new</code> は<strong>両方の形にマッチしうる</strong>（<code>id = "new"</code> と読める）。
+          Next.js は<strong>具体的な方を優先する</strong>ので、先に作った登録ページは壊れない。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">この規則が本当に効くのは、URLに人が決めた文字列を使うとき</div>
+          <p>
+            Firestore の自動 ID は<strong>20文字の英数字</strong>で、<code>"new"</code> になることはありえない。
+            だから「<code>id</code> が <code>new</code> の企業のページが開けない」という損失も<strong>起きない</strong>。
+          </p>
+          <p>
+            <code>/companies/yahoo</code> のような<strong>スラッグを許すと、<code>new</code> や <code>edit</code> を予約語として除外する</strong>必要が出る。
+            <strong>いまはIDの決め方によって、その問題を設計で回避できている。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 59 -->
+    <article class="entry" id="e59">
+      <div class="entry-no">59</div>
+      <div class="entry-body">
+        <h2>同じフックが、どのルートから呼ばれるか知らない</h2>
+
+        <p><code>useParams()</code> の型を <code>node_modules</code> で辿った。<strong>2つのファイルにまたがっていた。</strong></p>
+<pre><code>// next/dist/client/components/navigation.d.ts
+export declare function useParams&lt;T extends Params = Params&gt;(): T;
+
+// next/dist/server/request/params.d.ts
+export type ParamValue = string | Array&lt;string&gt; | undefined;
+export type Params = Record&lt;string, ParamValue&gt;;</code></pre>
+
+        <p><strong><code>params.id</code> の型は <code>string</code> ではなく、3つある。</strong></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">型</th><th scope="col">どんなとき</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>string</code></th><td><code>[id]</code> — いま作っているルート</td></tr>
+              <tr><th scope="row"><code>string[]</code></th><td><code>[...slug]</code> — 複数の区間をまとめて受け取る書き方</td></tr>
+              <tr><th scope="row"><code>undefined</code></th><td>そのキーが存在しないとき</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>同じ1つの関数が、<code>[id]</code> のページからも <code>[...slug]</code> のページからも呼ばれる。</strong>
+          <strong>だから「ありうる全部」を返り値の型にするしかない。</strong>
+          <code>Record&lt;string, ...&gt;</code> なので <code>params.hoge</code> と書いても型検査は通る——存在しないキーは <code>undefined</code>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">エディタに聞く方が、パスを辿るより速い</div>
+          <p>
+            <code>useParams</code> の上で <strong><code>Cmd + クリック</code>（定義へ移動）</strong>。
+            <strong>バージョンのずれもフォルダ構成の変更も関係なく、いま自分のマシンに入っているものへ飛ぶ。</strong>
+            エントリ14の「<code>node_modules</code> のソースが最終的な正」を、手を動かさずに実行する方法。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">それでも <code>as string</code> を選んだ</div>
+          <p>
+            <strong>根拠は「このファイルは <code>[id]/</code> の中にある」。</strong>実行時には必ず <code>string</code> になる。
+            <strong>ただしその根拠は、誰かがファイルを動かした瞬間に崩れる</strong>——型検査は何も言わない。
+            <strong>だからコメントに根拠を書いた。</strong>崩れたことに気づける唯一の手がかりになる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 60 -->
+    <article class="entry" id="e60">
+      <div class="entry-no">60</div>
+      <div class="entry-body">
+        <h2><code>=</code> と <code>===</code> は、型検査をすり抜ける</h2>
+
+<pre><code>if (company.jobUrl = "") {     // ❌ 代入
+if (company.jobUrl === "") {   // ✅ 比較</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">起きること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">意図</th><td>空欄かどうかを<strong>調べる</strong></td></tr>
+              <tr><th scope="row">実際</th><td>空欄に<strong>する</strong>。代入した値（<code>""</code>）が条件になるので<strong>常に偽</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <strong>型検査は通る。</strong><code>company.jobUrl = ""</code> は「文字列を代入する式」として正しく、
+          <code>if (string)</code> も正しい——TypeScript は真偽値以外も条件に書ける。
+          <strong>文法として完全に正しいコードなので、引っかかりようがない。</strong>
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">捕まえたのは ESLint。しかも別の理由で</div>
+<pre><code>error: This value cannot be modified
+Modifying a value returned from 'useState()' … Use the setter function</code></pre>
+          <p>
+            <strong>ESLint が怒ったのは「<code>useState</code> の値を直接書き換えている」点</strong>（エントリ46）。
+            <strong>「<code>=</code> を <code>===</code> にしろ」とは言っていない。</strong>
+            たまたま同じ1文字が原因で、React 固有のルールが反応した。
+          </p>
+          <p>
+            <strong>このルールが無かったら、両方の検査を素通りしていた。</strong>
+            <code>!loading &amp;&amp; !user === null</code>（エントリ26）、<code>url.protocol! == "http:"</code>（エントリ51）に続く3例目——
+            <strong><code>=</code> / <code>==</code> / <code>===</code> は1文字ずつ意味が違う。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 61 -->
+    <article class="entry" id="e61">
+      <div class="entry-no">61</div>
+      <div class="entry-body">
+        <h2>名前が似ている2つの関数で、片方はデータを壊す</h2>
+
+        <p>ステータスを更新する関数を書くとき、<code>updateDoc</code> と <code>setDoc</code> のどちらを使うか調べた。</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">指定しなかったフィールド</th><th scope="col">文書が存在しないとき</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>updateDoc</code></th><td><strong>残る</strong></td><td><strong>エラーになる</strong></td></tr>
+              <tr><th scope="row"><code>setDoc</code></th><td><strong>消える</strong>（文書ごと置き換え）</td><td>新しく作る</td></tr>
+              <tr><th scope="row"><code>setDoc</code>（<code>{ merge: true }</code>）</th><td>残る</td><td><strong>勝手に作ってしまう</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>間違えると、企業名も職種も応募日もメモも消える。</strong>型検査も ESLint も通る。
+          <strong>名前からは違いが分からない。</strong>
+        </p>
+
+        <p>
+          <code>updateDoc</code> を選んだ理由は2つ。<strong>触っていない項目を上書きしない</strong>ことと、
+          <strong>URL の ID を書き換えられても、存在しない企業を勝手に作らない</strong>こと。
+          <strong>「存在するものを変える」という意図が、関数の選択そのものに現れている。</strong>
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>CompanyInput</code> を丸ごと渡そうとした</div>
+          <dl class="wrong-right">
+            <dt><code>updateCompanyStatus(uid, id, data: CompanyInput)</code> — 6項目を受け取って一部を変える</dt>
+            <dd><code>status: CompanyStatus</code> <strong>だけ</strong>を受け取る。丸ごと渡すと <code>updateDoc</code> を選んだ意味が消える</dd>
+          </dl>
+          <p>
+            6項目渡せば6項目とも上書きされる。<strong>そして渡すのは「ページを開いた時点の手元のコピー」。</strong>
+          </p>
+<pre><code>詳細ページを開く
+  → 別のタブでメモを編集して保存
+  → 最初のページでステータスを変える
+  → メモが、ページを開いた時点の内容に巻き戻る</code></pre>
+          <p>
+            <strong>ステータスしか触っていないのに、触っていない項目が壊れる</strong>——<strong>lost update</strong> と呼ばれる典型的な事故。
+            <strong><code>status</code> だけ渡せば、他の5項目には触れようがない。</strong>
+          </p>
+          <p>
+            <strong>関数の形は、読む人への説明でもある。</strong>受け取れるのに使わない引数があると、
+            次に読む人が「他の項目も更新されるのでは」と疑う。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 62 -->
+    <article class="entry" id="e62">
+      <div class="entry-no">62</div>
+      <div class="entry-body">
+        <h2>Firestore は「通信できない」を失敗と扱わない</h2>
+
+        <p>
+          <code>submitError</code> が実際に出るか確かめようとして、DevTools の Network を Offline にした。
+          <strong>エラーは表示されなかった。</strong>答えは SDK のドキュメントコメントにあった。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">node_modules/@firebase/firestore/dist/index.d.ts:3150</div>
+          <p>
+            <em>the returned Promise does <strong>not</strong> resolve until the data is successfully written to the remote Firestore backend and, similarly, <strong>is not rejected</strong> until the remote Firestore backend reports an error. So if the client cannot reach the backend (for example, due to being offline) then the returned Promise <strong>will not resolve for a potentially-long time</strong>.</em>
+          </p>
+          <p>
+            <em>That being said, the given data <strong>will be immediately saved to the local cache</strong> … a feature of Firestore called <strong>"latency compensation"</strong>.</em>
+          </p>
+        </div>
+
+<pre><code>オフラインで updateDoc
+  → ローカルキャッシュには即座に保存される
+  → Promise は解決も拒否もしない（保留のまま）
+  → catch に入らない。finally も走らない</code></pre>
+
+        <p>
+          <strong>エラーが出なかったのではなく、出るような状況ではなかった。</strong>
+          Firestore は「通信できない＝エラー」ではなく<strong>「まだ送れていないだけ」</strong>と考える。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">そこから、自分のコードの問題が見つかった</div>
+<pre><code>await updateCompanyStatus(...);   // ← オフラインだと、ここで止まったまま
+} finally {
+  setSubmitting(false);           // ← 到達しない</code></pre>
+          <p>
+            <strong><code>&lt;select&gt;</code> が <code>disabled</code> のまま、オンラインに復帰するまで戻らない。</strong>
+          </p>
+          <p>
+            <strong>SDK 自身がこう書いている</strong>——<em>it is usually <strong>undesirable to await</strong> the Promise returned from this function</em>。
+            <strong>Firestore は「先に画面、あとで同期」を前提に設計されている。</strong>
+            採用した「先に保存、成功したら画面」は、<strong>このモデルとは噛み合わない部分がある。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">判断そのものは間違っていなかった</div>
+          <p>
+            「保存されていないのに画面に映る」を避ける、という理由は正しい。
+            <strong>抜けていたのは「<code>await</code> が返らない＝失敗ではない」という前提。</strong>
+            <strong>設計の判断と、その判断が立っている前提は別に検証する必要がある。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 63 -->
+    <article class="entry" id="e63">
+      <div class="entry-no">63</div>
+      <div class="entry-body">
+        <h2>「含む」と「である」は別の判定</h2>
+
+<pre><code>new URL("javascript:http://evil.com").protocol   // "javascript:"</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">問い</th><th scope="col">答え</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>http:</code> を<strong>含む</strong>か</th><td><strong>はい</strong></td></tr>
+              <tr><th scope="row"><code>protocol</code> が <code>http:</code> <strong>である</strong>か</th><td><strong>いいえ</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <strong>「含む」で判定していたら、この文字列は通ってしまう。</strong>
+          <code>protocol</code> は <code>new URL()</code> が分解した部品のうち先頭の部分で、
+          判定は <code>=== "http:"</code> の<strong>完全一致</strong>。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">この取り違えは、まずコメントとエラーメッセージに出た</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書いたもの</th><th scope="col">問題</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">「<code>http:/https:</code> を含まないか」</th><td><strong>含んでいても弾かれる。</strong>そしてスラッシュが1本足りない——<strong>この表記を真似ると、また弾かれる</strong></td></tr>
+                <tr><th scope="row">「<code>http://</code> で始まる URL を入力してください」</th><td><code>https://</code> <strong>も通るのに、通らないと読める</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>コードは正しいのに、説明が正しくない。</strong>
+            <strong>ユーザーはコードを読めないので、説明が唯一の情報源になる。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 64 -->
+    <article class="entry" id="e64">
+      <div class="entry-no">64</div>
+      <div class="entry-body">
+        <h2>早期リターンの条件は、進める条件の否定</h2>
+
+<pre><code>if (!user &amp;&amp; !company) return;   // ❌
+if (!user || !company) return;   // ✅</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"><code>user</code></th><th scope="col"><code>company</code></th><th scope="col"><code>&amp;&amp;</code> だと</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">null</th><td>null</td><td>return ✅</td></tr>
+              <tr><th scope="row"><strong>null</strong></th><td><strong>あり</strong></td><td><strong>素通り</strong> → <code>user.uid</code> で落ちる</td></tr>
+              <tr><th scope="row"><strong>あり</strong></th><td><strong>null</strong></td><td><strong>素通り</strong> → <code>{...company}</code> が壊れる</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>組み立て方</h3>
+<pre><code>進めるのは：user があり、かつ company がある   →  user &amp;&amp; company
+その否定は：                                   →  !user || !company</code></pre>
+        <p><strong>「かつ」を否定すると「または」になる</strong>（ド・モルガンの法則）。</p>
+
+        <div class="note check">
+          <div class="note-label">型検査が、論理の誤りを見つけた</div>
+          <p>
+            出たエラーは <code>'user' is possibly 'null'</code> と <code>Type 'string' is not assignable…</code> の<strong>2件</strong>。
+            <strong>どちらも結果で、原因は1行上にあった。</strong>
+          </p>
+          <p>
+            エントリ14の「エラーは『何が』より先に『どこに』」の応用で、
+            <strong>今回は「どこに」の一段上を探す必要があった。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 65 -->
+    <article class="entry" id="e65">
+      <div class="entry-no">65</div>
+      <div class="entry-body">
+        <h2>判定する人と、判定結果を使う人を分ける</h2>
+
+        <p>
+          <strong>同じ知識が2箇所に必要になった。</strong>
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">場所</th><th scope="col">何をする</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>validateCompanyInput</code></th><td><code>http:</code>/<code>https:</code> 以外なら<strong>エラーメッセージを返す</strong></td></tr>
+              <tr><th scope="row">詳細ページ</th><td><code>http:</code>/<code>https:</code> 以外なら<strong>リンクにしない</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>共通なのは「安全な http/https の URL か」という判定だけ。</strong>返すものは違う——
+          片方はメッセージ、もう片方は真偽値。
+          <strong>だから判定だけを <code>lib/validation.ts</code> の <code>isHttpUrl</code> に切り出した。</strong>
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：置き場所を <code>lib/firestore.ts</code> にしようとした</div>
+          <dl class="wrong-right">
+            <dt>「登録するデータの検証だから、登録する場所に関係している」</dt>
+            <dd><strong>それは連想であって、責務ではない。</strong><code>lib/firestore.ts</code> の4つの関数はすべて <code>db</code> を使い、通信する。<strong>URL の protocol 判定は Firestore が存在しなくても動く</strong></dd>
+          </dl>
+          <p>
+            <strong>同じ論法を伸ばすと、<code>validateCompanyInput</code> も <code>todayString</code> も入ってしまう。</strong>
+            そして「Firestore の処理を書く場所」という約束が消える——
+            <strong>ファイル自身の1行目に書いてある約束を、自分で破ることになる</strong>（エントリ18）。
+          </p>
+          <p>
+            <strong>ファイル名を決める基準は「そこに他に何が入るか」。</strong>
+            <code>lib/validation.ts</code> を選んだのは、<strong>検証は今後も増える</strong>から。
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">切り出した結果、呼ぶ側から <code>try/catch</code> が消えた</div>
+          <p>
+            <strong>例外を投げうる処理（<code>new URL</code>）が <code>isHttpUrl</code> の中に移った</strong>ので、
+            <code>validateCompanyInput</code> に <code>try</code> を書く理由が無くなった。
+            <strong><code>try</code> の範囲は例外を投げる処理ぴったりに絞る</strong>（エントリ51）——<strong>切り出しで自動的にそうなった。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">エラーメッセージを1つに統合した</div>
+          <p>
+            「形式が壊れている」と「プロトコルが違う」は<strong>別の失敗</strong>だが、
+            <strong>ユーザーが取る行動は同じ</strong>——どちらも「正しい URL を入れ直す」。
+          </p>
+          <p>
+            <strong>同じ基準を当てると、逆の結論になる場面もある。</strong>
+            <code>permission-denied</code>（アプリのバグ。何度押しても直らない）と
+            <code>unavailable</code>（通信断。もう一度押せば直る）は<strong>行動が正反対</strong>なので、分ける価値がある（エントリ47）。
+          </p>
+          <p>
+            <strong>「原因が違うから分ける」でも「似ているからまとめる」でもない。分かれ目は、ユーザーが次に何をするかだけ。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 66 -->
+    <article class="entry" id="e66">
+      <div class="entry-no">66</div>
+      <div class="entry-body">
+        <h2>条件式そのものが、すでに答えである</h2>
+
+<pre><code>// 前
+if (urlObject.protocol === "http:" || urlObject.protocol === "https:") {
+  return true;
+}
+return false;
+
+// 後
+return urlObject.protocol === "http:" || urlObject.protocol === "https:";</code></pre>
+
+        <p>
+          <strong><code>===</code> の結果は、もともと <code>true</code> か <code>false</code>。</strong>
+          それを <code>if</code> で受け取って、<strong>同じ値を書き直していた。</strong>
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">短くなったのは結果。本質は「穴が空く場所が消えた」</div>
+          <p>実際、書いている途中で穴が空いた。<strong>3本目の道に答えが無かった。</strong></p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">入力</th><th scope="col">解析</th><th scope="col">返り値</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>https://example.com</code></th><td>成功</td><td><code>true</code></td></tr>
+                <tr><th scope="row"><code>あああ</code></th><td><strong>失敗（例外）</strong></td><td><code>false</code>（<code>catch</code>）</td></tr>
+                <tr><th scope="row"><code>javascript:alert(1)</code></th><td><strong>成功</strong></td><td><strong>何も返していなかった</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong><code>catch</code> が受け止めるのは「解析に失敗した」場合だけ。</strong>
+            <code>javascript:</code> は<strong>正しい形式の URL なので解析に成功してしまう</strong>（エントリ51）。
+          </p>
+          <p>
+            <code>return X;</code> の形にすると<strong>通り過ぎる道が無くなる</strong>ので、
+            <strong>この書き間違いが構造的にできなくなる。</strong>
+            <strong>「気をつけて書く」ではなく「間違えようがない形にする」</strong>——ガードや型で守るのと同じ考え方。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>&lt;boolean&gt;</code> と書いた</div>
+          <dl class="wrong-right">
+            <dt><code>function isHttpUrl(url: string): &lt;boolean&gt; {</code></dt>
+            <dd><code>: boolean</code>。<strong>山括弧は「型に、別の型を渡す」記法</strong>（<code>Promise&lt;Company[]&gt;</code>）。<code>boolean</code> は中身を取らないので付かない</dd>
+          </dl>
+          <p>
+            <strong>これを直した瞬間、型検査が穴を指摘した</strong>——
+            <code>Function lacks ending return statement and return type does not include 'undefined'</code>。
+            <strong>戻り値の型を書く目的がこれだった</strong>（エントリ33）。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">JSX を変数に入れるときは <code>let</code></div>
+          <p>
+            詳細ページで <code>jobUrl</code> の表示を3分岐にしたとき、<code>return</code> の前で組み立てた。
+            <strong><code>const</code> は宣言と同時に値を入れる必要がある</strong>ので、条件を見てから代入する形には使えない。
+          </p>
+          <p>
+            <strong>「変わる値だから <code>let</code>」ではない</strong>——<code>const</code> も変数で、この <code>jobUrlContent</code> も一度代入したら変わらない。
+            <strong>分かれ目は「宣言時に決まるかどうか」。</strong>
+          </p>
+          <p>
+            <code>return</code> の前は普通の JavaScript なので <code>if</code> が書ける。
+            <strong>JSX は値なので変数に入る</strong>——エントリ31の「JSX の中には式しか書けない」の裏返し。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 67 -->
+    <article class="entry" id="e67">
+      <div class="entry-no">67</div>
+      <div class="entry-body">
+        <h2>壊れた状況を作れないなら、壊れたふりをさせる</h2>
+
+        <p>
+          オフラインでは Firestore が失敗しない（エントリ62）と分かったので、
+          <strong><code>catch</code> が動くかを別の方法で確かめた。</strong>
+        </p>
+<pre><code>// updateCompanyStatus の中に一時的に1行
+throw new Error("テスト");</code></pre>
+        <p><strong>確実に <code>catch</code> に入る。</strong>確認したら消す。</p>
+
+        <div class="note warn">
+          <div class="note-label">何を確かめて、何を確かめていないか</div>
+<pre><code>本物の失敗：  通信する → 失敗する → 例外が投げられる → catch
+テスト：                          例外を投げる     → catch
+                                  ^^^^^^^^^^^^^^ ここだけ再現した</code></pre>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">確かめられたこと</th><th scope="col">確かめていないこと</th></tr></thead>
+              <tbody>
+                <tr><td><code>catch</code> に入る／<code>submitError</code> が表示される／<code>finally</code> で <code>submitting</code> が戻る</td><td><strong>Firestore が本当にその形で失敗するか</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>この1行はネットワークに一切触れていない。</strong>
+            <strong>扱う側の処理は確認できても、本物がその形で失敗するかは別問題。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">確かめる手段を、いくつ持っているか</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">確かめたいこと</th><th scope="col">手段</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">何が何回走ったか</th><td><code>console.log</code>（エントリ57）</td></tr>
+                <tr><th scope="row">描画に何ミリ秒かかったか</th><td>React DevTools の Profiler</td></tr>
+                <tr><th scope="row">ライブラリの本当の挙動</th><td><code>node_modules</code> のソースとドキュメントコメント（エントリ14・62）</td></tr>
+                <tr><th scope="row">エラー処理が動くか</th><td><strong>意図的に例外を投げる</strong></td></tr>
+                <tr><th scope="row">入口を通っていない値の扱い</th><td><strong>Firestore のコンソールから直接書き込む</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            最後の1つで、<strong><code>jobUrl</code> に <code>javascript:alert(1)</code> を手で入れて</strong>
+            「不正なURLです」と表示されること、<strong>アラートが出ないこと</strong>を確認した。
+            <strong>入口の検証を通っていない値を、表示側で弾けているか</strong>——これが確認できて初めて、この設計に意味があったと言える。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -4814,11 +5349,18 @@ setSubmitError("");</code></pre>
         <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
       </li>
       <li>
-        <strong>詳細ページで <code>jobUrl</code> を <code>&lt;a href&gt;</code> に渡すとき、保存済みの値をもう一度検証するか</strong>（エントリ51）。
-        入力時に <code>javascript:</code> を弾いても、<strong>Firestore のコンソールから手で書き込まれた値は素通りする</strong>——
-        エントリ47の「外から来る値は、型を名乗っているだけ」がそのまま当てはまる。
-        表示側でも <code>protocol</code> を確認するか、それとも入口の検証だけで足りるとみなすか。
-        <strong>あわせて <code>target="_blank"</code> と <code>rel="noopener noreferrer"</code> の要否も決める。</strong>
+        <strong>登録フォームと編集フォームを、どこまで共通化するか。</strong>
+        仕様書3-2 は「新規登録とほぼ同じフォームになるため、コンポーネント共通化の練習になる」と書いている。
+        ただし<strong>「ほぼ同じ」の差分がどこかは、編集ページを書いてみるまで分からない</strong>——
+        初期値の出どころ（空 / 既存データ）、送信先の関数、遷移先。
+        <strong>先回りせず、2つ目を書いてから共通部分を決める</strong>（エントリ28）。
+        <code>validateCompanyInput</code> と <code>normalizeCompanyInput</code> の置き場所も、そのときに判断する。
+      </li>
+      <li>
+        <strong>ステータスを変えたとき、一覧ページの表示はどうなるか。</strong>
+        詳細ページで更新しても、<strong>一覧は <code>useEffect</code> で取得済みのデータを持ったまま</strong>。
+        戻ったときに古い値が見えないか——<code>Link</code> での遷移でコンポーネントが再マウントされるかどうかに依存する。
+        <strong>実際に確かめて、必要なら対策を決める。</strong>
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
@@ -5397,6 +5939,182 @@ setSubmitError("");</code></pre>
         <dd>
           <strong>「なぜ検証しないか」をコメントで残した。</strong>
           「書き忘れ」と「意図的に書かなかった」は、後から見分けがつかない。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>選考ステータスだけは、詳細ページでその場で更新する</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          <strong>仕様書3-2 が自分自身と矛盾している。</strong>同じ節の中で、詳細ページの機能として「<strong>選考ステータスの更新</strong>」を挙げながら、
+          編集については「<strong>インライン編集ではなく、専用ページへ遷移する方式を採用する</strong>」と書いている。
+          <strong>ステータスの更新は編集であり、詳細ページで行えばインライン編集そのもの。</strong>
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>専用ページに統一する。ステータスを変えるときも <code>/companies/[id]/edit</code> を開く</dd>
+        <dt>捨てた案の長所</dt>
+        <dd><strong>一貫性。</strong>「なぜこれだけ違うのか」を後から読む人に考えさせない</dd>
+        <dt>基準</dt>
+        <dd>
+          3-2 が専用ページを選んだ理由は「<strong>編集中の状態が state にしか存在せず、リロードで失われる</strong>」だった。
+          <strong>では <code>&lt;select&gt;</code> を1回変えて即保存する操作に、「編集中の状態」は存在するか。</strong>——しない。
+          <strong>自由入力がないので、途中の状態が生まれる余地がない。</strong>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">対象</th><th scope="col">確定前の中間状態</th><th scope="col">方式</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">6項目のフォーム</th><td><strong>ある</strong>（打って、迷って、保存する）</td><td>専用ページ</td></tr>
+                <tr><th scope="row">ステータスの <code>&lt;select&gt;</code></th><td><strong>ない</strong>（選んだら確定）</td><td><strong>その場で更新</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <strong>これは例外ではなく、基準を適用した結果。</strong>「頻度が高いから」だけだと「メモも頻度が高い」に答えられない——
+          <strong>メモは自由入力なので中間状態があり、基準で切れる。基準は、次の判断にも使えて初めて基準。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>存在しない ID は <code>null</code> を返し、「見つかりません」を表示する</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><code>getCompany</code> が例外を投げ、<code>error.tsx</code> やページの <code>error</code> state が受け止める</dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>「見つからない」はエラーではない。</strong>URL を手で書き換えれば誰でも起こせる<strong>想定内のこと</strong>で、
+          通信失敗やルール違反とは種類が違う。<strong>ユーザーに伝えるべき内容も違う</strong>——
+          「もう一度お試しください」ではなく「この企業は存在しません」。
+          <strong>キャンセルをエラー扱いした件</strong>（エントリ34）と同じ形の問い。
+        </dd>
+        <dt>表示を分けない</dt>
+        <dd>
+          「存在しない ID」と「他人の企業の ID」で表示を変えると、
+          <strong>その ID が実在するかどうかを総当たりで確かめられる。</strong>
+        </dd>
+        <dt>そもそも区別が生まれない</dt>
+        <dd>
+          <strong>階層型を選んだ結果、「他人のID」という状態が発生しない。</strong>
+          <code>getCompany(uid, id)</code> の <code>uid</code> は <code>useAuth()</code>（本人）、<code>id</code> は URL——
+          組み立てられるパスは常に <code>users/自分のuid/companies/URLのid</code> で、<strong>他人のパスを作る方法がない。</strong>
+          <code>permission-denied</code> は起きず、<strong>「存在しない ID」とまったく同じ経路を通る。</strong>
+        </dd>
+        <dt>フラット型だったら</dt>
+        <dd>
+          他人の文書を直接指すパスが作れてしまい <code>permission-denied</code> が返る。
+          <strong>そこで初めて「拒否されたことを隠して『見つかりません』と表示する」工夫が必要になり、書き忘れれば存在確認の穴になる。</strong>
+          <strong>設計で消せる仕事は、設計で消す</strong>（エントリ42）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>URL の protocol 判定を <code>lib/validation.ts</code> に切り出す</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          同じ判定が2箇所で必要になった——<strong>登録フォームの検証</strong>（エラーメッセージを返す）と、
+          <strong>詳細ページの表示</strong>（リンクにするかどうか）。<strong>2つ目の使用例が出た</strong>（エントリ28）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 詳細ページに独自に書く（登録フォームには触らない）
+          <b>(b)</b> <code>lib/firestore.ts</code> に置く
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は「許可するプロトコル」が2箇所になり、<strong>将来変えるとき片方を忘れる。</strong>
+          (b) は<strong>責務が違う</strong>——<code>lib/firestore.ts</code> の関数はすべて <code>db</code> を使い通信するが、
+          <strong>protocol 判定は Firestore が存在しなくても動く。</strong>
+          「登録するデータの検証だから関係している」は<strong>連想であって責務ではない</strong>——
+          その論法だと <code>validateCompanyInput</code> も <code>todayString</code> も入ってしまう。
+        </dd>
+        <dt>ファイル名の基準</dt>
+        <dd>
+          <strong>「そこに他に何が入るか」。</strong><code>lib/url.ts</code> より <code>lib/validation.ts</code> の方が、
+          <strong>今後入るものが具体的に想像できる</strong>（<code>validateCompanyInput</code> も、編集ページを作るときに移す候補）。
+        </dd>
+        <dt>関数名</dt>
+        <dd>
+          <code>isSafeUrl</code> ではなく <strong><code>isHttpUrl</code></strong>。
+          <strong>「safe」は結論であって判定内容ではない</strong>——何に対して安全かは中を読まないと分からない。
+          <strong>そして「安全」の基準は使う場面で変わる</strong>（<code>&lt;a href&gt;</code> なら <code>http:</code> で十分だが、通信用途なら不十分）。
+          <strong>判定内容で名付けると、使う側が自分の用途に合うか判断できる</strong>——
+          <code>getAuthErrorMessage</code> を Firestore に流用できなかったのと同じ形（エントリ47）。
+        </dd>
+        <dt>副次的な効果</dt>
+        <dd>
+          <code>validateCompanyInput</code> から <code>try/catch</code> が消えた。
+          <strong>例外を投げうる処理が <code>isHttpUrl</code> の中に移った</strong>ため（エントリ51）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>保存済みの <code>jobUrl</code> を、表示側でも検証する</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          <strong>前回の未解決の問い。</strong>入力時に <code>javascript:</code> を弾いても、
+          <strong>Firebase コンソールから手で書き込まれた値はその検証を通っていない</strong>（エントリ47）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>入口の検証だけで足りるとみなす。書き込む口は自分のアプリとコンソールの2つだけで、被害も自分だけ</dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>「発生確率が低い」ではなく「コストの非対称性」で判断する</strong>と決めてある（エントリ21）。
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">払うコスト</th><th scope="col">防ぐもの</th></tr></thead>
+              <tbody>
+                <tr><td><code>href</code> に渡す前に <code>isHttpUrl</code> を呼ぶ。<strong>数行</strong></td><td>自分の画面で<strong>任意のスクリプトが動く</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <strong>切り出した関数がすでにあるので、コストはさらに下がっていた。</strong>
+        </dd>
+        <dt>他の項目を検証しない理由</dt>
+        <dd>
+          <strong>実害の大きさが桁違い。</strong>他の項目に不正な値が入っても表示が崩れるだけだが、
+          <code>jobUrl</code> は <code>&lt;a href&gt;</code> に渡るため<strong>任意コード実行につながる。</strong>
+          <strong>同じ「コンソールから入れられる」でも、防ぐ価値が違う。</strong>
+        </dd>
+        <dt>表示の設計</dt>
+        <dd>
+          3状態に分けた。<b>空欄</b>→「URLが登録されていません」（<code>href=""</code> は<strong>現在のページを指す</strong>ので出さない）、
+          <b>不正</b>→「不正なURLです。編集ページでURLを入れ直してください」、<b>正常</b>→
+          <code>&lt;a target="_blank" rel="noopener noreferrer"&gt;</code>。
+          <strong><code>noreferrer</code> は <code>noopener</code> の効果（元ページを操作させない）に加え、参照元URLを送らない。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>Firestore のオフライン時の挙動を、いまは受け入れる</h3>
+      <dl>
+        <dt>問題</dt>
+        <dd>
+          オフラインでは <code>updateDoc</code> の Promise が<strong>解決も拒否もしない</strong>ため、
+          <code>await</code> の先にある <code>finally</code> に到達せず、
+          <strong><code>&lt;select&gt;</code> が <code>disabled</code> のままオンライン復帰まで戻らない</strong>（エントリ62）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>navigator.onLine</code> で送信前に弾く
+          <b>(b)</b> タイムアウトを設けて一定時間で <code>catch</code> に落とす
+          <b>(c)</b> <code>await</code> をやめる（SDK が推奨する形）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (c) は<strong>成功・失敗が分からなくなる</strong>ので、「保存されていないのに画面に映る」を避けるという判断と衝突する。
+          (a)(b) は実装できるが、<strong>就活中にステータスを変える場面は、ネットワークが安定した環境であることがほとんど</strong>。
+          <strong>知った上で、いまは払わないと決めた。</strong>
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>
+          <strong>「<code>&lt;select&gt;</code> が <code>disabled</code> のまま戻らない」状況に実際に遭遇したら。</strong>
+          曖昧な「問題が起きたら」ではなく<strong>症状で書いておく</strong>——後から判断できるように。
         </dd>
       </dl>
     </div>
