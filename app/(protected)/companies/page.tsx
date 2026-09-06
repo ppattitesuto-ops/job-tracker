@@ -16,7 +16,7 @@ export default function CompaniesPage() {
   // 認証状態のloadingは使わないからuserだけ分割代入
   const { user } = useAuth();
 
-  // リアクトのルール：useEffectに渡した関数の返り値が関数なら、後始末関数として保存する→今回はでーたをFirebaseからとってくるためasyncを書く必要があるが、asyncのついた関数の返り値は必ずPromiseになる。つまり、useEffectに渡す関数にasyncは書けない。だから、中で別の非同期関数を定義して呼ぶ形になる(下にあるloadのこと)
+  // リアクトのルール：useEffectに渡した関数の返り値が関数なら、後始末関数として保存する→今回はデータをFirebaseからとってくるためasyncを書く必要があるが、asyncのついた関数の返り値は必ずPromiseになる。つまり、useEffectに渡す関数にasyncは書けない。だから、中で別の非同期関数を定義して呼ぶ形になる(下にあるloadのこと)
   useEffect(() => {
     // userがnullの場合を初めから早期リターンで消しておくことで中身をUserに絞っている、これがなくても動くけどコンパイル時に弾かれる
     if (!user) return;
@@ -26,7 +26,7 @@ export default function CompaniesPage() {
       try {
         setCompanies(await getCompanies(user.uid));
       } catch {
-        setError("企業一覧の取得に失敗しました")
+        setError("企業一覧の取得に失敗しました");
         //finally:tryとcatchのどちらの場合でも必ずやるべきこと
       } finally {
         // ここでローディングをfalseにしないと読み込み中の表示が残り続ける

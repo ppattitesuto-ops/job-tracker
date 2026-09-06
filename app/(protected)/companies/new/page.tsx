@@ -1,6 +1,8 @@
 "use client";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { addCompany } from "@/lib/firestore";
+import { isHttpUrl } from "@/lib/validation";
 import type { CompanyInput, CompanyStatus } from "@/types/company";
 import { COMPANY_STATUSES } from "@/types/company";
 import { useRouter } from "next/navigation";
@@ -43,18 +45,10 @@ function validateCompanyInput(data: CompanyInput): CompanyInputErrors {
     errors.appliedAt = "応募日が入力されていません";
   }
   // !==(厳密不等価):型も値も同じでなければtrue。
-  // 求人票のURLが手元にないまま企業を登録する場面はあるため、空文字にはエラーメッセージを出さない。→このif文がもしなかったら、本来検査の対象じゃない空文字で入力された場合にcatchに落ちて形式が壊れていますと、意図してないエラーメッセージが表示される。
-  if (data.jobUrl.trim() !== "") {
-    try {
-      // new URLによって受け取った文字列(data.jobUrl)を解析して部品に分解したオブジェクトを作る。
-      // ①形式の検査:解析できなければ例外を投げる→catchに落ちる②内容の検査:解析できればprotocolを取り出してifで判定できる
-      const url = new URL(data.jobUrl);
-      if (url.protocol !== "http:" && url.protocol !== "https:") {
-        errors.jobUrl = "http/httpsではありません";
-      }
-    } catch {
-      errors.jobUrl = "形式が壊れています。もう一度入力してください。";
-    }
+  // 求人票のURLが手元にないまま企業を登録する場面はあるため、空文字にはエラーメッセージを出さない。→このif文がもしなかったら、本来検査の対象じゃない空文字で入力された場合に意図してないエラーメッセージが表示される。
+  if (data.jobUrl.trim() !== "" && !isHttpUrl(data.jobUrl)) {
+    // 本来は解析が成功したとしてもprotocolがhttp:かhttps:でなかった場合は「http/httpsではありません」とエラーを出し、解析が失敗した場合は「形式が壊れています」とエラーを出す形だったが、結局ユーザーが取るアクションとしてはもう一度URLを入力することなので二つに分けずにエラーメッセージを一つに統一した。
+    errors.jobUrl = "'http://'か'https://' で始まる URL を入力してください";
   }
   return errors;
 }
@@ -120,8 +114,8 @@ export default function NewCompanyPage() {
   };
 
   return (
-    // formで囲う理由には①Enterキーで送信できる点②type="url"の形式検証はフォームの送信時に働くから。→今回はエラー表示を画面内に統一するためブラウザの標準機能は動かない。
-    // エラー表示を画面内に統一するために送信する際のブラウザの標準検証は切った。なぜなら、見た目を制御できず１件しか出せないため、表示が混在するからだ
+    // formで囲う理由には①Enterキーで送信できる点②type="url"の形式検証はフォームの送信時に働くから。→②：今回はエラー表示を画面内に統一するためブラウザの標準機能は動かない。
+    // 本来の仕様書ではブラウザの形式検証を使うと明示的に書いてあったが、今回は使わずに別の方法で目的を実現した。→目的：スキーマ欠落したURLが保存されるのを防ぐ。→別の方法：validateCompanyInput関数ではlib/validation.tsからisHttpUrl関数を呼んでそのURLのprotocolがhttp:かhttps:かを判定することでスキーマ欠落したURLがデータとして保存されるようならエラーを出すようにした。
     <form noValidate onSubmit={handleSubmit}>
       <h1>登録フォーム</h1>
       <div>
