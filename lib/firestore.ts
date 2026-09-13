@@ -52,10 +52,17 @@ export async function getCompany(uid: string, id: string): Promise<Company | nul
   };
 }
 
+// 詳細ページで選考ステータスを更新する関数
 export async function updateCompanyStatus(uid: string, id: string, status: CompanyStatus): Promise<void> {
   const companyRef = doc(db, "users", uid, "companies", id);
   // 更新関数は一部だけのデータを差し替えるupdateDocにする。setDcだと丸ごとデータを差し替えてしまう可能性があるし、setDoc(merge付き)は、文書が存在しないときに文書を勝手に作ってしまう。updateDocは文書がない場合にはエラーを出す。→この二つの関数からupdateDocを選んだことで「存在するものを作り変える」という意図が関数の選択に表れてる。
   // updateDocでは第二引数にどのフィールドのどの値を更新するかの指定が必要
   // {status}は省略記法でキー名と変数名が同じ場合は1回で済む。(本来なら{status: status})
   await updateDoc(companyRef, { status });
+}
+
+// 編集ページで企業データを更新する関数
+export async function updateCompany(uid: string, id: string, data: CompanyInput): Promise<void> {
+  const companyRef = doc(db, "users", uid, "companies", id);
+  await updateDoc(companyRef, data);
 }

@@ -85,6 +85,11 @@ export default function CompanyPage() {
   return (
     <div>
       <h1>企業情報の詳細</h1>
+      <div>
+        {/* JSXの属性に書けるのは「href="..."：文字列そのもの」と「href={...}:
+        JavaScriptの式(ここからJSという宣言)」の２種類のみ。「"..."」の代わりにテンプレートリテラルでバッククウォートを使おうとしたが、その場合は「{}」が必要になる*/}
+        <Link href={`/companies/${paramsId}/edit`}>編集ページへ移動</Link>
+      </div>
       {/* 詳細ページなので各項目を説明リスト（項目名とその説明）で表す */}
       <dl>
         <dt>企業名</dt>
