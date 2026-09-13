@@ -11,6 +11,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const router = useRouter();
 
+  // ユーザー情報がない場合に自動でログインページに飛ぶように設計してあるため、ページではuserはnullになりえない。しかし、userは型として「user: User | null;」とFirebaseが定義している。→ここでページでuserがnullになることは設計上ないが定義された型はそのことを知らないため、ページでuseAuth()を使う際はnullの場合は早期リターンなどで弾く必要がある。
   // ローディングがfalse、ユーザー情報がない場合にloginページに遷移する処理
   useEffect(() => {
     if (!loading && user === null) {

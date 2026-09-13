@@ -36,6 +36,7 @@ export default function CompanyPage() {
       }
     }
     load();
+    // 企業データの取得はuser,paramsIdの両方に依存している。結果として、同じルート内の遷移でもuseEffectが発火するようになった。
   }, [user, paramsId]);
 
   // eはイベントオブジェクトを表す。handleSelectが置かれたイベントを受け取る。→e.target.valueでe(イベント全体)target(イベントが起きた要素、今回は<select>)value(その要素の現在の値、optionで選ばれた値)
