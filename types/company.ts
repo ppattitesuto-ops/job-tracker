@@ -27,3 +27,8 @@ export type Company = {
   jobUrl: string;
   memo: string;
 };
+
+// keyof CompanyInput:CompanyInputからキーだけを取り出すためのもの
+// Record：キーの集合と値の型からオブジェクト型を組み立てる。→Record<keyof CompanyInput, string>でCompanyInputのキーを取り出し、値をstringにしてオブジェクトを作る。→statusも値がstringになったことでエラーメッセージが入れられるようになった。
+// Partial<T>:すべてのプロパティを省略可能にする(これがないと6項目全てに文字列を入れないと型が通らない)→Partialで{}から始められるようにしてあとからエラーメッセージがあるものを項目として生やしていく設計になっている。
+export type CompanyInputErrors = Partial<Record<keyof CompanyInput, string>>;
