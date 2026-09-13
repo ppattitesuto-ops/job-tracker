@@ -251,6 +251,16 @@
     color: var(--ink-2);
   }
 
+  .entry blockquote {
+    margin: 0;
+    padding-inline-start: 1rem;
+    border-inline-start: 2px solid var(--rule-strong);
+    color: var(--muted);
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+
   .entry ul,
   .entry ol {
     margin: 0;
@@ -534,10 +544,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-09-05</b></span>
-      <span>エントリ <b>67</b></span>
-      <span>決定記録 <b>26</b></span>
-      <span>進捗 <b>企業詳細 完了 → 編集・削除へ</b></span>
+      <span>最終更新 <b>2026-09-13</b></span>
+      <span>エントリ <b>80</b></span>
+      <span>決定記録 <b>31</b></span>
+      <span>進捗 <b>企業編集・フォーム共通化 完了 → 削除へ</b></span>
     </div>
   </header>
 
@@ -611,6 +621,19 @@
       <li><a href="#e65">判定する人と、判定結果を使う人を分ける</a></li>
       <li><a href="#e66">条件式そのものが、すでに答えである</a></li>
       <li><a href="#e67">壊れた状況を作れないなら、壊れたふりをさせる</a></li>
+      <li><a href="#e68">設定は、後に書いたものが勝つ</a></li>
+      <li><a href="#e69"><code>app/</code> の中に置いても、URL にはならない</a></li>
+      <li><a href="#e70">「ほぼ同じ」は、差分を並べてから境界を引く</a></li>
+      <li><a href="#e71">"use client" の線は import をたどって伝わり、なるべく下に引く</a></li>
+      <li><a href="#e72">クライアントでもデータは取れる。違うのは「どこで・いつ」</a></li>
+      <li><a href="#e73">型は宣言から推論され、渡すときに検査される</a></li>
+      <li><a href="#e74">同じ型の値を取り違えても、型は教えてくれない</a></li>
+      <li><a href="#e75">async 関数の終わり方は、2つしかない</a></li>
+      <li><a href="#e76">型エラーを消す書き方を選ぶとき、実行時の振る舞いも選んでいる</a></li>
+      <li><a href="#e77">部品が外から受け取るものは、props だけにする</a></li>
+      <li><a href="#e78">画面から消えたものを、検出する道具は無い</a></li>
+      <li><a href="#e79">コメントと名前は、コードの役割を追いかける</a></li>
+      <li><a href="#e80">コミットは、作業しながら分けて積む</a></li>
     </ol>
   </nav>
 
@@ -5332,6 +5355,756 @@ throw new Error("テスト");</code></pre>
       </div>
     </article>
 
+    <!-- 68 -->
+    <article class="entry" id="e68">
+      <div class="entry-no">68</div>
+      <div class="entry-body">
+        <h2>設定は、後に書いたものが勝つ</h2>
+
+        <p>編集ページで、取得したデータから <code>id</code> を除くためにこう書いた。</p>
+<pre><code>const { id, ...restCompanyInput } = companyData;
+// 'id' is assigned a value but never used</code></pre>
+        <p>
+          <strong><code>id</code> を使わないのは意図どおり。</strong>残り（<code>...rest</code>）を受け取るために名前を付けているだけ。
+          <strong><code>Omit&lt;Company, "id"&gt;</code> が型の世界でしていることを、値の世界でしている</strong>形（エントリ44）。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">severity：違反をどう扱うかの3段階</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">文字</th><th scope="col">数字</th><th scope="col">意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>"off"</code></th><td>0</td><td>検査しない</td></tr>
+                <tr><th scope="row"><code>"warn"</code></th><td>1</td><td>警告を出す。<strong>コマンドは成功する</strong></td></tr>
+                <tr><th scope="row"><code>"error"</code></th><td>2</td><td>エラーを出す。<strong>コマンドは失敗する</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            元の設定は <code>[1]</code>——<strong>severity だけで、オプションは1つも無かった。</strong>
+            だから上書きしても失うものが無い。上書き後も <code>"warn"</code> のまま保った。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">置く位置で、結果が変わる</div>
+<pre><code>...nextVitals,
+...nextTs,
+{
+  rules: {
+    "@typescript-eslint/no-unused-vars": ["warn", { ignoreRestSiblings: true }],
+  },
+},</code></pre>
+          <p>
+            <strong>flat config は配列で、後に書いた設定が前の設定を上書きする。</strong>
+            <code>nextTs</code> より前に置くと、自分の設定の方が消される。
+          </p>
+          <p>
+            <strong>効き目の確かめ方も先に決めた：</strong><code>npm run lint</code> で <code>'id' is assigned...</code> だけが消えること。
+            <strong>他の警告まで消えたら、緩めすぎ。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>_id</code> にすれば警告が消える</div>
+          <dl class="wrong-right">
+            <dt>変数名を <code>_</code> で始めれば、ESLint が「使わない変数」と見なしてくれる</dt>
+            <dd><strong>そう設定して初めて効く</strong>（<code>varsIgnorePattern: "^_"</code>）。設定が無ければ、名前の慣習は人間へのメッセージでしかない</dd>
+            <dt><code>const { _id, ...rest } = companyData;</code></dt>
+            <dd><strong>分割代入はプロパティ名で取り出す</strong>ので、存在しない <code>_id</code> を探しに行く。名前を変えるなら <code>{ id: _id, ...rest }</code>——<strong>左がプロパティ名、右が受け取る変数名</strong></dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 69 -->
+    <article class="entry" id="e69">
+      <div class="entry-no">69</div>
+      <div class="entry-body">
+        <h2><code>app/</code> の中に置いても、URL にはならない</h2>
+
+        <p>
+          共通フォームの置き場所を考えたとき、講師は「<code>app/</code> の中に置くとルーティングに巻き込まれる可能性がある」と説明した。
+          <strong>ドキュメントを読んで、講師側が訂正した。</strong>
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt><code>app/</code> の中にファイルを置くと、ルートとして公開されうる</dt>
+            <dd><strong><code>page.tsx</code> か <code>route.ts</code> が無い限り、ルートにはならない</strong>（<code>02-project-structure.md:225</code>）。部品を同じフォルダに置いても安全に同居できる（colocation）</dd>
+          </dl>
+          <p>
+            実際のリスクは、<strong>将来 Next.js が特別なファイル名を増やしたときに名前がぶつかる</strong>ことだけ。
+            避けたいなら <code>_components/</code> のように<strong>アンダースコアで始まるフォルダ</strong>（private folder）にすると、フォルダごとルーティングの対象外になる。
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">ドキュメントが挙げる3つの置き方</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">置き場所</th><th scope="col">考え方</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">プロジェクト直下（<code>components/</code>）</th><td><strong><code>app/</code> はルーティング専用</strong>にする</td></tr>
+                <tr><th scope="row"><code>app/</code> の直下のフォルダ</th><td>共通のものを <code>app/</code> の中の上位にまとめる</td></tr>
+                <tr><th scope="row">使う機能・ルートのそば</th><td>機能ごとに分けて、使う場所の近くに置く</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>1つ目を選んだ。</strong>すでに <code>lib/</code>・<code>types/</code>・<code>contexts/</code> がプロジェクト直下にあり、置き方が揃う（エントリ18「置き場所は設計の一部である」）。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">フォルダの図と、import の図は別物</div>
+<pre><code>フォルダ：  job-tracker/components/CompanyForm.tsx   ← app/ の外
+import：    new/page.tsx ──▶ CompanyForm.tsx ──▶ lib/company.ts ──▶ lib/validation.ts</code></pre>
+          <p>
+            import の関係を、フォルダの図と同じ記号（<code>└─</code>）で書かれて、<strong>フォームが <code>app/</code> の中にあるように見えた。</strong>
+          </p>
+          <p>
+            <strong>置き場所と import の関係は独立している。</strong>import はどのフォルダにも届く——
+            <code>lib/validation.ts</code> は <code>lib/company.ts</code> からも、<code>app/</code> の中の詳細ページからも読まれている。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 70 -->
+    <article class="entry" id="e70">
+      <div class="entry-no">70</div>
+      <div class="entry-body">
+        <h2>「ほぼ同じ」は、差分を並べてから境界を引く</h2>
+
+        <p>
+          仕様書3-2 は「新規登録とほぼ同じフォーム」と書いていた。
+          <strong>先回りせず、編集ページを実際に書いてから差分を並べた</strong>（エントリ28「抽象化は重複が生まれてから」）。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">違うところ</th><th scope="col">登録</th><th scope="col">編集</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">見出し</th><td>登録フォーム</td><td>編集フォーム</td></tr>
+              <tr><th scope="row">初期値の出どころ</th><td>空（応募日だけ今日）</td><td>Firestore から取得</td></tr>
+              <tr><th scope="row">データを待つ</th><td>無し</td><td>読み込み中／見つからない</td></tr>
+              <tr><th scope="row">保存に使う関数</th><td><code>addCompany</code></td><td><code>updateCompany</code></td></tr>
+              <tr><th scope="row">保存後の行き先</th><td>一覧</td><td>詳細</td></tr>
+              <tr><th scope="row">ボタンの文字</th><td>登録する</td><td>保存する</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          6項目の入力欄・整形・検査・送信中の制御・エラー表示は<strong>まったく同じ</strong>。
+          <strong>違うところはページに残し、同じところを部品にする。</strong>
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">境界の試験：フォームは、登録か編集かを知っているか</div>
+          <p>
+            <strong>フォームの中に <code>if (isEdit)</code> が1つでも要るなら、境界の引き方が間違っている。</strong>
+          </p>
+          <p>
+            保存の違いは<strong>関数を渡す</strong>ことで吸収した。フォームは <code>await save(normalized)</code> と呼ぶだけで、
+            中で <code>addCompany</code> と <code>updateCompany</code> のどちらが呼ばれるかを知らない。
+            <strong><code>paramsId</code> はページの <code>save</code> の中に閉じ込められ、props の型にも現れない。</strong>
+          </p>
+          <p>
+            <strong>知識は文言にも入り込む。</strong>エラーメッセージ「企業情報の<strong>変更</strong>に失敗しました」、
+            コメントの「<strong>登録</strong>ボタンの二度押し」。どちらも「保存」「送信」という中立な言葉に直した。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：props の型を決めるまで</div>
+          <dl class="wrong-right">
+            <dt><code>save: Promise&lt;void&gt;</code></dt>
+            <dd>それは<strong>呼んだ結果</strong>の型。関数なら <code>(data: CompanyInput) =&gt; Promise&lt;void&gt;</code>。<strong>呼ばれる1行 <code>await save(normalized)</code> から逆算する</strong>——括弧の中が引数、<code>await</code> で受け取るものが返り値</dd>
+            <dt><code>save: paramsId</code></dt>
+            <dd><strong>値は型の位置に書けない。</strong>そもそもフォームは <code>paramsId</code> を知らないと決めた</dd>
+            <dt>props の名前を <code>formData</code> にする</dt>
+            <dd>フォームの state の <code>formData</code> と<strong>衝突する</strong>（エントリ35）。意味も違う——props は「<strong>最初に</strong>表示する値」、state は「<strong>いま</strong>入力欄にある値」。<code>useState</code> の初期値に渡すものなので <code>initialData</code></dd>
+          </dl>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">名前は、すでにある語とぶつけない</div>
+          <p>
+            ボタンの文字を <code>submitName</code> にしかけた。<strong>HTML の <code>&lt;button&gt;</code> には <code>name</code> 属性が実在する</strong>（送信時に値に付く名前）。
+            表示する文字を指す語は <code>label</code> なので、<code>submitLabel</code> にした。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 71 -->
+    <article class="entry" id="e71">
+      <div class="entry-no">71</div>
+      <div class="entry-body">
+        <h2>"use client" の線は import をたどって伝わり、なるべく下に引く</h2>
+
+        <p>
+          共通フォームに <code>"use client"</code> を付けるか考えた。結論は「付けない」だが、<strong>理由の言い方を4回間違えた。</strong>
+        </p>
+<pre><code>Next.js（サーバー側の入口）
+  └─ new/page.tsx         ← "use client"（ここが線）
+       └─ CompanyForm.tsx  ← 宣言なしでも線の内側
+            └─ lib/company.ts</code></pre>
+        <p>
+          <strong>宣言は「そのファイル」だけでなく、そこから import されたもの全部に及ぶ</strong>（<code>05-server-and-client-components.md:176</code>）。
+          フォームは宣言を持たなくても、<code>"use client"</code> のページから import された時点でクライアント側に入る。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>フォームに付けなくていいのは、<code>useState</code> を使うところで宣言ができているから</dt>
+            <dd><code>useState</code> を使うのは<strong>フォーム自身</strong>。宣言があるのは<strong>import する側のページ</strong>。<strong>宣言は import の上流に1つあれば足りる</strong></dd>
+            <dt>サーバーコンポーネントからフォームを使いたくなったら、そのページに <code>"use client"</code> を付ければいい</dt>
+            <dd>付けた瞬間、<strong>そのページはサーバーコンポーネントではなくなる。</strong>問題を解いたのではなく、<strong>問題ごと消しただけ</strong>。付けるのは状態を実際に必要としているフォーム側</dd>
+            <dt>共通部品に付ければまとまるので、ページからは外せる</dt>
+            <dd><strong>各ファイルは、自分でフックを呼ぶかどうかで決める。</strong>ページは <code>useAuth</code>・<code>useRouter</code>（編集ページはさらに <code>useParams</code>・<code>useEffect</code>・<code>useState</code>）を自分で呼ぶので外せない</dd>
+            <dt>ページから外した状況なら、<code>"use client"</code> はどこにも要らない</dt>
+            <dd>上流から線が消えると、フォームは<strong>サーバーコンポーネントから直接 import される</strong>。そこで <code>useState</code> を使えばエラー。<strong>そのときにフォームへ付ける</strong>（<code>use-client.md:10</code>）</dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">線は、なるべく葉に近いところに引く</div>
+          <blockquote>
+            To reduce the size of your client JavaScript bundles, add <code>'use client'</code> to specific interactive components instead of marking large parts of your UI as Client Components.
+            <br>— <code>05-server-and-client-components.md:184</code>
+          </blockquote>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">フォームに付ける</th><th scope="col">ページに付ける</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">ブラウザに送られるコード</th><td>フォームと、その import 先</td><td><strong>ページ全体</strong>と、その import 先すべて</td></tr>
+                <tr><th scope="row">ページがサーバー上でデータを取る</th><td>できる</td><td>できない</td></tr>
+                <tr><th scope="row">サーバー専用の値を扱う</th><td>ページで扱える</td><td>扱えない</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>「Next.js は基本がサーバー」だからこそ、クライアントは例外として必要なところに閉じ込める。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">関数は、サーバーからクライアントへ渡せない</div>
+          <p>
+            <strong>クライアントコンポーネントに渡す props は、シリアライズできる値に限られる</strong>（<code>use-client.md:50</code>）。関数は送れない
+            （<code>"use server"</code> を付けたサーバー関数は例外だが、このアプリでは使っていない）。
+          </p>
+          <p>
+            <strong><code>save</code> を props で渡す設計は、「クライアントのページ → クライアントのフォーム」の間でしか成り立たない。</strong>
+            エントリ13 の「境界の宣言」を、初めて設計判断に使った。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 72 -->
+    <article class="entry" id="e72">
+      <div class="entry-no">72</div>
+      <div class="entry-body">
+        <h2>クライアントでもデータは取れる。違うのは「どこで・いつ」</h2>
+
+        <p>
+          講師の表に「ページが async でデータを取得する：クライアントは<strong>できない</strong>」と書いた。
+          <strong>詳細ページは <code>"use client"</code> なのに取れている</strong>——この食い違いを指摘されて、表を訂正した。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>クライアントコンポーネントは、データを取得できない</dt>
+            <dd><strong>取れる。違うのは、取得する場所とタイミング。</strong>正確には「コンポーネント関数そのものを <code>async</code> にして、HTML を返す前にサーバー上で取る」ことができない</dd>
+          </dl>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">今の詳細ページ（クライアント）</th><th scope="col">サーバーコンポーネントだったら</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">リクエストを送るのは</th><td><strong>ブラウザ</strong>の中の <code>getDoc</code></td><td>Next.js の<strong>サーバー</strong></td></tr>
+              <tr><th scope="row">いつ</th><td>画面を出した<strong>後</strong>（<code>useEffect</code>）</td><td>HTML を返す<strong>前</strong></td></tr>
+              <tr><th scope="row">書き方</th><td><code>useState</code> ＋ <code>useEffect</code> ＋ 中の <code>load</code> 関数</td><td>関数自体を <code>async</code> にして、本体で <code>await</code></td></tr>
+              <tr><th scope="row">「読み込み中」</th><td>出る</td><td>出ない</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>詳細ページで取れているのは、Firestore 側が取ってくる処理をしているから</dt>
+            <dd>半分。データを探して返すのは Firestore のサーバー。でも<strong>リクエストを送っているのはブラウザ</strong>。<code>getDoc</code> は JS としてブラウザに届き、ブラウザの中で動いている</dd>
+            <dt>JSX は JS に変換されるので、結局ブラウザに JS として送られる</dt>
+            <dd>変換はどちらでも起きる。<strong>サーバーコンポーネントのコードはサーバーで動き、ブラウザに届くのは描画した結果だけ</strong>（RSC Payload。<code>05-server-and-client-components.md:104, 109-113</code>）</dd>
+          </dl>
+          <p>
+            たとえるなら、サーバーは<strong>レシピ（コード）が厨房に残り、料理（結果）だけが客席に届く</strong>。
+            クライアントは、客席で作り直せるようにレシピも一緒に届く。
+            <strong>だからサーバーで使った API キーはブラウザに届かない</strong>（<code>:29</code>）——CLAUDE.md の「AI の API キーは Route Handler 経由」は、この仕組みが前提。
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">このアプリがブラウザで取っている理由</div>
+          <p>
+            <code>firestore.rules</code> は <code>request.auth.uid == userId</code> を検査している。
+            <strong>今の設計では、ログイン状態（Firebase Auth）はブラウザの中にしかない。</strong>
+            Next.js のサーバーは「誰がログインしているか」を知らないので、サーバーから取りに行ってもルールで拒否される。
+          </p>
+          <p><strong>独自バックエンドを持たない方針なら、ブラウザで取るのが正しい選択。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 73 -->
+    <article class="entry" id="e73">
+      <div class="entry-no">73</div>
+      <div class="entry-body">
+        <h2>型は宣言から推論され、渡すときに検査される</h2>
+
+<pre><code>type Props = { initialData: CompanyInput; /* … */ };
+
+const [formData, setFormData] = useState(initialData);
+// 型引数を書かなくても formData は CompanyInput</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">仕組み</th><th scope="col">していること</th><th scope="col">起きる場所</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">推論</th><td><code>initialData</code> の<strong>宣言された型</strong>を、state の型にする</td><td>フォームの中</td></tr>
+              <tr><th scope="row">検査</th><td>ページが渡した値が <code>CompanyInput</code> に合うか確かめる</td><td>ページが渡すとき</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>型引数が要らないのは、props として受け取るときに検査されているから</dt>
+            <dd><strong>省けるのは推論のおかげ。検査は、その宣言を嘘にしないための保証。</strong>フォームをまだどこからも使っていない時点でも <code>formData</code> は <code>CompanyInput</code> と表示される——<strong>検査はまだ1回も起きていない</strong></dd>
+          </dl>
+          <p>
+            確かめ方：<code>formData</code> にマウスを乗せる → Props の <code>initialData</code> を一時的に <code>CompanyInput | null</code> に変える → 表示が変わる。
+            <strong>型を決めているのは Props の宣言。</strong>
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">注釈が要るのは、推論される型と欲しい型が違うとき</div>
+<pre><code>const initialData = { status: "応募済", /* … */ };
+// status は CompanyStatus ではなく string と推論される</code></pre>
+          <p>
+            <strong>オブジェクトのプロパティは後から書き換えられる前提なので、<code>"応募済"</code> ではなく <code>string</code> に広く推論される。</strong>
+            そのまま props に渡すと型エラー。登録ページの初期値には <code>: CompanyInput</code> が要る。
+          </p>
+          <p>
+            <code>useState&lt;CompanyInput&gt;(…)</code> を <code>const initialData = …</code> に書き換えたとき、<strong>型引数と一緒に注釈も消えていた。</strong>
+            理由はすぐ上の自分のコメントに書いてあった。
+            <strong>エントリ28 の「型注釈は推論が意図と違うときだけ書く」の、両方向の実例</strong>——フォームでは要らなくなり、ページでは要るまま残った。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label"><code>null</code> は、ページの持ち物</div>
+          <p>
+            編集ページの state は <code>CompanyInput | null</code>。<code>null</code> が表すのは「まだ取得していない／見つからない」で、<strong>それを扱うのはページ</strong>（早期リターン）。
+          </p>
+          <p>
+            <code>if (!editData) return …</code> を通った後は <code>CompanyInput</code> に絞り込まれるので、そのまま <code>initialData={editData}</code> に渡せる。
+            <strong>早期リターンは表示の分岐であり、同時に型の絞り込みでもある。</strong>
+          </p>
+          <p>
+            フォームに <code>useState&lt;CompanyInput | null&gt;(null)</code> と書くと、<strong>起きない状態のために null チェックを書く</strong>ことになる。
+            ついでに <code>{ save: save }</code> は、名前が同じなので <code>{ save }</code> と省略できる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 74 -->
+    <article class="entry" id="e74">
+      <div class="entry-no">74</div>
+      <div class="entry-body">
+        <h2>同じ型の値を取り違えても、型は教えてくれない</h2>
+
+<pre><code>const normalized = normalizeCompanyInput(formData);
+const errors = validateCompanyInput(normalized);   // 検査したのは normalized
+// …
+await save(formData);                              // 保存したのは formData</code></pre>
+        <ol>
+          <li>企業名に「<code>  ヤフー  </code>」と前後に空白を付けて入力する</li>
+          <li>検査は空白を取った「ヤフー」に対して行われる → <strong>通る</strong></li>
+          <li>保存されるのは空白付きの値 → <strong>そのまま Firestore に入る</strong></li>
+        </ol>
+        <p>
+          元の2ページは <code>normalized</code> を保存していた。<strong>リファクタリングで挙動が変わっていた。</strong>
+          <code>formData</code> も <code>normalized</code> も <code>CompanyInput</code> なので、型検査は通る。
+          <strong>エントリ50 で一度直したのと同じバグが、コードを移す途中で再発した</strong>——型で守れない約束は、書き直すたびに破られうる。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">型が保証するのは「形」だけ</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書いたもの</th><th scope="col">型検査</th><th scope="col">結果</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>save(formData)</code></th><td><strong>通る</strong></td><td>空白付きで保存される</td></tr>
+                <tr><th scope="row"><code>submitLabel="submitLabel"</code></th><td><strong>通る</strong></td><td>ボタンに「submitLabel」と表示される</td></tr>
+                <tr><th scope="row"><code>initialData="initialData"</code></th><td>弾かれる</td><td>文字列は <code>CompanyInput</code> ではない</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>「検査した値を保存する」「その文字列が適切か」は、自分で守るしかない。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：JSX で props を渡す書き方</div>
+          <dl class="wrong-right">
+            <dt><code>&lt;CompanyForm save={save}, initialData="initialData", submitLabel="submitLabel" /&gt;</code></dt>
+            <dd>3つずれていた。<strong>属性は空白で区切る</strong>（カンマはオブジェクトの文法）／<strong><code>"…"</code> はその文字そのもの</strong>で、変数は <code>{}</code>／<strong>右側は値</strong>——<code>submitLabel</code> は名前で、渡すのは「登録する」</dd>
+          </dl>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書き方</th><th scope="col">意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>名前="文字"</code></th><td>その文字そのものを渡す</td></tr>
+                <tr><th scope="row"><code>名前={式}</code></th><td>JavaScript の式の結果を渡す</td></tr>
+                <tr><th scope="row">区切り</th><td>空白。カンマは書かない</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- 75 -->
+    <article class="entry" id="e75">
+      <div class="entry-no">75</div>
+      <div class="entry-body">
+        <h2>async 関数の終わり方は、2つしかない</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"><code>save</code> の終わり方</th><th scope="col">Promise</th><th scope="col">フォームの <code>await save(…)</code></th><th scope="col">画面</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>return</code>／最後まで到達</th><td><strong>成功</strong></td><td>例外が来ない → <code>catch</code> を飛ばす</td><td>何も出ない</td></tr>
+              <tr><th scope="row"><code>throw</code></th><td><strong>失敗</strong></td><td>例外が来る → <code>catch</code> が動く</td><td>「データの保存に失敗しました」</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>「何もしないで終わる」という3番目は無い。それは成功に数えられる。</strong></p>
+
+        <div class="note warn">
+          <div class="note-label"><code>user</code> が null のまま送信ボタンを押したら</div>
+<pre><code>A：if (!user) return;
+  フォーム  setSubmitting(true)       → ボタンが押せなくなる
+  save      return                    → 正常に終わる
+  フォーム  catch は動かない           → エラーは空のまま
+  フォーム  finally                   → ボタンが戻る
+  画面：ボタンが一瞬押せなくなって戻っただけ。保存も遷移もエラーも無い
+
+B：if (!user) throw new Error("ログイン状態が確認できません");
+  save      throw                     → Promise が失敗で終わる
+  フォーム  await の場所で例外 → catch → 「データの保存に失敗しました」</code></pre>
+          <p>
+            <strong>フォームが失敗を知る通り道は、例外の1本だけ。</strong>
+            Firestore の通信失敗がフォームに届くのも、SDK が例外を投げるから。<strong>null のときも同じ通り道を使う。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>await</code> を付けないと何が起きるか</div>
+          <dl class="wrong-right">
+            <dt>通信を待たずに次のコードへ進み、正しい順番で処理できなくなる</dt>
+            <dd>方向は合っているが、<strong>何が壊れるかを言えていない。</strong>壊れるのは2つ——<strong>保存中なのに <code>finally</code> でボタンが戻る</strong>／<strong>失敗が <code>catch</code> に届かず、画面にエラーが出ない</strong>（エントリ45 と同じ形）</dd>
+          </dl>
+          <p>
+            <strong><code>try / catch</code> が受け取れるのは、<code>try</code> の中にいる間に投げられたものだけ。</strong>Promise の失敗が例外に変わるのは <code>await</code> の瞬間。
+          </p>
+          <p>
+            しかも成功時は、<code>await</code> が無くても普通に動いて見える（ページの <code>save</code> の中で、保存を待ってから遷移するため）。
+            <strong>成功時のテストでは見つからず、失敗したときにだけ現れるバグ。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label"><code>throw</code> を書く場所は、<code>save</code> の中の先頭</div>
+          <p>
+            コンポーネントの本体に書くと、<strong>描画中に例外を投げる</strong>ことになる。フォームの <code>catch</code> には届かず、画面全体がエラー表示に置き換わる（<code>error.tsx</code> が受け取る世界）。
+          </p>
+          <p>
+            <strong>保存は「ボタンが押されたとき」の出来事なので、チェックもそのときに動く場所に置く。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 76 -->
+    <article class="entry" id="e76">
+      <div class="entry-no">76</div>
+      <div class="entry-body">
+        <h2>型エラーを消す書き方を選ぶとき、実行時の振る舞いも選んでいる</h2>
+
+        <p>登録ページの <code>if (!user) return;</code> には、自分でこうコメントを書いていた。</p>
+        <blockquote>
+          ここでユーザーがnullの時を消しておかないと、下の処理でuserを使う時にnullの可能性があり、コンパイル時に弾かれる
+        </blockquote>
+        <p>
+          <strong><code>return</code> を選んだ理由は「型エラーを消したい」だった。</strong>1つのページで完結していた頃は、それで問題なかった。
+          <strong><code>save</code> に移った途端、同じ行が「成功しました」という返事に変わった。</strong>
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">null の除き方</th><th scope="col">型検査</th><th scope="col">実行時の意味</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>if (!user) return;</code></th><td>通る</td><td>黙って成功として返事をする</td></tr>
+              <tr><th scope="row"><code>if (!user) throw new Error(…)</code></th><td>通る</td><td><strong>失敗として伝える</strong></td></tr>
+              <tr><th scope="row"><code>user!.uid</code></th><td>通る</td><td>型に嘘をつく。本当に null なら、その場でクラッシュ</td></tr>
+              <tr><th scope="row"><code>if (user) { … }</code> で囲む</th><td>通る</td><td>else を書かなければ、1行目と同じ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>「コンパイラが黙ったから OK」で止めず、その行が実行時に何を意味するかまで見る。</strong></p>
+
+        <div class="note warn">
+          <div class="note-label">型は、layout の保証を知らない</div>
+          <p>
+            <code>user</code> の型は <code>AuthContext.tsx</code> の <code>User | null</code>。
+            <code>layout.tsx</code> が「user が無ければ children を描かない」のは、<strong>実行時に別のコンポーネントが行う判断</strong>で、型の世界には現れない。
+          </p>
+          <p>
+            <strong>TypeScript が使えるのは、宣言と、同じ関数の中で絞り込んだ結果だけ。</strong>
+            だから実際には起きなくても、<code>useAuth()</code> を使う側は毎回 null を除く。
+          </p>
+          <p>
+            保証を型に載せる方法もある——<strong>null なら例外を投げて <code>User</code> を返すフックを1つ作る</strong>。今回のブランチの目的ではないので見送った（未解決の問いへ）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>!</code> の位置</div>
+          <dl class="wrong-right">
+            <dt><code>if (user!) return</code></dt>
+            <dd><code>if (!user) return</code>。<strong><code>!</code> が前なら否定、後ろなら非 null アサーション</strong>で、意味が正反対になる</dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 77 -->
+    <article class="entry" id="e77">
+      <div class="entry-no">77</div>
+      <div class="entry-body">
+        <h2>部品が外から受け取るものは、props だけにする</h2>
+
+        <p>フォームの import を、編集ページからそのまま持ってきた。</p>
+<pre><code>import { useAuth } from "@/contexts/AuthContext";      // ✗
+import { normalizeCompanyInput, validateCompanyInput } from "@/lib/company";
+import { COMPANY_STATUSES } from "@/types/company";
+import type { CompanyStatus, CompanyInput } from "@/types/company";
+import Link from "next/link";                             // ✗
+import { useRouter } from "next/navigation";              // ✗
+import { useState } from "react";</code></pre>
+        <p>
+          <strong>仕分けの基準は「そのファイルの中で、その名前を書くかどうか」。</strong>
+          <code>user</code> と <code>router</code> を使うのはページの <code>save</code>、<code>Link</code> は戻るリンク（ページ側）。
+          <code>Link</code> が混ざった原因は、<strong>JSX に編集ページの <code>&lt;h1&gt;</code> と戻るリンクが残っていた</strong>こと。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">フォームで <code>useAuth()</code> を呼ぶと、Props の型が嘘をつく</div>
+          <p>
+            Props を読むと「<code>save</code>・<code>submitLabel</code>・<code>initialData</code> があれば動く」と読める。
+            実際には <strong><code>AuthProvider</code> の内側に置かないと動かない。</strong>型に書かれていない、隠れた依存になる。
+          </p>
+          <p>
+            <strong>外から受け取るものを props だけにすると、Props の型を読むだけで、その部品に必要なものがすべて分かる。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">lint が見つけられるのは「使っていない」だけ</div>
+          <p>
+            使わない import は <code>no-unused-vars</code> が警告する。でも <code>const { user } = useAuth()</code> と書いて使ってしまえば、何も言わない。
+            <strong>「ここにあるべきではない」は、設計で判断するしかない。</strong>
+          </p>
+          <p>
+            逆に、<strong>lint の警告が残りの作業を教えてくれた</strong>場面もあった——
+            <code>'submitLabel' is defined but never used</code>（ボタンの文字が固定のまま）、
+            書き換え途中の登録ページの警告10件（消すべき state と import の一覧そのもの）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 78 -->
+    <article class="entry" id="e78">
+      <div class="entry-no">78</div>
+      <div class="entry-body">
+        <h2>画面から消えたものを、検出する道具は無い</h2>
+
+        <p><strong>型検査も lint も通った状態で</strong>、次の問題が残っていた。</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">問題</th><th scope="col">機械が見逃す理由</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">編集ページの「詳細ページへ戻る」リンクが消えていた</th><td><code>Link</code> は「見つかりません」の方で使われているので、未使用にならない</td></tr>
+              <tr><th scope="row">戻したリンクの文字が「<strong>編集</strong>ページへ戻る」（行き先は詳細）</th><td><code>href</code> は正しい。文字と行き先が合っているかは誰も見ない</td></tr>
+              <tr><th scope="row">取得に失敗したとき「データの<strong>保存</strong>に失敗しました」</th><td>文字列は文字列。どの <code>catch</code> に置かれているかは見ない</td></tr>
+              <tr><th scope="row">コメントを移すとき、フォームに <code>&lt;h1&gt;登録フォーム&lt;/h1&gt;</code> が戻ってきた</th><td>JSX として正しい</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>残りは、画面を開いて目で見るしかない。</strong>確認する項目を先に書き出してからブラウザを開いた。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">編集ページで確かめた4項目</div>
+          <ol>
+            <li>既存のデータがフォームに入った状態で表示される</li>
+            <li>保存すると詳細ページへ戻り、変更が反映されている</li>
+            <li>企業名を空にして保存を押すと、画面内にエラーが出る</li>
+            <li>戻るリンクが詳細ページへ行く</li>
+          </ol>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">同じ失敗には、言い方を1つ</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">失敗</th><th scope="col">場所</th><th scope="col">文言</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">一覧の取得</th><td>一覧ページ</td><td>企業一覧の取得に失敗しました</td></tr>
+                <tr><th scope="row">1件の取得</th><td>詳細ページ・編集ページ</td><td><strong>企業データの取得に失敗しました</strong>（詳細ページの「企業の取得に…」も揃えた）</td></tr>
+                <tr><th scope="row">保存</th><td>共通フォーム</td><td>データの保存に失敗しました</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p><strong>同じ失敗に2つの言い方があると、後で文言を直すときに探し漏れる。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 79 -->
+    <article class="entry" id="e79">
+      <div class="entry-no">79</div>
+      <div class="entry-body">
+        <h2>コメントと名前は、コードの役割を追いかける</h2>
+
+        <p>
+          登録ページの JSX には学習メモのコメントが大量にあった。一方、共通フォームは<strong>コメントの無い編集ページからコピーしていた。</strong>
+          そのまま登録ページを書き換えると、メモも一緒に消える。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">コメントは、説明しているコードと一緒に引っ越す</div>
+          <ul>
+            <li><strong>仕様書3-6-2 から外れた判断の記録</strong> → フォームの <code>noValidate</code> の近くへ。<strong>消してはいけない</strong></li>
+            <li><strong>「フックは早期リターンより前」のメモ</strong> → フォームには早期リターンが無いので、<strong>早期リターンが実在する編集ページ</strong>に残す</li>
+            <li><strong>初期値のメモ</strong> → 「当日を初期値にする理由」はページ、「<code>useState</code> が毎回捨てる」はフォームの中で起きる話</li>
+          </ul>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：古くなった・不正確なコメント</div>
+          <dl class="wrong-right">
+            <dt>「6項目の値をオブジェクトの useState で管理する」</dt>
+            <dd>ページはもう管理していない。<strong>初期値を作って渡すだけ</strong></dd>
+            <dt>「AuthContext.tsx で user が null の場合はローディング画面に遷移させる設計」</dt>
+            <dd>遷移させているのは <strong><code>layout.tsx</code></strong> で、行き先は<strong>ログインページ</strong>。<code>AuthContext.tsx</code> は user と loading を配るだけ</dd>
+            <dt>「計算も handleSubmit の定義も後でいい」</dt>
+            <dd>どちらもそのファイルから無くなった。今あるのは <code>save</code></dd>
+            <dt>「登録ページと編集ページを共通化」（ファイル先頭）</dt>
+            <dd>それは<strong>経緯</strong>で、git の履歴に残る。コメントには<strong>このファイルが何か</strong>を書く</dd>
+          </dl>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">名前も、役割を追いかける</div>
+          <p>
+            編集ページの state を <code>formData</code> にしたのは「共通化したとき名前が揃うように」だった。
+            共通化すると <code>formData</code> はフォームの state になり、ページが持つのは「Firestore から取ってきたデータ」。
+            <strong>前提が変わったので <code>editData</code> に変えた。</strong>
+          </p>
+          <p>
+            <code>const initialData: CompanyInput = editData;</code> は<strong>同じ値に2つ目の名前を付けただけ</strong>。読む人は「違うものか？」と探すことになる。
+            <code>initialData={editData}</code> と直接渡した。
+          </p>
+          <p>コメントアウトしたコードも残さない。<strong>古いコードは git が覚えている。</strong></p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 80 -->
+    <article class="entry" id="e80">
+      <div class="entry-no">80</div>
+      <div class="entry-body">
+        <h2>コミットは、作業しながら分けて積む</h2>
+
+        <p>編集ページとフォームの共通化を終えた時点で、作業ツリーには<strong>目的の違う変更が混ざっていた。</strong></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">順</th><th scope="col">コミット</th><th scope="col">対象</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1</th><td><code>chore: ESLint の未使用変数ルールを上書き</code></td><td><code>eslint.config.mjs</code></td></tr>
+              <tr><th scope="row">2</th><td><code>refactor: 企業フォームを共通部品に切り出す</code></td><td><code>components/CompanyForm.tsx</code>・<code>lib/company.ts</code>・<code>types/company.ts</code>・登録ページ</td></tr>
+              <tr><th scope="row">3</th><td><code>feat: 企業の編集ページを作成</code></td><td>編集ページ・<code>lib/firestore.ts</code>・詳細ページの編集リンク</td></tr>
+              <tr><th scope="row">4</th><td><code>fix: 企業取得の失敗メッセージを統一</code></td><td>詳細ページの文言1行</td></tr>
+              <tr><th scope="row">5</th><td><code>docs: コメントを追記・修正</code></td><td>一覧ページ・<code>layout.tsx</code>・詳細ページのコメント</td></tr>
+              <tr><th scope="row">6</th><td><code>docs: 学習ログを更新</code></td><td><code>docs/learning-log.html</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">順番にも理由がある</div>
+          <p>
+            <strong>2 は 3 より先。</strong>編集ページは <code>CompanyForm</code> を import しているので、逆にすると存在しない部品を参照するコミットができる。
+            <strong>各コミットの時点でビルドが通る状態を保つ。</strong>
+          </p>
+          <p>学習ログは実装の後。<strong>実装を revert したいとき、ログまで巻き戻る理由が無い。</strong></p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">1つのファイルに3つの目的があるとき：<code>git add -p</code></div>
+          <p>詳細ページには、編集リンク（3）・文言（4）・コメント（5）が同居していた。ファイル単位の <code>git add</code> では分けられない。</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">キー</th><th scope="col">意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>y</code></th><td>このかたまり（ハンク）をステージする</td></tr>
+                <tr><th scope="row"><code>n</code></th><td>しない</td></tr>
+                <tr><th scope="row"><code>s</code></th><td>かたまりを細かく割る（変更行が離れていれば割れる）</td></tr>
+                <tr><th scope="row"><code>q</code></th><td>やめる</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">分けにくくなった本当の原因</div>
+          <p>
+            <strong>途中でコミットせず、最終形だけを持っていたこと。</strong>
+            <code>lib/company.ts</code> に切り出した時点で1回コミットしておけば、フォームの共通化とは別のコミットとして積めた。
+          </p>
+          <p><strong>コミットを分けたいなら、作業中に分けて積む。後からでは分けられないことがある。</strong></p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -5349,23 +6122,23 @@ throw new Error("テスト");</code></pre>
         <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
       </li>
       <li>
-        <strong>登録フォームと編集フォームを、どこまで共通化するか。</strong>
-        仕様書3-2 は「新規登録とほぼ同じフォームになるため、コンポーネント共通化の練習になる」と書いている。
-        ただし<strong>「ほぼ同じ」の差分がどこかは、編集ページを書いてみるまで分からない</strong>——
-        初期値の出どころ（空 / 既存データ）、送信先の関数、遷移先。
-        <strong>先回りせず、2つ目を書いてから共通部分を決める</strong>（エントリ28）。
-        <code>validateCompanyInput</code> と <code>normalizeCompanyInput</code> の置き場所も、そのときに判断する。
+        <strong>保存が成功してから画面遷移が終わるまでの間、送信ボタンが押せてしまわないか。</strong>
+        フォームは <code>finally</code> で <code>submitting</code> を戻すが、<code>save</code> の中の <code>router.push</code> は遷移の完了を待たない。
+        通信が遅いと、遷移中にもう一度押せて<strong>二重登録になる余地がある</strong>。
+        ただしフォームは「<code>save</code> が遷移するかどうか」を知らない設計にした（エントリ70）。
+        <strong>その知らなさを保ったまま防げるか。まず実際に起きるかを確かめる。</strong>
       </li>
       <li>
-        <strong>ステータスを変えたとき、一覧ページの表示はどうなるか。</strong>
-        詳細ページで更新しても、<strong>一覧は <code>useEffect</code> で取得済みのデータを持ったまま</strong>。
-        戻ったときに古い値が見えないか——<code>Link</code> での遷移でコンポーネントが再マウントされるかどうかに依存する。
-        <strong>実際に確かめて、必要なら対策を決める。</strong>
+        <strong><code>useAuth()</code> の null を毎回除く代わりに、<code>User</code> を返すフックを作るか。</strong>
+        <code>layout.tsx</code> の保証は型に現れない（エントリ76）。null なら例外を投げて <code>User</code> を返すフックにすれば、絞り込みが1か所にまとまる。
+        作るなら、<strong><code>layout.tsx</code> の外で呼ばれたときにどう振る舞うべきか</strong>も決める。
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 前回の未解決だった2問（<code>initializeApp</code> と HMR ／ <code>"use client"</code> の要否）は
-      エントリ 12・13 として解決済み。
+      ※ 前回の未解決だった2問のうち、「登録フォームと編集フォームをどこまで共通化するか」はエントリ 70・決定記録で解決。
+      「ステータスを変えたとき、一覧に古い値が残るか」は<strong>実際に確かめ、一覧に戻ると最新の値が表示された</strong>
+      （ルートが変わると一覧ページが作り直され、<code>useEffect</code> が取得し直すため）。
+      さらに前の2問（<code>initializeApp</code> と HMR ／ <code>"use client"</code> の要否）はエントリ 12・13 で解決済み。
     </p>
   </section>
 
@@ -6116,6 +6889,121 @@ throw new Error("テスト");</code></pre>
           <strong>「<code>&lt;select&gt;</code> が <code>disabled</code> のまま戻らない」状況に実際に遭遇したら。</strong>
           曖昧な「問題が起きたら」ではなく<strong>症状で書いておく</strong>——後から判断できるように。
         </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>rest と一緒に分割した変数の未使用警告は、ESLint の設定で一括して許す</h3>
+      <dl>
+        <dt>問題</dt>
+        <dd><code>const { id, ...restCompanyInput } = companyData;</code> の <code>id</code> は意図的に使わないが、<code>no-unused-vars</code> の警告が出る</dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>{ id: _id }</code> と名前を変え、<code>varsIgnorePattern: "^_"</code> を設定する（名前で示す）
+          <b>(b)</b> その行だけ <code>eslint-disable</code>
+          <b>(c)</b> (a) と <code>ignoreRestSiblings</code> の両方
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong><code>ignoreRestSiblings: true</code> は「rest の兄弟は使わないのが普通」という一般則</strong>で、
+          <code>schedules</code>・<code>reviews</code> でも同じ形が出る。(b) はその場限りで、同じ例外が増え続ける。
+          (c) は、<code>ignoreRestSiblings</code> がある時点で <code>_id</code> が linter に対して意味を持たなくなる。
+        </dd>
+        <dt>設定の置き方</dt>
+        <dd>
+          <code>...nextTs</code> の<strong>後</strong>（後に書いた設定が勝つ）。severity は元と同じ <code>"warn"</code>。
+          <strong>緩めた理由を設定ファイルにコメントで残した</strong>——設定は「なぜそうしたか」が最も失われやすい場所（エントリ68）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>登録・編集の共通フォームは、自分で state を持つ</h3>
+      <dl>
+        <dt>採用</dt>
+        <dd>
+          フォームが入力値・送信中・送信エラー・送信済みの state と、整形 → 検査 → 保存の流れを持つ。
+          ページは <code>initialData</code>（初期値）・<code>save</code>（保存のしかた）・<code>submitLabel</code>（ボタンの文字）の3つを props で渡す。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>ページが state を持ち続け、フォームは値と更新関数を受け取って描くだけの部品にする</dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>2つのページで同じなのは、見た目だけでなく「入力して、検査して、送る」流れそのもの</strong>（エントリ70）。
+          ページが state を持つと、その流れを2か所に書き続けることになり、共通化で減るのは JSX だけ。
+          違いは初期値・保存先・遷移先・文字だけなので、それを props にすれば<strong>フォームは登録か編集かを知らずに済む</strong>。
+        </dd>
+        <dt>境界の試験</dt>
+        <dd>フォームの中に <code>if (isEdit)</code> が要らないこと。<code>user</code>・<code>router</code>・<code>paramsId</code> はページの <code>save</code> の中に閉じ込める</dd>
+        <dt>代償</dt>
+        <dd>
+          <code>initialData</code> は <code>useState</code> の初期値なので<strong>最初の1回しか読まれない</strong>（エントリ53）。
+          編集ページは、<strong>データがそろってからフォームを描く</strong>（早期リターンで待つ）必要がある。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>共通部品は、プロジェクト直下の <code>components/</code> に置く</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 使うページの近く（<code>app/(protected)/companies/</code>）に同居させる
+          <b>(b)</b> <code>app/</code> の中の <code>_components/</code>（private folder）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>どれも動く</strong>——<code>page.tsx</code> が無ければルートにはならない（エントリ69）。
+          決め手は<strong>既存の置き方との一貫性</strong>。<code>lib/</code>・<code>types/</code>・<code>contexts/</code> がすでに直下にあり、
+          「<code>app/</code> はルーティング専用」で揃う。
+        </dd>
+        <dt>訂正の記録</dt>
+        <dd>最初に講師が「<code>app/</code> の中はルーティングに巻き込まれる」と説明したのは誤り。<strong>ドキュメントで訂正した後の判断材料で、改めて選んだ</strong></dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>共通フォームには <code>"use client"</code> を付けない</h3>
+      <dl>
+        <dt>理由</dt>
+        <dd>
+          使うページが2つとも <code>"use client"</code> で、フォームはその import の内側に入る（エントリ71）。
+          付ける必要があるのは<strong>サーバーコンポーネントから直接描画したいファイル</strong>だけ（<code>use-client.md:10</code>）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          フォームに付けて、ページからは外す。
+          <strong>ページは自分で <code>useAuth</code>・<code>useRouter</code> を呼ぶので外せない。</strong>
+          加えて <code>save</code> は関数なので、サーバーコンポーネントからは渡せない。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd><strong>フォームをサーバーコンポーネントから直接使う場面が出たら、そのときフォームに付ける</strong>（ページ側に付けてサーバーコンポーネントをやめるのではない）</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>保存時に <code>user</code> が無ければ、<code>return</code> ではなく <code>throw</code> する</h3>
+      <dl>
+        <dt>問題</dt>
+        <dd>
+          <code>layout.tsx</code> があるので実際には起きない。しかし <code>user</code> の型は <code>User | null</code> なので、<code>user.uid</code> を使う前に除く必要がある（エントリ76）
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>if (!user) return;</code>（元の書き方）
+          <b>(b)</b> <code>user!.uid</code>
+          <b>(c)</b> <code>if (user) { … }</code> で囲む
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a)(c) はフォームに<strong>「成功しました」と返事をする</strong>ので、押しても何も起きず、原因も追えない。
+          (b) は型に嘘をつき、本当に null ならその場でクラッシュする。
+          <strong>フォームが失敗を知る通り道は例外だけなので、そこに合流させる</strong>（エントリ75）。
+        </dd>
+        <dt>書く場所</dt>
+        <dd><code>save</code> の中の先頭。コンポーネントの本体に書くと、描画中に投げて画面ごと落ちる</dd>
+        <dt>メッセージ</dt>
+        <dd>「ログイン状態が確認できません」。今は画面に出ないが、<strong>ログや文言の出し分けを足すときの手がかり</strong>になる</dd>
       </dl>
     </div>
   </section>
