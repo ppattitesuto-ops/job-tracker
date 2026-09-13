@@ -30,7 +30,7 @@ export default function CompanyPage() {
       try {
         setCompany(await getCompany(user.uid, paramsId));
       } catch {
-        setError("企業の取得に失敗しました");
+        setError("企業データの取得に失敗しました");
       } finally {
         setLoading(false);
       }
