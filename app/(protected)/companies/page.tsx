@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getCompanies } from "@/lib/firestore";
 import type { Company } from "@/types/company";
 import { useEffect, useState } from "react";
-// ページを移動する場合はLinkで移動する。a hrefはページ全体を再読み込みするから状態などもリロードされて非効率
+// Linkは自分のアプリのURLを繋ぐ。Next.jsのルーターが「そのルートに対応するファイルはどれか」を知っていて、必要な部分だけ差し替えるので効率的。a hrefはページ全体を再読み込みするから状態などもリロードされて非効率。ただし、Linkはアプリ内しか遷移できないため、外部に遷移したい場合はa hrefを使う必要がある。
 import Link from "next/link";
 
 export default function CompaniesPage() {
