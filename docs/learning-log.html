@@ -544,10 +544,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-09-13</b></span>
-      <span>エントリ <b>80</b></span>
-      <span>決定記録 <b>31</b></span>
-      <span>進捗 <b>企業編集・フォーム共通化 完了 → 削除へ</b></span>
+      <span>最終更新 <b>2026-09-17</b></span>
+      <span>エントリ <b>82</b></span>
+      <span>決定記録 <b>33</b></span>
+      <span>進捗 <b>二重送信の修正 完了 → 削除へ</b></span>
     </div>
   </header>
 
@@ -634,6 +634,8 @@
       <li><a href="#e78">画面から消えたものを、検出する道具は無い</a></li>
       <li><a href="#e79">コメントと名前は、コードの役割を追いかける</a></li>
       <li><a href="#e80">コミットは、作業しながら分けて積む</a></li>
+      <li><a href="#e81">ボタンを守る時間帯は、2つある</a></li>
+      <li><a href="#e82">まとめられるのは、イベントの中だけではない</a></li>
     </ol>
   </nav>
 
@@ -6105,6 +6107,158 @@ import { useState } from "react";</code></pre>
       </div>
     </article>
 
+    <!-- 81 -->
+    <article class="entry" id="e81">
+      <div class="entry-no">81</div>
+      <div class="entry-body">
+        <h2>ボタンを守る時間帯は、2つある</h2>
+
+        <p>
+          PR に「確かめていないこと」として書いた二重送信を、実際に確かめた。
+          <strong>開発者ツールで通信を遅くし、登録ボタンを続けて2回押すと、同じ企業が2件登録された。</strong>
+        </p>
+<pre><code>押す → submitting=true でボタンが押せない（保存中）
+     → 保存が成功 → finally で submitting=false  ← ここから押せる
+     → 画面が切り替わる（遅い回線だと数秒かかる）
+       ^^^^^^^^^^^^^^^^ この間にもう一度押せてしまう</code></pre>
+        <p>
+          <strong>押せたのは「保存中」ではなく「保存が終わってから、画面が切り替わるまで」。</strong>
+          現実に起きやすいのは「急いで値を変えて押す」ではなく、<strong>「押したのに画面が変わらないから、もう一度押す」</strong>の方。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">同じ操作でも、登録と編集で結果が違う</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ページ</th><th scope="col">使う関数</th><th scope="col">2回押されたら</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">編集</th><td><code>updateDoc</code></td><td>同じ文書に同じ値をもう一度書くだけ。<strong>何回やっても結果は同じ</strong></td></tr>
+                <tr><th scope="row">登録</th><td><code>addDoc</code></td><td><strong>押すたびに新しい文書を作る</strong> → 同じ企業が2件</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>冪等かどうかの差</strong>（エントリ12）。「同じ値を送り直すだけだから実害はない」は<strong>編集ページにしか当てはまらない。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）：ID はいつ決まるか</div>
+          <dl class="wrong-right">
+            <dt>ID を先に決める案（冪等にする案）は、通信の再送による重複も防げる</dt>
+            <dd><strong><code>addDoc</code> は、送る前に手元で ID を作っている。</strong>SDK が自分で送り直すときは同じ ID に書くので、もともと重複しない</dd>
+          </dl>
+<pre><code>// node_modules/@firebase/firestore/dist/index.esm.js:1791-1793
+function addDoc(t, e) {
+  … r = doc(t) …                    ← 送る前に、手元で新しい ID を作る
+  return executeWrite(…, r._key …)  ← その ID で書き込む</code></pre>
+          <p>
+            つまり今回の重複は、通信の問題ではなく<strong><code>addDoc</code> が2回呼ばれて ID が2つ作られた</strong>結果。
+            ID を先に決める案が追加で守るのは、<strong>ボタン以外の経路から保存が2回呼ばれた場合</strong>だけだった。
+          </p>
+        </div>
+
+        <h3>直し方：押せない理由を2つに分ける</h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">state</th><th scope="col">守る時間帯</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>submitting</code></th><td>保存している間</td></tr>
+              <tr><th scope="row"><code>hasSaved</code></th><td><strong>保存が成功してから、画面が切り替わるまで</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          ボタンの条件は <code>submitting || hasSaved</code>。
+          <strong><code>submitting</code> を成功時に戻さない案</strong>でも同じ動きになるが、
+          <strong>「送信中」という名前が「送信中または送信済み」を指すことになる</strong>ので採らなかった（エントリ79）。
+        </p>
+
+        <div class="note check">
+          <div class="note-label"><code>false</code> に戻すコードが要らない理由</div>
+          <p>
+            成功したらページを離れ、<strong>フォームごと消える</strong>。次に開いたときは新しく作られ、state は初期値に戻る。
+            失敗したときは <code>await</code> が例外を投げ、<strong><code>setHasSaved(true)</code> を飛ばして <code>catch</code> に落ちる</strong>ので、<code>hasSaved</code> は <code>false</code> のまま。ボタンは押せる。
+          </p>
+          <p>
+            <strong>これは「保存に成功したら、このフォームから離れる」という前提の上に成り立っている。</strong>
+            前提はコードのどこにも現れないので、コメントに残した。「保存して続けて登録する」画面を作る日が来たら、ここが最初に壊れる。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">「押せなくなった」を、どうやって見たか</div>
+          <p>
+            <strong>見た目では分からなかった。</strong>まだ CSS を当てていないので、押せる状態と押せない状態の差がほとんど出ない。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">手段</th><th scope="col">見るもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Elements パネル</th><td><code>&lt;button type="submit" <strong>disabled</strong>&gt;</code> の属性が付くか消えるか</td></tr>
+                <tr><th scope="row">Console</th><td><code>document.querySelector('button[type="submit"]').disabled</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>状態が見た目に出ていないのは、確認しづらいだけの話ではない</strong>——ユーザーにも「押せるのか押せないのか」が伝わっていない。
+            Tailwind を入れる段階で <code>disabled</code> の見た目を必ず作る。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 82 -->
+    <article class="entry" id="e82">
+      <div class="entry-no">82</div>
+      <div class="entry-body">
+        <h2>まとめられるのは、イベントの中だけではない</h2>
+
+        <p>保存が成功したとき、2つの更新が別の場所で起きる。</p>
+<pre><code>await save(normalized);
+setHasSaved(true);      // try の中
+} finally {
+  setSubmitting(false); // finally
+}</code></pre>
+        <p>
+          <strong>この2つの間に、ボタンが押せる状態で画面が描かれる瞬間はないか。</strong>
+          エントリ56で測ったのは「1つのイベントの中で起きた更新はまとめられる」ことだったが、
+          ここは <code>await</code> の<strong>後</strong>——イベントハンドラを一度抜けた後の続きの処理になる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">条件が1つ増える</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">イベントハンドラの中</th><th scope="col"><code>await</code> の後</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">React 17 まで</th><td>まとめる</td><td><strong>1つずつ描き直す</strong></td></tr>
+                <tr><th scope="row">React 18 以降</th><td>まとめる</td><td><strong>まとめる</strong>（自動バッチ）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>このプロジェクトは React 19 なので、2つの更新は1回の描画にまとめられる。</p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">バッチに頼らなくても壊れない形になっていた</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">順</th><th scope="col"><code>submitting</code></th><th scope="col"><code>hasSaved</code></th><th scope="col"><code>submitting || hasSaved</code></th></tr></thead>
+              <tbody>
+                <tr><th scope="row">① <code>setHasSaved(true)</code> の直後</th><td>true</td><td>true</td><td><strong>真</strong></td></tr>
+                <tr><th scope="row">② <code>setSubmitting(false)</code> の直後</th><td>false</td><td>true</td><td><strong>真</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>仮に1つずつ描き直されても、押せる瞬間は生まれない。</strong>先に <code>hasSaved</code> を立ててから <code>submitting</code> を下ろす順番になっているため。
+            <strong>「バッチがあるから安全」ではなく「順番でも安全」——支えが2つある形になっていた。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -6122,20 +6276,14 @@ import { useState } from "react";</code></pre>
         <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
       </li>
       <li>
-        <strong>保存が成功してから画面遷移が終わるまでの間、送信ボタンが押せてしまわないか。</strong>
-        フォームは <code>finally</code> で <code>submitting</code> を戻すが、<code>save</code> の中の <code>router.push</code> は遷移の完了を待たない。
-        通信が遅いと、遷移中にもう一度押せて<strong>二重登録になる余地がある</strong>。
-        ただしフォームは「<code>save</code> が遷移するかどうか」を知らない設計にした（エントリ70）。
-        <strong>その知らなさを保ったまま防げるか。まず実際に起きるかを確かめる。</strong>
-      </li>
-      <li>
         <strong><code>useAuth()</code> の null を毎回除く代わりに、<code>User</code> を返すフックを作るか。</strong>
         <code>layout.tsx</code> の保証は型に現れない（エントリ76）。null なら例外を投げて <code>User</code> を返すフックにすれば、絞り込みが1か所にまとまる。
         作るなら、<strong><code>layout.tsx</code> の外で呼ばれたときにどう振る舞うべきか</strong>も決める。
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 前回の未解決だった2問のうち、「登録フォームと編集フォームをどこまで共通化するか」はエントリ 70・決定記録で解決。
+      ※ 「保存後の遷移中に送信ボタンが押せてしまわないか」は<strong>実際に起きることを確かめ</strong>、エントリ 81 と決定記録で解決。
+      その前の2問のうち、「登録フォームと編集フォームをどこまで共通化するか」はエントリ 70・決定記録で解決。
       「ステータスを変えたとき、一覧に古い値が残るか」は<strong>実際に確かめ、一覧に戻ると最新の値が表示された</strong>
       （ルートが変わると一覧ページが作り直され、<code>useEffect</code> が取得し直すため）。
       さらに前の2問（<code>initializeApp</code> と HMR ／ <code>"use client"</code> の要否）はエントリ 12・13 で解決済み。
@@ -7004,6 +7152,66 @@ import { useState } from "react";</code></pre>
         <dd><code>save</code> の中の先頭。コンポーネントの本体に書くと、描画中に投げて画面ごと落ちる</dd>
         <dt>メッセージ</dt>
         <dd>「ログイン状態が確認できません」。今は画面に出ないが、<strong>ログや文言の出し分けを足すときの手がかり</strong>になる</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>二重送信は、「保存済み」の state でボタンを止めて防ぐ</h3>
+      <dl>
+        <dt>問題</dt>
+        <dd>
+          通信を遅くして登録ボタンを続けて2回押すと、<strong>同じ企業が2件登録された</strong>（エントリ81）。
+          押せるのは保存中ではなく、<strong>保存が成功してから画面が切り替わるまで</strong>。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 成功したときは <code>submitting</code> を <code>false</code> に戻さない
+          <b>(b)</b> 保存前に ID を手元で決めて、同じ文書に書く（登録を冪等にする）
+          <b>(c)</b> 企業名が同じなら弾く
+          <b>(d)</b> 一定時間クリックを無視する
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は動きは同じだが、<strong>「送信中」という名前が「送信中または送信済み」を指すことになる</strong>（エントリ79）。
+          (b) は画面の制御に頼らない分だけ堅いが、登録関数の形が変わり、ID を描画のたびに作り直さない仕組みも要る。
+          <strong>いま保存の入口はボタン1つだけなので、(b) が追加で守る範囲が存在しない。</strong>
+          (c) は<strong>同じ企業に別の職種で応募することがある</strong>ので、「名前が同じ＝重複」とは言えない。
+          (d) は「何秒なら十分か」を推測で決めることになり、遅い回線ほど破られる。
+        </dd>
+        <dt>前提</dt>
+        <dd>
+          <strong>保存に成功したら、このフォームから離れる。</strong>だから <code>hasSaved</code> を <code>false</code> に戻すコードが要らない。
+          「保存して続けて登録する」画面を作るなら、ここを見直す。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd><strong>ボタン以外から保存を呼ぶ入口が増えたら</strong>、(b) に切り替える。画面の制御では守れなくなるため。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>編集ページの lost update は、いまは受け入れる</h3>
+      <dl>
+        <dt>問題</dt>
+        <dd>
+          編集ページは6項目すべてを書き込むので、<strong>開いている間に別のタブでステータスを変えると、保存した瞬間に「開いた時点の値」へ戻る</strong>。
+          <code>updateCompanyStatus</code> で <code>status</code> だけを渡して避けた事故（エントリ61）が、ここでは形を変えて戻ってくる。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 変更した項目だけを送る
+          <b>(b)</b> 更新時刻を持たせ、開いた時点から変わっていたら保存を止める
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>単独利用のアプリで、同じ企業を2か所から同時に編集する場面が想定しづらい。</strong>
+          (a) は「同時に<strong>別の</strong>項目を編集した場合」しか救えず、同じ項目なら結局どちらかが消える。
+          (b) は正しい解き方だが、データ設計とエラー表示が増える。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>
+          <strong>複数の端末やタブから同じ企業を編集するようになったら</strong>（データを共有する、スマートフォンと併用するなど）。
+          症状で書けば「<strong>保存したら、さっき別の画面で変えたはずの値が戻っている</strong>」。
+        </dd>
       </dl>
     </div>
   </section>
