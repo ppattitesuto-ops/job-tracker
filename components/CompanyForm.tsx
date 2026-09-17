@@ -24,6 +24,8 @@ export default function CompanyForm({ save, submitLabel, initialData }: Props) {
   const [submitError, setSubmitError] = useState("");
   // 初めはfalseでエラーの表示を禁止する。一度送信が行われたらtrueにしてエラーがある場合は表示をする。
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  // submittingだけでは通信中の二重送信は守れても、通信が成功した後のページ遷移中の間にボタンが押せるようになる二重送信は守れない。保存済みというもう一つのstateを持つことでページ遷移中にもボタンが押せなくなるようにして二重送信を防ぐ。
+  const [hasSaved, setHasSaved] = useState(false);
 
   // 正規化(空白をtrim()された値)されたformDataの値を返している
   const normalized = normalizeCompanyInput(formData);
@@ -45,10 +47,12 @@ export default function CompanyForm({ save, submitLabel, initialData }: Props) {
       // awaitなし：save()が呼ばれ、まだ保存が終わっていないPromiseが返る。finallyがすぐ動く、ボタンが押せるようになる。通信がそのあとで失敗する。→でもtryは終わっているからcatchに届かずエラーが画面に出ない。
       // awaitあり：awaitのところで待つ。保存が失敗するとawaitの場所で例外として投げられ、catchが受け取る→エラーが表示される。その後にfinallyが動く。
       await save(normalized);
+      // このフォームは『保存に成功したらページを離れる』使い方を前提にしている。→hasSavedがtrueになることで送信ボタンが押せなくなる。ここでページ遷移中の二重送信をカバーする。hasSavedをfalseにするコードはいらない。なぜなら別のページに遷移することでこのページに次に来たときにstateが初期値のfalseになり再び送信ボタンが押せるようになるから。逆に通信が失敗した場合でも上のsave(normalized)からsetHasSaved(true);を通らずにcatchに落ちてfinallyでsetSubmittingがfalseになることで再び送信ボタンは押せるようになる。
+      setHasSaved(true);
     } catch {
       setSubmitError("データの保存に失敗しました");
     } finally {
-      // 両方の処理後にsetSubmittingの真偽値をfalseにすることで送信ボタンのdisabled属性を使って再びボタンが押せるようにする
+      // 通信が失敗した時にやり直せるように戻す
       setSubmitting(false);
     }
   };
@@ -152,9 +156,9 @@ export default function CompanyForm({ save, submitLabel, initialData }: Props) {
       </div>
       {submitError && <div>{submitError}</div>}
       {/* buttonの規定値は元々submitだがtype="submit"と明示することで送信処理はこのボタンの内容が行われるんだとわかりやすくなる。 */}
-      {/* disabledはsubmittingで管理して二度押しを防止する */}
+      {/* disabledはsubmitting(保存中に押せなくする)とhasSaved(通信が成功した後のページ遷移中に押せなくする)で管理して二度押しを防止する */}
       {/* submitLabelは登録・編集フォームからPropsを受け取っている */}
-      <button type="submit" disabled={submitting}>{submitLabel}</button>
+      <button type="submit" disabled={submitting || hasSaved}>{submitLabel}</button>
     </form>
   );
 }
