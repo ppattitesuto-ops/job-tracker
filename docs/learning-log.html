@@ -544,10 +544,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-09-17</b></span>
-      <span>エントリ <b>82</b></span>
-      <span>決定記録 <b>33</b></span>
-      <span>進捗 <b>二重送信の修正 完了 → 削除へ</b></span>
+      <span>最終更新 <b>2026-09-20</b></span>
+      <span>エントリ <b>84</b></span>
+      <span>決定記録 <b>35</b></span>
+      <span>進捗 <b>企業のCRUD 完了 → loading / error とスタイリングへ</b></span>
     </div>
   </header>
 
@@ -636,6 +636,8 @@
       <li><a href="#e80">コミットは、作業しながら分けて積む</a></li>
       <li><a href="#e81">ボタンを守る時間帯は、2つある</a></li>
       <li><a href="#e82">まとめられるのは、イベントの中だけではない</a></li>
+      <li><a href="#e83">自分で作る前に、ブラウザが何を持っているかを調べる</a></li>
+      <li><a href="#e84">ドキュメントが黙っているときは、ソースが答える</a></li>
     </ol>
   </nav>
 
@@ -6259,6 +6261,173 @@ setHasSaved(true);      // try の中
       </div>
     </article>
 
+    <!-- 83 -->
+    <article class="entry" id="e83">
+      <div class="entry-no">83</div>
+      <div class="entry-body">
+        <h2>自分で作る前に、ブラウザが何を持っているかを調べる</h2>
+
+        <p>
+          削除の確認ダイアログを「自前でモーダルを作る」つもりでいた。
+          <strong>その前に、HTML に <code>&lt;dialog&gt;</code> という要素があることを確かめた。</strong>
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">やること</th><th scope="col">自前のモーダル</th><th scope="col"><code>&lt;dialog&gt;</code>（<code>showModal()</code>）</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">背景を操作できなくする</th><td>自分で書く</td><td><strong>ブラウザがやる</strong></td></tr>
+              <tr><th scope="row">Esc で閉じる</th><td>自分で書く</td><td><strong>ブラウザがやる</strong></td></tr>
+              <tr><th scope="row">フォーカスを中へ移す</th><td>自分で書く</td><td><strong>ブラウザがやる</strong></td></tr>
+              <tr><th scope="row">見た目（赤系にする等）</th><td>自由</td><td>自由（<code>::backdrop</code> も指定できる）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>書かなくて済んだのは「書き忘れると壊れる」部分ばかり</strong>——キーボードだけで操作する人が、背景のリンクに迷い込むような壊れ方をする。
+          仕様書3-3でカレンダーについて書いた「<strong>まず標準機能・自前実装で足りないかを検討する</strong>」を、初めて実際に適用した場面になった。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">代償：React の書き方と噛み合わない</div>
+          <p>
+            React は「state を変えたら画面が追随する」宣言的な書き方が基本だが、
+            <code>&lt;dialog&gt;</code> は <strong><code>showModal()</code> / <code>close()</code> を呼ぶ</strong>命令的な API。
+            要素そのものを掴む必要があり、そこで <code>useRef</code> が出てくる。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col"><code>useState</code></th><th scope="col"><code>useRef</code></th></tr></thead>
+              <tbody>
+                <tr><th scope="row">中身が変わったら</th><td><strong>再描画が起きる</strong></td><td><strong>何も起きない</strong></td></tr>
+                <tr><th scope="row">主な用途</th><td>画面に映す値</td><td>描画に関係ない値・<strong>DOM要素への参照</strong></td></tr>
+                <tr><th scope="row">中身の取り出し</th><td>そのまま読む</td><td><code>.current</code> を読む（最初は <code>null</code>）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>ref の中身が変わっても再描画されない</strong>ので、「<code>null</code> のあいだは別の表示」のような<strong>画面の分岐には使えない</strong>。
+            使うのは、要素がすでにある時点——つまり<strong>ハンドラの中</strong>。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：ref の受け取り方で2回つまずいた</div>
+          <dl class="wrong-right">
+            <dt><code>const { dialog } = useRef(null);</code></dt>
+            <dd><code>useRef</code> が返すのは <strong><code>current</code> ひとつだけを持つオブジェクト</strong>。<code>useAuth()</code> の <code>{ user, loading }</code> とは形が違う</dd>
+            <dt><code>const { current } = useRef&lt;HTMLDialogElement&gt;(null);</code></dt>
+            <dd>型検査は通るが<strong>動かない</strong>。分割代入は<strong>その瞬間の値をコピーする</strong>ので、要素が入る前の <code>null</code> で固定される（エントリ27のクロージャと同じ形）。<code>ref</code> 属性に渡すのも<strong>箱そのもの</strong>で、中身ではない</dd>
+            <dt><code>if (!dialogRef) return;</code></dt>
+            <dd><strong>箱は決して <code>null</code> にならない。</strong><code>null</code> になりうるのは <code>dialogRef.current</code> の方</dd>
+          </dl>
+          <p>
+            <code>useRef(null)</code> のままだと型は <code>RefObject&lt;null&gt;</code>——<strong><code>null</code> しか入らない参照</strong>と推論される。
+            「推論が意図と違うときに型引数を書く」（エントリ28・73）がここでも要る。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">既定のフォーカスが、破壊的なボタンに当たっていた</div>
+          <p>
+            <code>showModal()</code> で開くと、<strong>ブラウザが中の最初の操作できる要素にフォーカスを当てる。</strong>
+            最初に「削除する」を置いていたので、<strong>開いた直後に Enter を押すと削除が実行される</strong>状態だった。
+          </p>
+          <p>
+            「キャンセル」を先に置いて回避した。<strong>便利な既定の動きは、置き方によっては危険側にも働く。</strong>
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：ダイアログを閉じれば、削除は止まる</div>
+          <dl class="wrong-right">
+            <dt>削除中にキャンセルで閉じれば、削除処理が中断されて無かったことになる</dt>
+            <dd><strong>止まらない。</strong>閉じるのは画面の操作で、すでに送った通信とは無関係。<strong>企業は消える。</strong>変わるのは「結果が見えなくなる」ことだけ（中断するには <code>AbortController</code> のような仕組みが要るが、Firestore SDK は提供していない）</dd>
+          </dl>
+          <p>
+            だから <code>&lt;dialog&gt;</code> の <strong><code>cancel</code> イベント</strong>（Esc で閉じようとしたときに発火する）を、
+            <strong>削除中だけ <code>preventDefault()</code> で止める。</strong>止めないと、ユーザーは<strong>消えたのか消えていないのか分からないまま</strong>になる。
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">この日、型検査を通り抜けた4つ</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書いたもの</th><th scope="col">何が起きるか</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>deleteCompany(...)</code>（<code>await</code> 無し）</th><td>失敗が <code>catch</code> に届かない（エントリ45・75）</td></tr>
+                <tr><th scope="row"><code>e.preventDefault</code>（<code>()</code> 無し）</th><td><strong>参照しただけ。</strong>Esc は止まらない（エントリ35）</td></tr>
+                <tr><th scope="row"><code>onClick</code> を違うボタンに付ける</th><td>「削除する」で閉じ、「キャンセル」は無反応</td></tr>
+                <tr><th scope="row"><code>import { useRouter } from "next/router"</code></th><td><strong>Pages Router のもの。</strong>実在するので型検査は通り、押した瞬間に実行時エラー（エントリ14）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            lint は3件目までは「未使用」として教えてくれた。<strong>4件目を教えてくれる道具は無い</strong>——
+            <code>next/navigation</code> と <code>next/router</code> は、どちらも実在するパッケージだから。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 84 -->
+    <article class="entry" id="e84">
+      <div class="entry-no">84</div>
+      <div class="entry-body">
+        <h2>ドキュメントが黙っているときは、ソースが答える</h2>
+
+        <p>
+          削除を実装する前に確かめたかったこと——<strong>存在しない文書を削除したらどうなるか。</strong>
+          <code>updateDoc</code> は「存在しなければ失敗する」と書いてある。<code>deleteDoc</code> はどうか。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">関数</th><th scope="col">ドキュメントコメント</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>updateDoc</code></th><td><em>The update will <strong>fail</strong> if applied to a document that does not exist.</em>（<code>index.d.ts:3114-3116</code>）</td></tr>
+              <tr><th scope="row"><code>deleteDoc</code></th><td><strong>その場合について、一言も書かれていない</strong>（<code>index.d.ts:382-404</code>）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          オフライン時の挙動（エントリ62）には長く触れているのに、この点だけ空白だった。
+          <strong>「書かれていない」と分かることも、調査の成果。</strong>
+        </p>
+
+        <div class="note check">
+          <div class="note-label">実装を読むと、違いは1つの引数だった</div>
+<pre><code>// deleteDoc — index.esm.js:1764
+executeWrite(…, [ new DeleteMutation(t._key, Precondition.none()) ]);
+                                             ^^^^^^^^^^^^^^^^^^^^ 条件なし
+
+// updateDoc — index.esm.js:1738
+executeWrite(…, [ a.toMutation(t._key, Precondition.exists(true)) ]);
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^ 「存在すること」が条件</code></pre>
+          <p>
+            <strong><code>Precondition</code>（前提条件）が違う。</strong><code>updateDoc</code> は「存在すること」を条件に付けて送るので、無ければサーバーが拒否する。
+            <code>deleteDoc</code> は条件を付けない。<strong>だから存在しない文書を消しても失敗しない＝冪等</strong>（エントリ12）。
+          </p>
+          <p>
+            <strong>読み取った結論は、ブラウザで確かめた。</strong>通信を遅くして「削除する」を2回押しても、2回目はエラーにならなかった。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">冪等だと分かると、必要な state が減る</div>
+          <p>
+            登録フォームでは、成功後の遷移中にもう一度押されると<strong>2件登録される</strong>ので <code>hasSaved</code> が要った（エントリ81）。
+            削除は何回送っても結果が同じなので、<strong>同じ state は要らない。</strong>
+          </p>
+          <p>
+            それでも「削除中」の state は持っている。理由が違う——
+            <strong>進行中であることを伝えるため</strong>と、<strong>削除中に閉じられて結果が見えなくなるのを防ぐため</strong>。
+            <strong>同じ見た目の対策でも、守っているものが違えば理由も違う。</strong>
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -6271,9 +6440,10 @@ setHasSaved(true);      // try の中
         値が空のまま実行時に初めて意味不明なエラーになる。検証を入れるか、入れるならどこに置くか。
       </li>
       <li>
-        <strong>企業を削除したとき、紐づく予定・振り返りをどう扱うか</strong>（仕様書3-6）。
-        一緒に削除するか／参照だけ外すか／紐づくデータがあるうちは削除させないか。
-        <strong>決めたら決定記録に、捨てた案とセットで残す。</strong>
+        <strong>破壊的操作の配色（赤系）と <code>disabled</code> の見た目を、いつ・どんな体系で当てるか</strong>（仕様書3-6）。
+        削除の確認ダイアログも送信ボタンも、いまは<strong>状態が見た目に出ていない</strong>。
+        ステータスの色分け（青・黄・緑・灰）と同じ体系の中で赤を決める必要があるので、
+        <strong>1画面だけ見て決めない。</strong>Tailwind を始めるときにまとめて判断する。
       </li>
       <li>
         <strong><code>useAuth()</code> の null を毎回除く代わりに、<code>User</code> を返すフックを作るか。</strong>
@@ -6282,7 +6452,8 @@ setHasSaved(true);      // try の中
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 「保存後の遷移中に送信ボタンが押せてしまわないか」は<strong>実際に起きることを確かめ</strong>、エントリ 81 と決定記録で解決。
+      ※ 「企業を削除したとき、紐づく予定・振り返りをどう扱うか」は決定記録で解決（<strong>一緒に削除する</strong>。実装はフェーズ3・4）。
+      「保存後の遷移中に送信ボタンが押せてしまわないか」は<strong>実際に起きることを確かめ</strong>、エントリ 81 と決定記録で解決。
       その前の2問のうち、「登録フォームと編集フォームをどこまで共通化するか」はエントリ 70・決定記録で解決。
       「ステータスを変えたとき、一覧に古い値が残るか」は<strong>実際に確かめ、一覧に戻ると最新の値が表示された</strong>
       （ルートが変わると一覧ページが作り直され、<code>useEffect</code> が取得し直すため）。
@@ -7211,6 +7382,64 @@ setHasSaved(true);      // try の中
         <dd>
           <strong>複数の端末やタブから同じ企業を編集するようになったら</strong>（データを共有する、スマートフォンと併用するなど）。
           症状で書けば「<strong>保存したら、さっき別の画面で変えたはずの値が戻っている</strong>」。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>削除の確認ダイアログは、HTML の <code>&lt;dialog&gt;</code> で作る</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>window.confirm</code>
+          <b>(b)</b> <code>div</code> を重ねて自前のモーダルを作る
+          <b>(c)</b> ダイアログのライブラリ（Radix UI など）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <b>(a)</b> は<strong>見た目を制御できない</strong>ので、仕様書3-6 の「破壊的操作と分かる配色（赤系）」を満たせない。
+          <code>alert</code> ではなく画面内に出すという方針（3-6-2）とも、同じ理由でぶつかる。
+          <b>(b)</b> は<strong>Esc・フォーカスの閉じ込め・背景の操作抑止・閉じた後にフォーカスを戻す</strong>を全部自分で書くことになり、
+          書き漏らすと<strong>キーボードだけで操作する人が壊れ方に気づけない</strong>。
+          <b>(c)</b> は依存が増える（CLAUDE.md の方針）うえ、学習目的にも反する。
+          <code>&lt;dialog&gt;</code> なら、その面倒な部分をブラウザが持っていて、見た目は CSS で自由に決められる。
+        </dd>
+        <dt>代償</dt>
+        <dd>
+          <code>showModal()</code> / <code>close()</code> を<strong>呼ぶ</strong>命令的な API なので、React の宣言的な書き方と混ざる（<code>useRef</code> が要る／エントリ83）。
+        </dd>
+        <dt>この判断の出どころ</dt>
+        <dd>仕様書3-3 のカレンダー自作と同じ——<strong>「まず標準機能・自前実装で足りないかを検討する」</strong>。今回は<strong>標準機能で足りた</strong>ので、自作しない方を選んだ</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>企業を削除したら、紐づく予定・振り返りも一緒に削除する</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>仕様書3-6 は3つの選択肢を挙げるだけで、「<strong>実装時に判断が必要</strong>」としている</dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 参照だけ外して、予定・振り返りは残す
+          <b>(b)</b> 紐づくデータがあるうちは、企業を削除させない
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <strong>企業を削除する場面は、「間違えて登録した」「結局応募しなかった」がほとんど。</strong>
+          実際に応募して結果が出たなら、ステータスを「お断り」にして<strong>残す</strong>方が自然で、振り返りごと消したくなる場面が想像しにくい。
+          (a) は<strong>企業名の無い予定</strong>が一覧に残り続け、表示側で「削除された企業」の扱いを増やすことになる。
+          (b) は、消したいだけなのに先に個別の削除をして回ることになる。
+        </dd>
+        <dt>実装の時期</dt>
+        <dd>
+          <strong>予定・振り返りはまだ存在しないので、今回は企業1件の削除だけを実装した。</strong>
+          連鎖の実装はフェーズ3・4で、該当のコレクションを作るときに行う——<strong>確かめられないものを先に書かない</strong>（エントリ28）。
+          <code>lib/firestore.ts</code> のコメントにも、そのときに何をするかを書き残した。
+        </dd>
+        <dt>そのときに必要になること</dt>
+        <dd>
+          Firestore は<strong>自動で連鎖削除しない</strong>。<code>companyId</code> で検索して自分で消す。
+          確認ダイアログには<strong>「予定2件・振り返り1件も削除されます」と件数を出す</strong>——何が消えるかを明示するのは仕様書3-6 の要求でもある。
         </dd>
       </dl>
     </div>

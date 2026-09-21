@@ -2,7 +2,7 @@
 import type { Company, CompanyInput, CompanyStatus } from "@/types/company";
 // collection():どこにデータがあるかを示す関数（複数を指定）→getDocsを使う
 // doc():どこにデータがあるかを示す関数(一つを指定)→getDocを使う
-import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 // 引数の名前が uid、その型が string。「この関数は文字列を1つ受け取る」
@@ -65,4 +65,10 @@ export async function updateCompanyStatus(uid: string, id: string, status: Compa
 export async function updateCompany(uid: string, id: string, data: CompanyInput): Promise<void> {
   const companyRef = doc(db, "users", uid, "companies", id);
   await updateDoc(companyRef, data);
+}
+
+// 企業情報を削除する関数(「予定、振り返り」を追加した後には、companyIdで紐づく予定、振り返りも一緒に削除する)
+export async function deleteCompany(uid: string, id: string): Promise<void> {
+  const companyRef = doc(db, "users", uid, "companies", id);
+  await deleteDoc(companyRef);
 }
