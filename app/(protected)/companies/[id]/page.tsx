@@ -1,14 +1,14 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { getCompany, updateCompanyStatus } from "@/lib/firestore";
+import { deleteCompany, getCompany, updateCompanyStatus } from "@/lib/firestore";
 import { isHttpUrl } from "@/lib/validation";
 import { COMPANY_STATUSES } from "@/types/company";
 import type { Company, CompanyStatus } from "@/types/company";
 import Link from "next/link";
 // useParams(クライアントコンポーネントでしか使えない)は、今のURLの動的な部分を取るためのフック。返り値：{id: 123}などのオブジェクトになる。値の型：string | string[] | undefined
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 export default function CompanyPage() {
 
@@ -22,6 +22,15 @@ export default function CompanyPage() {
   const params = useParams();
   // このファイルは[id]の中にあるから実行時にparams.idは必ずstringになる。だから、asでparams.idはstringと宣言している。[...slug]のルートから呼ばれることがない(string[]の経路)
   const paramsId = params.id as string;
+  // 削除中かどうかを表す。
+  const [deleting, setDeleting] = useState(false);
+  // 削除が失敗した場合のエラー表示
+  const [deleteError, setDeleteError] = useState("");
+  // useRefが返すのは、currentというプロパティを１つだけ持つオブジェクト
+  // <HTMLDialogElement>は型引数。この箱のcurrentには<dialog>要素が入ると宣言してる。「入る要素は何か」だけを伝える場所で、まだ入っていない状態(null)はuseRefの型定義で<HTMLDialogElement>を渡すと自動で付くように定義されている。
+  // 最初の描画時点ではまだ要素が存在しないため初期値はnull
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!user) return;
@@ -61,6 +70,40 @@ export default function CompanyPage() {
     }
   };
 
+  // 削除中にEscキーが押されると、結果(削除の成功or失敗)を見せる先がなくなる。
+  // Escで閉じるのは<dialog>の既定の動き。だからe.preventDefaultで止める。
+  const cancelDialog = (e: React.SyntheticEvent<HTMLDialogElement>) => {
+    if (deleting) {
+      e.preventDefault();
+    }
+  };
+
+  const openDialog = () => {
+    // currentがnullなら何もしない
+    if (!dialogRef.current) return;
+    // currentに入っている<dialog>要素のメソッドを呼ぶ
+    dialogRef.current.showModal();
+  };
+
+  const closeDialog = () => {
+    if (!dialogRef.current) return;
+    dialogRef.current.close();
+  };
+
+  const handleDelete = async () => {
+    if (!user) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteCompany(user.uid, paramsId);
+      router.push("/companies");
+    } catch {
+      setDeleteError("企業データの削除に失敗しました");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) return <div>読み込み中</div>;
   if (error) return <div>{error}</div>;
   if (!company) return (
@@ -86,6 +129,16 @@ export default function CompanyPage() {
   return (
     <div>
       <h1>企業情報の詳細</h1>
+      {/* 削除ボタンはdialogを開く処理と結びつける */}
+      <button onClick={openDialog} type="button">削除</button>
+      {/* ref={dialogRef}と書くことでリアクトが要素(<dialog>)を箱(dialogRef.current)に入れてくれる */}
+      <dialog ref={dialogRef} onCancel={cancelDialog}>
+        <div>本当に{company.name}を削除しますか？この操作は取り消せません。</div>
+        {/* buttonは既定のtypeがsubmitになる。だから何も指定しない=送信ボタンになってしまうため、今後<form>を導入した場合にページの際読み込みが入ってしまう。なのでbuttonはtypeを明示的に毎回示すようにする */}
+        <button onClick={closeDialog} type="button" disabled={deleting}>キャンセル</button>
+        <button onClick={handleDelete} type="button" disabled={deleting}>削除する</button>
+        {deleteError && <div>{deleteError}</div>}
+      </dialog>
       <div>
         {/* JSXの属性に書けるのは「href="..."：文字列そのもの」と「href={...}:
         JavaScriptの式(ここからJSという宣言)」の２種類のみ。「"..."」の代わりにテンプレートリテラルでバッククウォートを使おうとしたが、その場合は「{}」が必要になる*/}
