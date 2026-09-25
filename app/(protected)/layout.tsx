@@ -20,7 +20,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   }, [user, loading, router])
 
   // ローディングがtrueなら読み込み中に表示を切り替える
-  if (loading) return <div>読み込み中...</div>;
+  if (loading) return <div>ログイン状態を確認しています</div>;
   // ユーザー情報がnullなら何も表示しない→loginページに飛ぶ
   if (!user) return null;
   // ローディングがfalseでユーザー情報があるならprotectedに包まれたもの（children)を表示する

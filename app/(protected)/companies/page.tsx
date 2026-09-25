@@ -29,7 +29,7 @@ export default function CompaniesPage() {
         setError("企業一覧の取得に失敗しました");
         //finally:tryとcatchのどちらの場合でも必ずやるべきこと
       } finally {
-        // ここでローディングをfalseにしないと読み込み中の表示が残り続ける
+        // ここでローディングをfalseにしないと取得中の表示が残り続ける
         setLoading(false);
       }
     }
@@ -38,7 +38,7 @@ export default function CompaniesPage() {
   }, [user]);
 
   // もしローディング中だったら
-  if (loading) return <div>読み込み中</div>;
+  if (loading) return <div>データを取得しています</div>;
   // 通信が失敗してたら
   if (error) return <div>{error}</div>;
   // エンプティステート(登録企業情報が何もない時)

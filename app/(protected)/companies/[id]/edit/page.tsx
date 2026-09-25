@@ -44,7 +44,7 @@ export default function EditCompany() {
   }, [user, paramsId]);
 
   // 早期リターンの前に書くのはフック(useEffectなど)だけ。saveの定義は早期リターンよりあとでいい
-  if (loading) return <div>読み込み中</div>;
+  if (loading) return <div>データを取得しています</div>;
   if (error) return <div>{error}</div>;
   if (!editData) return (
     <div>

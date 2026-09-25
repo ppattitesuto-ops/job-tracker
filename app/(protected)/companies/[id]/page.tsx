@@ -104,7 +104,7 @@ export default function CompanyPage() {
     }
   };
 
-  if (loading) return <div>読み込み中</div>;
+  if (loading) return <div>データを取得しています</div>;
   if (error) return <div>{error}</div>;
   if (!company) return (
     <div>
