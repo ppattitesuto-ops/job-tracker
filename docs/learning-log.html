@@ -544,10 +544,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-09-20</b></span>
-      <span>エントリ <b>84</b></span>
-      <span>決定記録 <b>35</b></span>
-      <span>進捗 <b>企業のCRUD 完了 → loading / error とスタイリングへ</b></span>
+      <span>最終更新 <b>2026-09-25</b></span>
+      <span>エントリ <b>88</b></span>
+      <span>決定記録 <b>37</b></span>
+      <span>進捗 <b>フェーズ2 完了 → スタイリング（Tailwind）へ</b></span>
     </div>
   </header>
 
@@ -638,6 +638,10 @@
       <li><a href="#e82">まとめられるのは、イベントの中だけではない</a></li>
       <li><a href="#e83">自分で作る前に、ブラウザが何を持っているかを調べる</a></li>
       <li><a href="#e84">ドキュメントが黙っているときは、ソースが答える</a></li>
+      <li><a href="#e85">同じ山括弧でも、型引数が指すものは関数ごとに違う</a></li>
+      <li><a href="#e86"><code>loading.tsx</code> が埋めるのは、サーバーから届くまでの時間だけ</a></li>
+      <li><a href="#e87"><code>error.tsx</code> に届くのは、描画中の想定外の例外だけ</a></li>
+      <li><a href="#e88">push する前なら、直前のコミットは作り直せる</a></li>
     </ol>
   </nav>
 
@@ -6428,6 +6432,225 @@ executeWrite(…, [ a.toMutation(t._key, Precondition.exists(true)) ]);
       </div>
     </article>
 
+    <!-- 85 -->
+    <article class="entry" id="e85">
+      <div class="entry-no">85</div>
+      <div class="entry-body">
+        <h2>同じ山括弧でも、型引数が指すものは関数ごとに違う</h2>
+
+<pre><code>const [company, setCompany] = useState&lt;Company | null&gt;(null);
+const dialogRef = useRef&lt;HTMLDialogElement&gt;(null);</code></pre>
+        <p>
+          片方には <code>| null</code> があり、片方には無い。<strong>「ref は最初の描画の後はずっと要素が入っているから、<code>null</code> が要らない」</strong>と考えた。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>dialogRef.current</code> には <code>null</code> が入らないので、型引数に <code>null</code> が無い</dt>
+            <dd><strong>入る。</strong>最初の描画のときと、ページから離れた後。型は <code>HTMLDialogElement | null</code>。<strong>証拠は自分のコードにある</strong>——<code>if (!dialogRef.current) return;</code> を消すと型検査に弾かれる</dd>
+          </dl>
+<pre><code>// node_modules/@types/react/index.d.ts:1749
+function useRef&lt;T&gt;(initialValue: T | null): RefObject&lt;T | null&gt;;
+                                                      ^^^^^^^^ ここで | null が足される</code></pre>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">型引数が表すもの</th><th scope="col"><code>null</code> を書くのは</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>useState&lt;Company | null&gt;</code></th><td><strong>state に入りうる値すべて</strong></td><td><strong>自分</strong></td></tr>
+              <tr><th scope="row"><code>useRef&lt;HTMLDialogElement&gt;</code></th><td><strong>箱に入る要素の型</strong></td><td><strong>React の型定義</strong>（DOM への参照は必ず「描画前は空」を通るので、織り込み済み）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>違いは null の可能性ではなく、型引数が何を指しているか。</strong>迷ったら型定義を開く（エントリ14・59）。
+          あわせて、型引数を書いておくと <code>&lt;div ref={dialogRef}&gt;</code> のような<strong>要素との組み合わせ違いも型検査が見つける</strong>。
+        </p>
+      </div>
+    </article>
+
+    <!-- 86 -->
+    <article class="entry" id="e86">
+      <div class="entry-no">86</div>
+      <div class="entry-body">
+        <h2><code>loading.tsx</code> が埋めるのは、サーバーから届くまでの時間だけ</h2>
+
+        <blockquote>
+          show an instant loading state from the server while the content of a route segment streams in
+          <br>— <code>loading.md:6</code>
+        </blockquote>
+        <p>
+          置いた階層と、その配下に効く。<strong>表示されるのは、サーバーから区画の中身が届くまでの間。</strong>
+          届いた後にブラウザで起きること（<code>useEffect</code> で Firestore を待つ時間）には関与しない——決定記録に書いた「Firestore の待ち時間には効かない」を、ドキュメントで裏付けた。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">実際に見ようとして、見えなかった</div>
+          <p>
+            通信を遅くしてページを移動しても、<code>loading.tsx</code> の表示は<strong>一瞬すぎて見えなかった。</strong>
+            このアプリのページは全部クライアントコンポーネントで、<strong>サーバー側で待つ処理が無い</strong>から。
+            見えたのは各ページの「データを取得しています」の方で、<strong>2つの待ち時間の違いを画面で見分けられた。</strong>
+          </p>
+          <p>
+            <strong>確かめ方もドキュメントに書いてあった</strong>——「React Developer Tools で Suspense 境界を手で切り替えるとよい」（<code>loading.md:27</code>）。
+            切り替えると、Components タブの木の中で <strong><code>ProtectedLayout</code> は残ったまま、Suspense の下だけが <code>Loading</code> に入れ替わった。</strong>
+            「その階層の中身だけを置き換える」を、コードを変えずに確かめられた。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>切り替えても、<code>layout.tsx</code> の見出しやナビゲーションは残ることを画面で確かめる</dt>
+            <dd>いまの <code>(protected)/layout.tsx</code> は <code>&lt;&gt;{children}&lt;/&gt;</code> を返すだけで、<strong>見える要素を何も描いていない。</strong>存在しないものを前提に説明していた。確かめる場所を<strong>画面ではなくコンポーネントの木</strong>に変えた</dd>
+          </dl>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">待ち時間の表示が3種類になった</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">表示</th><th scope="col">出どころ</th><th scope="col">待っているもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">ログイン状態を確認しています</th><td><code>(protected)/layout.tsx</code></td><td>認証</td></tr>
+                <tr><th scope="row">ページを取得しています</th><td><code>loading.tsx</code></td><td>サーバーから区画が届くこと</td></tr>
+                <tr><th scope="row">データを取得しています</th><td>各ページの state</td><td>Firestore</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            以前は「読み込み中...」と「読み込み中」で、<strong><code>...</code> の有無でしか違わず、実際には区別できなかった。</strong>
+            基準を「<strong>何を待っているかを言う</strong>」にすると、ユーザーには状況が伝わり、開発中はどれが出ているか分かる。
+          </p>
+          <p>
+            コメントに「データを取得中です」と<strong>画面の文言を書き写していた</strong>ので、文言を変えたらコメントだけ古くなった。
+            <strong>コメントには文言そのものではなく、何の表示かを書く</strong>（「取得中の表示」）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 87 -->
+    <article class="entry" id="e87">
+      <div class="entry-no">87</div>
+      <div class="entry-body">
+        <h2><code>error.tsx</code> に届くのは、描画中の想定外の例外だけ</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">部分</th><th scope="col">決めているのは</th><th scope="col">理由</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">ファイル名 <code>error.tsx</code></th><td>Next.js</td><td>この名前のファイルを探して、エラー時の画面に使う</td></tr>
+              <tr><th scope="row"><code>"use client"</code></th><td>Next.js</td><td>Error Boundary は<strong>ブラウザ側の React</strong>の仕組み</td></tr>
+              <tr><th scope="row"><code>export default</code></th><td>Next.js</td><td>ファイル規約は default export を読む（エントリ15）</td></tr>
+              <tr><th scope="row">props の名前 <code>error</code> / <code>retry</code></th><td>Next.js</td><td>この名前で渡してくる。分割代入はプロパティ名で取り出す（エントリ68）</td></tr>
+              <tr><th scope="row">関数名・文言・出口</th><td><strong>自分</strong></td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>構文ではなく、フレームワークとの約束。</strong><code>CompanyForm</code> では自分が決めた Props にページが合わせたが、
+          今回は <strong>Next.js が決めた Props に自分が合わせる</strong>側に立った。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">このアプリで、何が届くか</div>
+          <p>
+            Firestore の取得に失敗しても、<strong><code>error.tsx</code> には届かない。</strong>各ページの <code>try/catch</code> が受け取り、自分の画面にメッセージを出すから。
+            届くのは<strong>描画中に起きた想定外の例外</strong>——エントリ83の前に確かめた「<code>name</code> が数値だと <code>.trim()</code> で落ちる」がまさにそれ。
+          </p>
+          <p>
+            だからボタンに「通信をやり直す」と書くのは、実際に起きていることと合わない。
+            さらに <strong>同じ階層の <code>layout.tsx</code> のエラーは受け止めない</strong>（包んでいる側だから。<code>error.md:96</code>）。
+            認証ガードのエラーは <code>app/error.tsx</code>、ルートレイアウト自身は <code>app/global-error.tsx</code> の担当。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">This is NOT the Next.js you know：<code>reset</code> ではなく <code>retry</code></div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">props</th><th scope="col">何をするか</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>retry</code></th><td><strong>取り直して</strong>描き直す。<strong>普段はこちら</strong></td></tr>
+                <tr><th scope="row"><code>reset</code></th><td>取り直さずに描き直すだけ</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <blockquote>In most cases, you should use <code>retry()</code> instead.<br>— <code>error.md:157</code></blockquote>
+          <p>ネット上の記事は、ほぼ全部 <code>reset</code> で書かれている。<strong>AGENTS.md の警告がこの形で当たった。</strong></p>
+          <dl class="wrong-right">
+            <dt><code>reset</code> はエラーを無視する</dt>
+            <dd>無視はしない。<strong>エラーの状態を消して描き直す。</strong>原因が残っていれば、描き直した瞬間にまた落ちる</dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label"><code>retry</code> だけでは、閉じ込められる</div>
+          <p>
+            ドキュメントは <code>retry</code> を「原因は<strong>一時的なこともある</strong>」と説明している。
+            <strong>データが壊れているなら何度押しても落ちる</strong>ので、もう1つの出口（リンク）を置いた。
+          </p>
+          <p>
+            行き先を最初「一覧ページ」にしたが、<strong>この <code>error.tsx</code> は <code>(protected)</code> 全体に効く</strong>。
+            一覧ページ自身が落ちたとき、「一覧へ戻る」は<strong>いま落ちたページに戻る</strong>——出口のつもりが入口になる。
+            いちばん処理が少なく、どこから来ても自然な <strong><code>/</code>（ダッシュボード）</strong>に変えた。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：名前と副作用の置き場所</div>
+          <dl class="wrong-right">
+            <dt>関数名を <code>Error</code> にすると、props の <code>error</code> と衝突する</dt>
+            <dd>大文字小文字は別の名前。衝突するのは<strong>組み込みの <code>Error</code></strong>。しかも<strong>値の位置でだけ</strong>——<code>function</code> 宣言は値しか作らないので、型の位置の <code>Error</code> は組み込みの型のまま。<code>x instanceof Error</code> と書くと<strong>型検査は通るのに常に false</strong>になる（エントリ44の値と型の2つの世界）</dd>
+            <dt>名前は <code>CatchError</code></dt>
+            <dd><strong>Next.js に <code>catchError</code> という関数が実在する</strong>（<code>next/error</code>）。またコンポーネントは「何であるか」を名詞で付ける。<code>ProtectedLayout</code> と対になる <strong><code>ProtectedError</code></strong> にした</dd>
+            <dt><code>console.error(error)</code> を本体に直接書く</dt>
+            <dd>本体は<strong>描画のたびに</strong>走る（Strict Mode なら2回ずつ）。外へ何かを書く処理は副作用なので <strong><code>useEffect</code> の中へ、依存配列は <code>[error]</code></strong>（エントリ55）。「エラー報告サービスへ送る」なら、描画の回数だけ送ることになっていた</dd>
+          </dl>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">確かめたこと</div>
+          <ol>
+            <li>Firestore で企業の <code>name</code> を数値にして、編集ページを開く</li>
+            <li>開発中は <strong>Next.js の赤いオーバーレイが先に出る</strong>。閉じると後ろに <code>ProtectedError</code> が見える（知らないと「効いていない」と勘違いする）</li>
+            <li>ボタンを押しても、原因が残っているので<strong>また同じ画面になる</strong></li>
+            <li>「ダッシュボードへ戻る」で抜けられる</li>
+            <li>Firestore の値を元に戻す</li>
+          </ol>
+        </div>
+      </div>
+    </article>
+
+    <!-- 88 -->
+    <article class="entry" id="e88">
+      <div class="entry-no">88</div>
+      <div class="entry-body">
+        <h2>push する前なら、直前のコミットは作り直せる</h2>
+
+        <p>コミットメッセージに打ち間違いがあった（<code>loadint.tsx</code>、途中の空白）。</p>
+<pre><code>git commit --amend -m "feat: 保護されたページに loading.tsx と error.tsx を追加"</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">起きること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">ハッシュ</th><td><code>b5a1916</code> → <code>ac98cba</code>。<strong>書き換えではなく、新しいコミットを作って置き換えている</strong></td></tr>
+              <tr><th scope="row">ステージにあるもの</th><td><strong>直前のコミットに混ぜ込まれる</strong>。実行前に「Changes to be committed」が空であることを確認した</td></tr>
+              <tr><th scope="row">push した後なら</th><td>手元とリモートで履歴が食い違い、送り直すには強制 push が要る。<strong>共有した履歴は書き換えない</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>「後から直せるもの」と「直せないもの」の境目は、push したかどうか。</strong>
+          マージコミットのメッセージを直さないと決めた（決定記録）のと同じ考え方。
+        </p>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -7440,6 +7663,57 @@ executeWrite(…, [ a.toMutation(t._key, Precondition.exists(true)) ]);
         <dd>
           Firestore は<strong>自動で連鎖削除しない</strong>。<code>companyId</code> で検索して自分で消す。
           確認ダイアログには<strong>「予定2件・振り返り1件も削除されます」と件数を出す</strong>——何が消えるかを明示するのは仕様書3-6 の要求でもある。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3><code>loading.tsx</code> と <code>error.tsx</code> は、<code>(protected)</code> に1組だけ置く</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>app/(protected)/companies/</code> に置き、企業のページだけに効かせる（文言を「企業を読み込んでいます」のようにできる）
+          <b>(b)</b> あわせて <code>app/error.tsx</code> / <code>app/global-error.tsx</code> も置く
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <code>loading.tsx</code> が出るのは<strong>サーバーから区画が届くまで</strong>で、このアプリでは一瞬で終わる（エントリ86）。
+          <strong>ほとんど見えない表示の文言をページごとに変えても、得るものが少ない。</strong>
+          <code>(protected)</code> に置けば、今後の予定・振り返りのページにも自動で効く。
+          (b) は、<strong>どこまでのエラーを拾いたいかが、使ってみるまで分からない</strong>ので見送った。
+        </dd>
+        <dt>自覚しておくこと</dt>
+        <dd>
+          <code>loading.tsx</code> は<strong>出番が少ないと分かった上で</strong>、学習のために置いている。
+          <code>(protected)/error.tsx</code> は、<strong>同じ階層の <code>layout.tsx</code>（認証ガード）のエラーを受け止めない。</strong>
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>
+          認証ガードで起きたエラーも画面で扱いたくなったら <code>app/error.tsx</code>。
+          サーバーコンポーネントでデータを取るページができたら、そのページの <code>loading.tsx</code> を個別に考える（そのときは主役になる）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3><code>error.tsx</code> は <code>retry</code> と、ダッシュボードへの出口を持つ。原因はコンソールにだけ出す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>retry</code> のボタンだけを置く
+          <b>(b)</b> 出口を一覧ページ（<code>/companies</code>）にする
+          <b>(c)</b> <code>error.message</code> を画面に表示する
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は<strong>原因が一時的でないとき、ユーザーを閉じ込める</strong>。
+          (b) は、<strong>一覧ページ自身が落ちたとき、落ちたページに戻す</strong>ことになる。<code>/</code> はどのページから来ても自然で、いまは描画する処理が一番少ない。
+          (c) は、ユーザーには <code>name.trim is not a function</code> のような文は役に立たない。開発中に原因を追えればよいので、<code>useEffect</code> で <code>console.error</code> に出すだけにした。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>
+          ダッシュボードを作ってデータを取るようになったら、<strong><code>/</code> も落ちうる</strong>ので出口を考え直す。
+          本番の利用者のエラーを知りたくなったら、<code>console.error</code> の場所に<strong>エラー報告サービスへの送信</strong>を置く。
         </dd>
       </dl>
     </div>
