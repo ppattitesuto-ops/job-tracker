@@ -14,8 +14,6 @@ export const COMPANY_STATUSES = [
 // ブラウザで実行時に使われるもの(COMPANY_STATUSES)を、ビルド時に使って消えるものとしても使いたいから、CompanyStatusでその型に変えてる
 // typeofは値を受け取って、その型を返すもの、numberは配列の中身を数字で取り出せることを示す
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
-// Companyの型からIDをOmitによって抜き、新しい型を作る
-export type CompanyInput = Omit<Company, "id">;
 
 // Companyではデータに当てはめる型、ビルド時に消える型として型をエクスポートしてる
 export type Company = {
@@ -27,6 +25,9 @@ export type Company = {
   jobUrl: string;
   memo: string;
 };
+
+// Companyの型からIDをOmitによって抜き、新しい型を作る
+export type CompanyInput = Omit<Company, "id">;
 
 // keyof CompanyInput:CompanyInputからキーだけを取り出すためのもの
 // Record：キーの集合と値の型からオブジェクト型を組み立てる。→Record<keyof CompanyInput, string>でCompanyInputのキーを取り出し、値をstringにしてオブジェクトを作る。→statusも値がstringになったことでエラーメッセージが入れられるようになった。
