@@ -33,3 +33,25 @@ export type CompanyInput = Omit<Company, "id">;
 // Record：キーの集合と値の型からオブジェクト型を組み立てる。→Record<keyof CompanyInput, string>でCompanyInputのキーを取り出し、値をstringにしてオブジェクトを作る。→statusも値がstringになったことでエラーメッセージが入れられるようになった。
 // Partial<T>:すべてのプロパティを省略可能にする(これがないと6項目全てに文字列を入れないと型が通らない)→Partialで{}から始められるようにしてあとからエラーメッセージがあるものを項目として生やしていく設計になっている。
 export type CompanyInputErrors = Partial<Record<keyof CompanyInput, string>>;
+
+// ダッシュボードで段階を順に並べて集計する時にこの値の配列を使う
+export const COMPANY_STATUS_STAGES = [
+  "screening",
+  "interview",
+  "offer",
+  "rejection",
+] as const;
+
+// 値の配列をビルド時に当てはめる型としても使う
+export type CompanyStatusStage = (typeof COMPANY_STATUS_STAGES)[number];
+
+// ステータスを受け取る事で段階が分かる表。CompanyStatus自体がキーなのでkeyofはいらない。
+export const STAGE_BY_STATUS: Record<CompanyStatus, CompanyStatusStage> = {
+  "応募済": "screening",
+  "書類選考中": "screening",
+  "一次面接": "interview",
+  "二次面接": "interview",
+  "最終面接": "interview",
+  "内定": "offer",
+  "お断り": "rejection",
+};
