@@ -6,6 +6,7 @@ import type { Company } from "@/types/company";
 import { useEffect, useState } from "react";
 // Linkは自分のアプリのURLを繋ぐ。Next.jsのルーターが「そのルートに対応するファイルはどれか」を知っていて、必要な部分だけ差し替えるので効率的。a hrefはページ全体を再読み込みするから状態などもリロードされて非効率。ただし、Linkはアプリ内しか遷移できないため、外部に遷移したい場合はa hrefを使う必要がある。
 import Link from "next/link";
+import CompanyStatusBadge from "@/components/CompanyStatusBadge";
 
 export default function CompaniesPage() {
   // 企業で実際に扱うデータの配列、中に１つの企業ごとの情報がオブジェクトとして入ってる→useStateには型をつけてその型が配列からなると示してある。初期値から配列
@@ -64,7 +65,7 @@ export default function CompaniesPage() {
             <span>{company.name}</span>
             <span>{company.position}</span>
             <span>{company.appliedAt}</span>
-            <span>{company.status}</span>
+            <CompanyStatusBadge status={company.status} />
           </Link>
         </div>
       ))}
