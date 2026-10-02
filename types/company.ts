@@ -45,6 +45,7 @@ export const COMPANY_STATUS_STAGES = [
 // 値の配列をビルド時に当てはめる型としても使う
 export type CompanyStatusStage = (typeof COMPANY_STATUS_STAGES)[number];
 
+// Partialをつけなかった理由：今後キー(今ならCompanyStatus)が追加された場合に、それが対応表に更新されていなかったらエラーが出るようにしたいから。それと、Partialをつけたら表を引くたびにCompanyStatusStage | undefinedの処理を書かなければいけない。
 // ステータスを受け取る事で段階が分かる表。CompanyStatus自体がキーなのでkeyofはいらない。
 export const STAGE_BY_STATUS: Record<CompanyStatus, CompanyStatusStage> = {
   "応募済": "screening",
