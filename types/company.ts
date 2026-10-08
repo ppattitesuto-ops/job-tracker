@@ -12,7 +12,9 @@ export const COMPANY_STATUSES = [
 ] as const;
 
 // ブラウザで実行時に使われるもの(COMPANY_STATUSES)を、ビルド時に使って消えるものとしても使いたいから、CompanyStatusでその型に変えてる
-// typeofは値を受け取って、その型を返すもの、numberは配列の中身を数字で取り出せることを示す
+// typeofは値(配列)を、型の世界に持ってくる。
+// [number]は配列のどの番号の要素か分からないという聞き方をする。だから、答えはありうる全部→ユニオンになる。ここでCompanyStatusは、配列に入っている７つの文字列のどれか一つというユニオン型になる。
+// 配列(値)につけたas constは配列の中身を値までそれと決めているからこそCompanyStatusが配列で決められた値のユニオン型になる。as constがなければCompanyStatusの中身はstringになり文字列ならなんでも入るようになってしまう。
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
 
 // Companyではデータに当てはめる型、ビルド時に消える型として型をエクスポートしてる
@@ -42,7 +44,6 @@ export const COMPANY_STATUS_STAGES = [
   "rejection",
 ] as const;
 
-// 値の配列をビルド時に当てはめる型としても使う
 export type CompanyStatusStage = (typeof COMPANY_STATUS_STAGES)[number];
 
 // Partialをつけなかった理由：今後キー(今ならCompanyStatus)が追加された場合に、それが対応表に更新されていなかったらエラーが出るようにしたいから。それと、Partialをつけたら表を引くたびにCompanyStatusStage | undefinedの処理を書かなければいけない。
