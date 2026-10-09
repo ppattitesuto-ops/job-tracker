@@ -1,5 +1,6 @@
 "use client";
 
+import Button from "@/components/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { deleteCompany, getCompany, updateCompanyStatus } from "@/lib/firestore";
 import { isHttpUrl } from "@/lib/validation";
@@ -130,13 +131,13 @@ export default function CompanyPage() {
     <div>
       <h1>企業情報の詳細</h1>
       {/* 削除ボタンはdialogを開く処理と結びつける */}
-      <button onClick={openDialog} type="button">削除</button>
+      <Button variant="dangerOutline" type="button" onClick={openDialog}> 削除</Button>
       {/* ref={dialogRef}と書くことでリアクトが要素(<dialog>)を箱(dialogRef.current)に入れてくれる */}
       <dialog ref={dialogRef} onCancel={cancelDialog}>
         <div>本当に{company.name}を削除しますか？この操作は取り消せません。</div>
         {/* buttonは既定のtypeがsubmitになる。だから何も指定しない=送信ボタンになってしまうため、今後<form>を導入した場合にページの際読み込みが入ってしまう。なのでbuttonはtypeを明示的に毎回示すようにする */}
-        <button onClick={closeDialog} type="button" disabled={deleting}>キャンセル</button>
-        <button onClick={handleDelete} type="button" disabled={deleting}>削除する</button>
+        <Button variant="secondary" type="button" onClick={closeDialog} disabled={deleting}>キャンセル</Button>
+        <Button variant="danger" type="button" onClick={handleDelete} disabled={deleting}>削除する</Button>
         {deleteError && <div>{deleteError}</div>}
       </dialog>
       <div>
