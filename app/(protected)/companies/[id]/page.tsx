@@ -131,7 +131,7 @@ export default function CompanyPage() {
     <div>
       <h1>企業情報の詳細</h1>
       {/* 削除ボタンはdialogを開く処理と結びつける */}
-      <Button variant="dangerOutline" type="button" onClick={openDialog}> 削除</Button>
+      <Button variant="dangerOutline" type="button" onClick={openDialog}>削除</Button>
       {/* ref={dialogRef}と書くことでリアクトが要素(<dialog>)を箱(dialogRef.current)に入れてくれる */}
       <dialog ref={dialogRef} onCancel={cancelDialog}>
         <div>本当に{company.name}を削除しますか？この操作は取り消せません。</div>
