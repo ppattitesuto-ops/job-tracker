@@ -3,6 +3,7 @@
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useState } from "react";
+import Button from "@/components/Button";
 
 export default function Home() {
 
@@ -21,8 +22,7 @@ export default function Home() {
     <div>
       <div>ここはダッシュボードになる予定</div>
       {error && <div>{error}</div>}
-      <button type="button" onClick={handleSignOut}>サインアウト</button>
+      <Button variant="secondary" type="button" onClick={handleSignOut}>サインアウト</Button>
     </div>
-
   );
 }

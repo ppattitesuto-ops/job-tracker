@@ -4,6 +4,7 @@ import { normalizeCompanyInput, validateCompanyInput } from "@/lib/company";
 import { COMPANY_STATUSES } from "@/types/company";
 import type { CompanyStatus, CompanyInput } from "@/types/company";
 import { useState } from "react";
+import Button from "./Button";
 
 // ページ側からこの型宣言を見ると「守るべき約束」を表している。あくまで約束。実際の型検査はページ側でコンパイル時(typecheck や build のときに検査される)に行われる。
 // 型の名前は変数名と間違えるのを防止するため大文字でスタート
@@ -158,7 +159,7 @@ export default function CompanyForm({ save, submitLabel, initialData }: Props) {
       {/* buttonの規定値は元々submitだがtype="submit"と明示することで送信処理はこのボタンの内容が行われるんだとわかりやすくなる。 */}
       {/* disabledはsubmitting(保存中に押せなくする)とhasSaved(通信が成功した後のページ遷移中に押せなくする)で管理して二度押しを防止する */}
       {/* submitLabelは登録・編集フォームからPropsを受け取っている */}
-      <button type="submit" disabled={submitting || hasSaved}>{submitLabel}</button>
+      <Button variant="primary" type="submit" disabled={submitting || hasSaved}>{submitLabel}</Button>
     </form>
   );
 }

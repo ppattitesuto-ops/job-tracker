@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthP
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage } from "@/lib/authErrors";
+import Button from "@/components/Button";
 
 export default function LoginPage() {
 
@@ -62,7 +63,7 @@ export default function LoginPage() {
       <div>ログイン画面</div>
       {/* 条件付きレンダリング（＆＆）でエラーがあるなら出す、ないなら出さない、errorが空文字だからそのまま画面に出して何も表示されないけど、０などのならそのまま表示されるから気を付ける→真偽値への変更など*/}
       {error && <div>{error}</div>}
-      <button type="button" onClick={handleGoogleSignIn}>Googleでログイン</button>
+      <Button variant="primary" type="button" onClick={handleGoogleSignIn}>Googleでログイン</Button>
       <div>
         <label htmlFor="email">メールアドレス</label>
         <input
@@ -82,12 +83,12 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)} />
       </div>
       <div>
-        <button type="submit">
-          {mode === "login" ? "ログイン" : "新規登録"}
-        </button>
-        <button type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
+        <Button variant="primary" type="submit">
+        {mode === "login" ? "ログイン" : "新規登録"}
+        </Button>
+        <Button variant="secondary" type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")}>
           {mode === "login" ? "新規登録はこちら" : "ログインはこちら"}
-        </button>
+        </Button>
       </div>
     </form>
   );
