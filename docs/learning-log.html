@@ -277,6 +277,7 @@
 
   /* ---------- inline bits ---------- */
 
+  /* Code keeps its real case everywhere: labels and headers are uppercased, but class names are case-sensitive. */
   code {
     font-family: var(--mono);
     font-size: 0.8125em;
@@ -284,6 +285,8 @@
     padding: 0.1em 0.35em;
     color: var(--ink);
     word-break: break-word;
+    text-transform: none;
+    letter-spacing: normal;
   }
 
   pre {
@@ -342,20 +345,28 @@
     margin: 0;
   }
 
+  /* The marker sits in the left padding. A grid here would turn every text run,
+     <code> and <strong> into its own cell and stack them in the 1.5rem column. */
   .wrong-right dt,
   .wrong-right dd {
     margin: 0;
     font-size: 0.9375rem;
     line-height: 1.8;
-    display: grid;
-    grid-template-columns: 1.5rem 1fr;
-    gap: 0.35rem;
+    position: relative;
+    padding-left: 1.85rem;
   }
 
   .wrong-right dt { color: var(--ink-2); }
   .wrong-right dd { color: var(--ink); }
-  .wrong-right dt::before { content: "✗"; color: var(--danger); font-family: var(--mono); }
-  .wrong-right dd::before { content: "→"; color: var(--ok); font-family: var(--mono); }
+  .wrong-right dt::before,
+  .wrong-right dd::before {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-family: var(--mono);
+  }
+  .wrong-right dt::before { content: "✗"; color: var(--danger); }
+  .wrong-right dd::before { content: "→"; color: var(--ok); }
 
   /* ---------- table ---------- */
 
@@ -387,7 +398,14 @@
     white-space: nowrap;
   }
 
-  td { color: var(--ink-2); }
+  td { color: var(--ink-2); min-width: 9rem; }
+
+  /* Row headers can hold long code or sentences: let them wrap, and keep code in its real case. */
+  tbody th {
+    white-space: normal;
+    min-width: 7rem;
+  }
+
   tbody tr:last-child th,
   tbody tr:last-child td { border-bottom: none; }
 
@@ -544,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-09-25</b></span>
-      <span>エントリ <b>88</b></span>
-      <span>決定記録 <b>37</b></span>
-      <span>進捗 <b>フェーズ2 完了 → スタイリング（Tailwind）へ</b></span>
+      <span>最終更新 <b>2026-10-09</b></span>
+      <span>エントリ <b>99</b></span>
+      <span>決定記録 <b>43</b></span>
+      <span>進捗 <b>UI の土台（色分け・ボタン） → デプロイへ</b></span>
     </div>
   </header>
 
@@ -642,6 +660,17 @@
       <li><a href="#e86"><code>loading.tsx</code> が埋めるのは、サーバーから届くまでの時間だけ</a></li>
       <li><a href="#e87"><code>error.tsx</code> に届くのは、描画中の想定外の例外だけ</a></li>
       <li><a href="#e88">push する前なら、直前のコミットは作り直せる</a></li>
+      <li><a href="#e89">体系は先に、仕上げは最後に</a></li>
+      <li><a href="#e90">色は「段階」を表す。7つのステータスを4つに分ける</a></li>
+      <li><a href="#e91"><code>Partial</code> を付けない <code>Record</code> は、表の形を守る</a></li>
+      <li><a href="#e92">型の世界の <code>[ ]</code> と <code>|</code></a></li>
+      <li><a href="#e93">名前は、使う側から見えるもので付ける</a></li>
+      <li><a href="#e94">Tailwind v4 は、ネットの記事のとおりには動かない</a></li>
+      <li><a href="#e95">存在しないクラスは、黙って何もしない</a></li>
+      <li><a href="#e96">共通ボタン：使うものだけ取り出し、残りは全部渡す</a></li>
+      <li><a href="#e97">「見える」ことを、数字と操作で確かめる</a></li>
+      <li><a href="#e98">途中のコミットも、push 前なら書き直せる</a></li>
+      <li><a href="#e99">部品を全部に当てた日に、見えたもの</a></li>
     </ol>
   </nav>
 
@@ -6651,6 +6680,493 @@ function useRef&lt;T&gt;(initialValue: T | null): RefObject&lt;T | null&gt;;
       </div>
     </article>
 
+    <!-- 89 -->
+    <article class="entry" id="e89">
+      <div class="entry-no">89</div>
+      <div class="entry-body">
+        <h2>体系は先に、仕上げは最後に</h2>
+
+        <p>
+          「機能を全部作ってからデザインに入った方がいいのでは」と考えた。仕様書7章を読み直すと、そうは書いていなかった。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">フェーズ</th><th scope="col">見た目に関すること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">2</th><td><strong>Tailwind によるステータス色分け</strong>（学習ポイント）</td></tr>
+              <tr><th scope="row">3・4</th><td>書かれていない</td></tr>
+              <tr><th scope="row">5</th><td>レスポンシブ対応</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt><code>loading.tsx</code> / <code>error.tsx</code> まで作ったので、フェーズ2は完了</dt>
+            <dd><strong>仕様書の基準では、ステータスの色分けが残っていた。</strong>学習ポイントの欄まで読んでいなかった</dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">「最後にまとめて」の代償</div>
+          <ul>
+            <li>フェーズ3・4で作る約8ページを、<strong>後から全部もう一度触る</strong>ことになる</li>
+            <li>仕様書3-6 の「赤系の配色」と、見えない <code>disabled</code> を、<strong>仕様違反のまま</strong>進めることになる</li>
+            <li>最大の学習目的の Tailwind が、最後に一気に来る</li>
+          </ul>
+          <p>
+            <strong>色の体系と部品だけを先に作り、画面全体の仕上げはフェーズ5に残す。</strong>
+            こうすれば、これから作るページは最初から同じ部品で作れる。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 90 -->
+    <article class="entry" id="e90">
+      <div class="entry-no">90</div>
+      <div class="entry-body">
+        <h2>色は「段階」を表す。7つのステータスを4つに分ける</h2>
+
+        <p>
+          仕様書2章の色分けは「書類選考中→青／<strong>面接待ち</strong>→黄／内定→緑／お断り→灰」。
+          ところが「面接待ち」というステータスは存在せず、「<strong>応募済</strong>」の色は書かれていない（決め漏れ）。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">段階</th><th scope="col">含まれるステータス</th><th scope="col">色</th><th scope="col">自分がすること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>screening</code></th><td>応募済・書類選考中</td><td>青</td><td>無い。待つだけ</td></tr>
+              <tr><th scope="row"><code>interview</code></th><td>一次・二次・最終面接</td><td>黄</td><td>準備が要る</td></tr>
+              <tr><th scope="row"><code>offer</code></th><td>内定</td><td>緑</td><td>—</td></tr>
+              <tr><th scope="row"><code>rejection</code></th><td>お断り</td><td>灰</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">色を決めるときに守ったこと</div>
+          <ul>
+            <li><strong>色の数を段階の数に合わせる。</strong>7色にすると、どれが何色か覚えられず色の意味が消える</li>
+            <li><strong>すでにある色の意味とぶつけない。</strong>灰は「終わった」、赤は「削除」。応募済を灰にすると「始まったばかり」と「終わった」が同じ色になる</li>
+            <li><strong>色だけに頼らない。</strong>ステータスの文字を必ず一緒に出す。色が見分けにくい人にも伝わり、3つの面接を同じ黄色にしても文字で区別がつく</li>
+          </ul>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">段階は、色のためだけのものではない</div>
+<pre><code>ステータス（7つ） ──→ 段階（4つ） ──→ 見た目（クラス名）
+                   選考の意味          画面の都合
+                   types/company.ts   components/CompanyStatusBadge.tsx
+                   集計でも使う          表示でだけ使う</code></pre>
+          <p>
+            仕様書3-5 のダッシュボードの「選考中の社数」は、段階でまとめて数える。<strong>同じ分け方を、表示と集計の両方で使う</strong>ので、対応を2段に分けた。
+            1段目は <code>COMPANY_STATUSES</code>（値なのに <code>types/</code> にある）の前例に合わせて <code>types/company.ts</code> に置いた。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 91 -->
+    <article class="entry" id="e91">
+      <div class="entry-no">91</div>
+      <div class="entry-body">
+        <h2><code>Partial</code> を付けない <code>Record</code> は、表の形を守る</h2>
+
+<pre><code>export const STAGE_BY_STATUS: Record&lt;CompanyStatus, CompanyStatusStage&gt; = {
+  "応募済": "screening",
+  // …7行
+};</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">部分</th><th scope="col">何か</th><th scope="col">いつ存在するか</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>Record&lt;…&gt;</code></th><td><strong>表の形の約束</strong>（キーはちょうど7つ、値は4つのどれか）</td><td>コンパイル時だけ</td></tr>
+              <tr><th scope="row"><code>{ "応募済": … }</code></th><td>表そのもの</td><td>実行時に残る</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">わざと壊して、守られていることを見た</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">試したこと</th><th scope="col">エラー</th><th scope="col">守っているもの</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">1行消す</th><td><code>Property 'お断り' is missing</code></td><td><strong>網羅性</strong></td></tr>
+                <tr><th scope="row">「辞退」を足す</th><td><code>may only specify known properties</code></td><td><strong>余分が無い</strong></td></tr>
+                <tr><th scope="row"><code>"offere"</code></th><td><code>Did you mean "offer"?</code></td><td><strong>値の範囲</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            さらに<strong>使うときにも効く。</strong><code>STAGE_BY_STATUS[status]</code> の結果は必ず4つのどれか。
+            <code>Partial</code> を付けていたら <code>| undefined</code> が付き、<strong>表を引くたびに「無かったら？」を書く</strong>ことになっていた。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>Partial</code> を付けないのは、<strong>値</strong>を変え忘れたときにエラーにしたいから</dt>
+            <dd>捕まるのは<strong>キー（行）の書き忘れ</strong>。「内定」の値を <code>"screening"</code> にしても、4つのどれかなので通る。<strong>型は「全部の行があるか」「値が範囲内か」までで、意味として正しいかは見ない</strong></dd>
+            <dt><code>Record&lt;keyof CompanyStatus, …&gt;</code></dt>
+            <dd><code>CompanyStatus</code> は<strong>文字列</strong>の型なので、<code>keyof</code> を付けると<strong>文字列が持つメソッド名</strong>（<code>toString</code>・<code>charAt</code>…）が出てくる。エラーメッセージにそれが並んでいた。<code>keyof</code> は<strong>オブジェクトの型</strong>からキーを借りるもの（エントリ49）。<code>CompanyStatus</code> はすでにキーの集合なので、そのまま書く</dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 92 -->
+    <article class="entry" id="e92">
+      <div class="entry-no">92</div>
+      <div class="entry-body">
+        <h2>型の世界の <code>[ ]</code> と <code>|</code></h2>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>type ButtonVariant = ["primary", "secondary", "danger", "dangerOutline"]</code></dt>
+            <dd>型の位置の <code>[ ]</code> は<strong>タプル型</strong>——「この順に4つ全部が並んだ配列」の型。<code>variant="danger"</code> は入らない。「<strong>4つのどれか1つ</strong>」は <code>"primary" | "secondary" | …</code>（<strong>ユニオン型</strong>）</dd>
+          </dl>
+        </div>
+
+        <p>
+          では、<code>COMPANY_STATUSES</code> は<strong>配列なのに</strong>、なぜ <code>CompanyStatus</code> はユニオンになるのか。
+        </p>
+<pre><code>export const COMPANY_STATUSES = ["応募済", …] as const;
+//                                              ^^^^^^^^ ① 中身の文字まで固定する
+
+typeof COMPANY_STATUSES
+// ② readonly ["応募済", "書類選考中", …]  ← 値を型の世界へ。まだタプル
+
+(typeof COMPANY_STATUSES)[number]
+// ③ "応募済" | "書類選考中" | …          ← 「どの番号か分からない要素」＝ありうる全部のどれか</code></pre>
+        <p>
+          <strong>ユニオンを作っているのは <code>typeof</code> ではなく <code>[number]</code>。</strong>
+          そして <code>as const</code> が無いと、②は <code>string[]</code>、③は <code>string</code> になる。
+          <strong>3つがそろって初めてユニオンになる。</strong>
+        </p>
+        <p>
+          「どれか1つ」を型で表すなら、<strong>ユニオン型が基本</strong>。値の配列から導くのは、<strong>同じ並びを実行時にも配列として使うとき</strong>だけ（段階はダッシュボードで使う、ボタンの種類は使わない）。
+        </p>
+      </div>
+    </article>
+
+    <!-- 93 -->
+    <article class="entry" id="e93">
+      <div class="entry-no">93</div>
+      <div class="entry-body">
+        <h2>名前は、使う側から見えるもので付ける</h2>
+
+        <p>このブランチは、名前で何度も止まった。直した理由を並べると、同じ基準がいくつか見えてくる。</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">最初の名前</th><th scope="col">直した名前</th><th scope="col">理由</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>waitResult</code> / <code>succes</code> / <code>reject</code></th><td><code>screening</code> / <code>offer</code> / <code>rejection</code></td><td><strong>品詞をそろえる</strong>（4つとも名詞）。<code>reject</code> は動作で、Promise とも紛らわしい</td></tr>
+              <tr><th scope="row"><code>process</code></th><td><code>screening</code></td><td>意味がぼやける／Node.js の <code>process</code> と同じ名前</td></tr>
+              <tr><th scope="row"><code>…_LEVEL</code></th><td><code>…_STAGES</code></td><td><code>level</code> は高低の順序を感じさせる</td></tr>
+              <tr><th scope="row"><code>STATUS_STAGES</code></th><td><code>STAGE_BY_STATUS</code></td><td>一覧に見えた。対応表は「<strong>何ごとの何か</strong>」</td></tr>
+              <tr><th scope="row">配列と型が同じ名前</th><td><code>COMPANY_STATUS_STAGES</code> / <code>CompanyStatusStage</code></td><td>値と型は別の世界なので通るが、読む人が迷う。<strong>配列は大文字スネーク、型は先頭大文字</strong></td></tr>
+              <tr><th scope="row"><code>CompanyStageColor</code> / <code>CompanyBadge</code> / <code>…StageBadge</code></th><td><code>CompanyStatusBadge</code></td><td><strong>何であるか</strong>（札）と、<strong>何を渡して何が出るか</strong>（ステータス）。段階は中で使う材料なので名前に出さない</td></tr>
+              <tr><th scope="row"><code>VariantButton</code></th><td><code>ButtonVariant</code></td><td>英語は「修飾する語＋中心の語」の順（<code>CompanyStatus</code> と同じ）</td></tr>
+              <tr><th scope="row"><code>main</code> / <code>sub</code> / <code>dangerEnter</code> / <code>dangerACT</code></th><td><code>primary</code> / <code>secondary</code> / <code>danger</code> / <code>dangerOutline</code></td><td>慣習の言葉を使う。<strong>標準の見た目には何も足さず、違う見た目にだけ言葉を足す</strong>。流れの中の役割（入口・実行）は外側の事情</td></tr>
+              <tr><th scope="row"><code>sameClasses</code></th><td><code>BASE_CLASSES</code></td><td>「何と同じか」を考えさせる。土台は <code>base</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>規則が1つあれば、次の名前も迷わずに決まる。</strong>枠だけの主要ボタンが要るなら <code>primaryOutline</code>。
+          そして名前を<strong>最初に作る1回だけは目で確かめ、それ以降は補完から選ぶ</strong>——<code>Compay</code>・<code>Satage</code>・<code>Comany</code> と3回続けて綴りが崩れた。
+        </p>
+      </div>
+    </article>
+
+    <!-- 94 -->
+    <article class="entry" id="e94">
+      <div class="entry-no">94</div>
+      <div class="entry-body">
+        <h2>Tailwind v4 は、ネットの記事のとおりには動かない</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">v3（記事の多く）</th><th scope="col">v4（このプロジェクト・4.3.3）</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">設定の場所</th><td><code>tailwind.config.js</code></td><td><strong>CSS の中</strong>（<code>@import "tailwindcss";</code> と <code>@theme</code>）</td></tr>
+              <tr><th scope="row"><code>tailwind.config.js</code></th><td>自動で読まれる</td><td><strong>読まれない</strong>（CSS に <code>@config</code> と書いたときだけ）</td></tr>
+              <tr><th scope="row">ボタンのカーソル</th><td>指の形</td><td><strong>矢印のまま</strong>（<code>cursor-pointer</code> を自分で足す）</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>VS Code の拡張機能を効かせるために、<code>tailwind.config.js</code> を作る</dt>
+            <dd>拡張機能（すでに入っていた）は v4 に対応していて、<code>@import "tailwindcss"</code> を含む CSS を見つけて動く。作っても Tailwind は読まず、<strong>効いていない設定ファイルが置かれる</strong>だけ</dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">クラス名は、組み立ててはいけない</div>
+          <p>
+            Tailwind は<strong>ビルドのときにソースを文字として読み</strong>、完全な形で書かれているクラスの分だけ CSS を作る。
+          </p>
+<pre><code>`bg-${color}-100`                  // ✗ 完全な形がソースのどこにも無い
+isError ? "text-red-700" : "text-gray-700"   // ✓ 三項演算子は使える
+`${BASE_CLASSES} ${colorClasses}`  // ✓ 完全なクラス名同士を「つなぐ」のは良い</code></pre>
+          <p>
+            <strong>つなぐのは良く、組み立てるのはダメ。</strong>エントリ01の「環境変数はビルド時に置換される。動的なアクセスは置換されない」と同じ種類の制約。
+            だから対応表の値には、クラス名を完全な形で書く。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 95 -->
+    <article class="entry" id="e95">
+      <div class="entry-no">95</div>
+      <div class="entry-body">
+        <h2>存在しないクラスは、黙って何もしない</h2>
+
+        <p>クラス名は <code>string</code> なので、<strong>型検査も lint も通る</strong>。このブランチで書いて、効かなかったもの。</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書いたもの</th><th scope="col">何が起きたか</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>bg-silber-100</code></th><td>そんな色は無い。「お断り」の札に色が付かない</td></tr>
+              <tr><th scope="row"><code>bg-white-400</code> / <code>outline-black-400</code></th><td><strong>白と黒には濃さの段階が無い</strong>（<code>bg-white</code>・<code>outline-black</code>）</td></tr>
+              <tr><th scope="row"><code>border-blue-800</code>（<code>border</code> 無し）</th><td>色だけ決めて<strong>太さが無い</strong>ので、枠が出ない</td></tr>
+              <tr><th scope="row"><code>focus-visibled:outline-2</code></th><td><code>d</code> が余分。Tab キーで枠が出ない</td></tr>
+              <tr><th scope="row"><code>focus-visible:outline-offset-black-400</code></th><td><code>outline-offset-</code> は<strong>距離</strong>のクラス。色は入らない</td></tr>
+              <tr><th scope="row"><code>focus-visible:outline-2 outline-offset-2</code></th><td><strong>頭の言葉は、付けたクラス1つにしか効かない</strong></td></tr>
+              <tr><th scope="row"><code>out line-black</code> / <code>motion-safe: enabled:…</code></th><td>空白で2つのクラスに分かれる</td></tr>
+              <tr><th scope="row">全角の空白（<code>　</code>）</th><td>区切りにならず、<strong>前後とつながって1つの壊れたクラス</strong>になる</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">気づく手段</div>
+          <ul>
+            <li><strong>エディタでクラスにマウスを乗せる。</strong>拡張機能が、生成される CSS を見せる。何も出なければ存在しない。色のクラスなら横に色の四角が出る</li>
+            <li><strong>Tailwind のクラスは1つが1つの性質だけ</strong>を決める。枠なら「太さ」「距離」「色」の3つに分けて書く</li>
+            <li>クラスを打つときは<strong>英数入力に切り替える</strong>（全角の空白を入れないため）</li>
+          </ul>
+          <p>
+            同じ日に <code>&gt; 削除&lt;/Button&gt;</code> とも書いていた。<strong>JSX で <code>&gt;</code> の直後に同じ行で書いた空白は、文字として残る</strong>。画面に「 削除」と出る。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 96 -->
+    <article class="entry" id="e96">
+      <div class="entry-no">96</div>
+      <div class="entry-body">
+        <h2>共通ボタン：使うものだけ取り出し、残りは全部渡す</h2>
+
+<pre><code>type Props = Omit&lt;React.ComponentProps&lt;"button"&gt;, "type" | "className"&gt; &amp; {
+  variant: ButtonVariant;
+  type: "button" | "submit";
+};
+
+export default function Button({ variant, ...rest }: Props) {
+  const colorClasses = CLASS_BY_VARIANT[variant];
+  return &lt;button className={`${BASE_CLASSES} ${colorClasses}`} {...rest} /&gt;;
+}</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">順</th><th scope="col">起きること</th><th scope="col">担当</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">①</th><td>使う側が <code>&lt;Button variant="danger" type="button" onClick={…}&gt;削除する&lt;/Button&gt;</code> と書く</td><td>使う側</td></tr>
+              <tr><th scope="row">②</th><td>属性が1つのオブジェクトにまとまって渡される</td><td>React</td></tr>
+              <tr><th scope="row">③</th><td><code>variant</code> だけ取り出し、残りは <code>rest</code> へ</td><td>分割代入</td></tr>
+              <tr><th scope="row">④</th><td><code>variant</code> から対応表でクラスを引く</td><td><code>CLASS_BY_VARIANT</code></td></tr>
+              <tr><th scope="row">⑤</th><td><code>&lt;button&gt;</code> が<strong>初めて作られる</strong>（④のクラス＋<code>rest</code>）</td><td>部品の <code>return</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <code>ComponentProps&lt;"button"&gt;</code> は<strong>「受け取ってよいものの一覧」を決める型</strong>で、それ自体は何も受け取らない。
+          <code>variant</code> だけ取り出すのは、<strong><code>&lt;button&gt;</code> が知らない属性だから</strong>——渡すと HTML に <code>variant="danger"</code> という意味の無い属性が出る。
+          エントリ68の <code>{ id, ...rest }</code>（Firestore に書くデータに <code>id</code> を入れない）と同じ形。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">同じ <code>Omit</code> の中で、目的が2つ</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col"><code>Omit</code> の後</th><th scope="col">目的</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>className</code></th><td><strong>戻さない</strong></td><td>外から見た目を変えられなくする。<strong>どのボタンも必ず4種類のどれか</strong>。余白は並べる側（ページ）が持つ</td></tr>
+                <tr><th scope="row"><code>type</code></th><td><strong>付け直す</strong></td><td>元は <code>type?: "submit" | "reset" | "button"</code>。<strong>省略できない・<code>reset</code> を除いた</strong>定義に差し替え、書き忘れを型で防ぐ（エントリ23 を仕組みで守る）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>className</code> を取り除いておいたことで、<code>{...rest}</code> が部品の決めた見た目を<strong>上書きすることもない</strong>（後に書いた属性が勝つため）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）：無効は「種類」ではない</div>
+          <dl class="wrong-right">
+            <dt>ボタンは「通常・破壊的・無効」の3種類</dt>
+            <dd><strong>無効は状態。</strong>どの種類のボタンも無効になりうる。Tailwind の <code>disabled:</code> で、HTML の属性が付いた瞬間に見た目が変わるので、<strong>共通のクラスに1回書けば4種類すべてに効く</strong></dd>
+          </dl>
+          <p>
+            種類の側は、ダイアログの「キャンセル」（<code>secondary</code>）と「削除する」（<code>danger</code>）のように、<strong>その画面の目的を果たすボタンを1つだけ目立たせる</strong>基準で決めた。
+            ページの「削除」は<strong>取り消せない操作への入口</strong>なので、同じ赤でも枠だけ（<code>dangerOutline</code>）にした。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 97 -->
+    <article class="entry" id="e97">
+      <div class="entry-no">97</div>
+      <div class="entry-body">
+        <h2>「見える」ことを、数字と操作で確かめる</h2>
+
+        <div class="note check">
+          <div class="note-label">コントラスト比 4.5:1</div>
+          <p>
+            「<strong>4.5 対 1</strong>」と読む。暗い方の色の明るさを1としたとき、明るい方がその4.5倍。<strong>文字と背景のどちらが明るいかは関係なく、2色の差だけを見る。</strong>
+            1:1 は同じ色同士、21:1 が白と黒。通常の大きさの文字は 4.5:1 以上が目安。
+          </p>
+          <p>
+            最初の <code>bg-blue-400 text-white</code> は届かなかった。600 にそろえ、枠だけのボタンの文字（白背景に 600）を<strong>開発者ツールの色の四角から測った</strong>——赤 <strong>4.88</strong>、青 <strong>5.25</strong>。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">フォーカスの枠が、塗りのボタンでは見えなかった</div>
+          <p>
+            <code>focus-visible:outline-2</code> だけだと、枠の色は<strong>文字と同じ色</strong>。白い文字の <code>primary</code>・<code>danger</code> では、<strong>白い背景の上に白い枠</strong>が描かれていた。
+            色（<code>outline-black</code>）と距離（<code>outline-offset-2</code>）を足し、<strong>Tab キーで4種類すべてを確かめた。</strong>
+          </p>
+          <p>
+            <code>focus:</code> はマウスのクリックでも枠が出る。<code>focus-visible:</code> は<strong>キーボードで操作しているとブラウザが判断したときだけ</strong>出る。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">押せないボタンは、反応してはいけない</div>
+          <p>
+            <code>hover:opacity-80</code> のままだと、<strong>押せないボタンにマウスを乗せても薄くなり</strong>、押せそうに見える。
+            <code>enabled:hover:</code> にして、押せるときだけ反応させた。削除中にマウスを乗せて変化しないことを確かめた。
+          </p>
+          <p>
+            動きの配慮は、<code>motion-reduce:</code>（付けてから、苦手な人だけ消す）と <code>motion-safe:</code>（平気な人にだけ付ける）がある。
+            <code>motion-reduce:transition-none</code> では、<strong>押したときに沈む動きは止まらなかった</strong>。
+            <strong><code>motion-safe:</code> にそろえ</strong>、なめらかな変化も沈む動きも、平気な人にだけ付けた。
+          </p>
+          <p>
+            ついでに：Tailwind の <code>opacity-</code> の数字は<strong>パーセント</strong>（<code>opacity-100</code> が見える、<code>opacity-1</code> はほぼ透明）。CSS の <code>opacity: 1</code> は0〜1の小数で「見える」。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 98 -->
+    <article class="entry" id="e98">
+      <div class="entry-no">98</div>
+      <div class="entry-body">
+        <h2>途中のコミットも、push 前なら書き直せる</h2>
+
+        <p>
+          2回、<strong>直前ではない</strong>コミットのメッセージを直した（「Patial」の綴り、先頭に入った<strong>タブ文字</strong>）。<code>--amend</code> は直前にしか使えない。
+        </p>
+<pre><code>git rebase -i HEAD~2
+#   直したいコミットの行の pick を reword に → 保存して閉じる
+#   メッセージが開く → 直して保存して閉じる</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">起きたこと</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">直したコミット</th><td>ハッシュが変わる</td></tr>
+              <tr><th scope="row"><strong>それより後ろのコミット</strong></th><td><strong>中身は同じでもハッシュが変わる</strong>（<code>8204b37</code> → <code>ba723f2</code>）。コミットは前のコミットを親として指しているので、途中を変えると後ろは全部作り直しになる</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">事故を減らす設定</div>
+          <ul>
+            <li><code>git config --global core.editor "code --wait"</code>——git が開くエディタを vim から VS Code に。<code>--wait</code> は<strong>タブを閉じるまで git を待たせる</strong></li>
+            <li>メッセージの先頭のタブは、<code>-m "</code> の直後に <code>Tab</code> キー（補完）を押した名残</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 99 -->
+    <article class="entry" id="e99">
+      <div class="entry-no">99</div>
+      <div class="entry-body">
+        <h2>部品を全部に当てた日に、見えたもの</h2>
+
+        <p>
+          共通ボタンを削除の流れだけに当てて PR を出すつもりだった。<strong>次はデプロイ</strong>なので、そのまま公開すると<strong>削除まわりだけ色の付いたボタンが並ぶ作りかけの画面</strong>を見せることになる。
+          残りの6つも同じブランチで置き換えた——<strong>このブランチの目的（土台を作って当てる）の範囲</strong>に収まるから。
+        </p>
+
+        <div class="note check">
+          <div class="note-label"><code>retry</code> で「直る」ことを、初めて見た</div>
+          <p>エントリ87では「原因が残っていると、押してもまた落ちる」までしか見ていなかった。今回はもう1段階進めた。</p>
+          <ol>
+            <li>Firestore の <code>name</code> を数値にして、編集ページで <code>ProtectedError</code> を出す</li>
+            <li>押す → また落ちる（データが壊れたまま）</li>
+            <li><strong>エラー画面を開いたまま</strong>、Firestore の値を文字列に戻す</li>
+            <li>押す → <strong>編集ページが普通に表示された</strong></li>
+          </ol>
+          <p>
+            <strong>原因が一時的なら <code>retry</code> で抜けられ、一時的でなければリンクで抜ける。</strong>エラー画面にボタンとリンクの2つを置いた理由を、両方とも画面で確かめた。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">ログイン画面で、コンソールに出ていた2つ</div>
+          <p>どちらもボタンの置き換えが原因ではない。</p>
+          <dl class="wrong-right">
+            <dt><code>Input elements should have autocomplete attributes (suggested: "current-password")</code></dt>
+            <dd>
+              エラーではなく Chrome の<strong>提案</strong>。<code>autoComplete</code> を付けると、パスワードの保存・自動入力が正しく働く。
+              <strong>この画面はログインと新規登録を切り替えている</strong>ので、ログインなら <code>current-password</code>（保存済みを入れて）、新規登録なら <code>new-password</code>（新しく作って）と、<strong>モードに合わせて値を切り替える</strong>必要がある
+            </dd>
+            <dt><code>Cross-Origin-Opener-Policy policy would block the window.closed call.</code></dt>
+            <dd>
+              Firebase の SDK（<code>popup.ts</code>）が、ポップアップが<strong>閉じられたか</strong>を確かめようとして、Google のログイン画面の<strong>別サイトからの参照を制限する設定</strong>（COOP）に止められている。
+              <strong>自分のコードの問題ではなく、こちらからは直せない。</strong>ログインは成功している
+            </dd>
+          </dl>
+          <p>
+            2つ目は、エントリ34の「<strong>ポップアップを × で閉じたら何も表示しない</strong>」に関わりうる部分なので、閉じたときの動きを確かめた。
+            見た目では分からない可能性があったので、<strong>一時的に <code>catch</code> の先頭に <code>console.log(err)</code> を入れて測った</strong>（エントリ57）。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">見たこと</th><th scope="col">結果</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">届いたエラー</th><td><code>auth/popup-closed-by-user</code>（<code>getAuthErrorMessage</code> が空文字を返す分岐）</td></tr>
+                <tr><th scope="row">届くまで</th><td>閉じてから<strong>約2秒</strong></td></tr>
+                <tr><th scope="row">画面</th><td>何も出ない</td></tr>
+                <tr><th scope="row">直後にもう一度押す</th><td>新しいポップアップが普通に開く</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>警告は出ているが、扱いには影響していない。</strong>2秒の遅れも、何も表示しない作りなのでユーザーから見た違いは無い。確かめ終えたら <code>console.log</code> は消した。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -6663,10 +7179,9 @@ function useRef&lt;T&gt;(initialValue: T | null): RefObject&lt;T | null&gt;;
         値が空のまま実行時に初めて意味不明なエラーになる。検証を入れるか、入れるならどこに置くか。
       </li>
       <li>
-        <strong>破壊的操作の配色（赤系）と <code>disabled</code> の見た目を、いつ・どんな体系で当てるか</strong>（仕様書3-6）。
-        削除の確認ダイアログも送信ボタンも、いまは<strong>状態が見た目に出ていない</strong>。
-        ステータスの色分け（青・黄・緑・灰）と同じ体系の中で赤を決める必要があるので、
-        <strong>1画面だけ見て決めない。</strong>Tailwind を始めるときにまとめて判断する。
+        <strong>公開した後、知らない人のアカウント作成や書き込みをどこまで許すか。</strong>
+        セキュリティルールで他人のデータは読めないが、<strong>誰でも新規登録して、自分の領域に書き込むことはできる</strong>。
+        デプロイしたら、Firebase の使用量の上限とアラートを確認する。問題になったら App Check（仕様書3-1 で v1 対象外）を検討する。
       </li>
       <li>
         <strong><code>useAuth()</code> の null を毎回除く代わりに、<code>User</code> を返すフックを作るか。</strong>
@@ -6675,7 +7190,9 @@ function useRef&lt;T&gt;(initialValue: T | null): RefObject&lt;T | null&gt;;
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 「企業を削除したとき、紐づく予定・振り返りをどう扱うか」は決定記録で解決（<strong>一緒に削除する</strong>。実装はフェーズ3・4）。
+      ※ 「Google のポップアップを × で閉じたとき、COOP の警告の影響を受けないか」は、<strong>実際に閉じて測り、影響が無いことを確かめた</strong>（エントリ99）。
+      「破壊的操作の配色と <code>disabled</code> の見た目」は、色の体系（エントリ90）と共通ボタン（エントリ96）で解決。削除まわりで<strong>仕様書3-6 の「赤系の配色」を満たした</strong>。
+      「企業を削除したとき、紐づく予定・振り返りをどう扱うか」は決定記録で解決（<strong>一緒に削除する</strong>。実装はフェーズ3・4）。
       「保存後の遷移中に送信ボタンが押せてしまわないか」は<strong>実際に起きることを確かめ</strong>、エントリ 81 と決定記録で解決。
       その前の2問のうち、「登録フォームと編集フォームをどこまで共通化するか」はエントリ 70・決定記録で解決。
       「ステータスを変えたとき、一覧に古い値が残るか」は<strong>実際に確かめ、一覧に戻ると最新の値が表示された</strong>
@@ -7715,6 +8232,144 @@ function useRef&lt;T&gt;(initialValue: T | null): RefObject&lt;T | null&gt;;
           ダッシュボードを作ってデータを取るようになったら、<strong><code>/</code> も落ちうる</strong>ので出口を考え直す。
           本番の利用者のエラーを知りたくなったら、<code>console.error</code> の場所に<strong>エラー報告サービスへの送信</strong>を置く。
         </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>見た目は「土台だけ先に」作り、画面全体の仕上げはフェーズ5に残す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 機能を全部作り切ってから、まとめてデザインする
+          <b>(b)</b> 画面を作るたびに、毎回仕上げまで行う
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) はフェーズ3・4の約8ページを<strong>後から全部触り直す</strong>うえ、仕様書3-6 の赤系の配色を満たさないまま進むことになる。
+          (b) は、全画面を見ないまま余白やレイアウトを決めるので、後で必ず見直す。
+          <strong>後から変えにくいもの（色の体系・部品の種類）だけを先に決める。</strong>仕様書7章も、色分けはフェーズ2、レスポンシブはフェーズ5に置いている（エントリ89）。
+        </dd>
+        <dt>先に作ったもの</dt>
+        <dd>段階と色の対応、ステータスのバッジ、4種類の共通ボタン</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>7つのステータスを、4つの段階・4色に割り当てる</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          <strong>仕様書2章の決め漏れ。</strong>色分けの例に「面接待ち」というステータスは存在せず、「応募済」の色が書かれていない。
+        </dd>
+        <dt>決めたこと</dt>
+        <dd>
+          応募済・書類選考中 → <code>screening</code>（青）／一次・二次・最終面接 → <code>interview</code>（黄）／内定 → <code>offer</code>（緑）／お断り → <code>rejection</code>（灰）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          応募済と書類選考中は、どちらも<strong>自分がすることが無く、結果を待つだけ</strong>の段階。
+          色は「次に自分が何をするか」を表すので、黄色＝準備が要る、と読める。
+          <strong>灰（終わった）と赤（削除）には、ステータスを割り当てない</strong>——意味がぶつかるため。
+        </dd>
+        <dt>守っていること</dt>
+        <dd>
+          <code>STAGE_BY_STATUS</code> は <code>Partial</code> なしの <code>Record</code>。<strong>ステータスを増やしたら、この表を直すまでビルドが通らない</strong>（エントリ91）。
+          バッジは<strong>文字と色の両方</strong>で伝える。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>段階の名前は英語のコード、ステータスは日本語のまま</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          段階を最初は「結果待ち」「面接」…と日本語で書いた。すると <strong><code>"お断り"</code> がステータスにも段階にも存在する</strong>ことになり、文字だけではどちらの話か区別できない。
+        </dd>
+        <dt>違い</dt>
+        <dd>
+          <strong>ステータスは Firestore に保存され、そのまま画面に出す値</strong>なので、変えると保存済みデータの全件書き換えが要る（エントリ44 で知った上で日本語を選んだ）。
+          <strong>段階は保存も表示もしない、コードの中だけの名前</strong>なので、英語にしても代償が無い。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>
+          ステータスの<strong>表記を変えたくなったとき、または多言語対応をするとき</strong>、保存する値を英語のコードに移行する。
+          そのときは Firestore の<strong>全件を書き換える移行作業とセット</strong>になる。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ボタンは4つの <code>variant</code> に限り、<code>className</code> を受け付けず、<code>type</code> を必須にする</h3>
+      <dl>
+        <dt>種類</dt>
+        <dd>
+          <code>primary</code>（主要・塗り）／<code>secondary</code>（補助・枠）／<code>danger</code>（取り消せない操作・赤の塗り）／<code>dangerOutline</code>（その入口・赤の枠）。
+          基準は「<strong>その画面の目的を果たすボタンはどれか</strong>」と「<strong>取り消せない操作か</strong>」。無効は種類ではなく<strong>状態</strong>
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>className</code> を受け付けて、使う場所ごとに調整できるようにする
+          <b>(b)</b> <code>type</code> を省略可能のままにする
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は柔軟だが、<strong>ボタンが1つずつ違う見た目になり、ユーザーから見づらくなる</strong>。外から見た目を変えられなくして、<strong>どのボタンも必ず4種類のどれか</strong>にした。
+          間隔は並べる側（ページ）が持つ。
+          (b) は <code>&lt;button&gt;</code> の既定（<code>submit</code>）に頼る書き忘れを許す。<strong>型で防ぐ</strong>（エントリ23 を仕組みで守る）。
+        </dd>
+        <dt>当てた場所</dt>
+        <dd>
+          アプリの中の<strong>9つのボタンすべて</strong>。素の <code>&lt;button&gt;</code> は残っていない。
+          最初は削除の流れだけで PR を出すつもりだったが、<strong>直後にデプロイするので、公開した画面に「一部だけ色の付いたボタン」が並ぶ</strong>と気づき、同じブランチで残りも置き換えた（エントリ99）
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>ログイン画面は、Google を上に置き「または」で区切る。個人名入りのボタンは作らない</h3>
+      <dl>
+        <dt>並べ方</dt>
+        <dd>
+          Google のボタンとメールのフォームを<strong>別のかたまり</strong>にし、間に「または」を挟む。<strong>色の強弱ではなく、並び順で優先を伝える。</strong>
+          いまは Google のボタンがフォームの<strong>中</strong>にあるので、構造の上でも外に出す（未実装）。
+          あわせて入力欄に <code>autoComplete</code> を付ける（エントリ99。未実装）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> メールのログインを主要、Google を補助にする（「世間ではメールが多そう」という理由で）
+          <b>(b)</b> 両方を同じ見た目で並べる
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) の根拠は<strong>このアプリの利用者と関係が無い</strong>。実際に使うのは自分と、ポートフォリオを見る人——<strong>パスワードを考えて登録するより、Google で1クリックの方が早い</strong>。
+          仕様書3-1 の「パスワードを一切持たない」という利点も、Google を選んでもらうほど生きる。
+          (b) は「どちらを押せばいいか」を一瞬迷わせる。
+        </dd>
+        <dt>個人名入りのボタン</dt>
+        <dd>
+          「◯◯として続行」と出るボタンは、<strong>アプリではなく Google が自分の枠（<code>accounts.google.com</code> の iframe）の中で表示している</strong>。
+          アプリはログイン前のユーザーを知らないので、<code>signInWithPopup</code> では出せない。Google Identity Services を使えば作れるが、外部スクリプトの読み込みと、ブラウザのプライバシー保護の変化への依存が増える。
+          <strong>今回は文字だけの「Googleでログイン」にし、GIS は次のアプリで試す。</strong>
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>デプロイを、フェーズ5より前に行う</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>仕様書7章はデプロイをフェーズ5に置いている。<strong>仕様書は書き換えず、前倒しした理由をここに残す。</strong></dd>
+        <dt>理由</dt>
+        <dd>
+          <b>(1)</b> <strong>本番でしか起きない問題に、原因の候補が少ないうちに気づける</strong>——Vercel 側の環境変数の登録漏れ、Firebase の承認済みドメインに Vercel のドメインが無いと Google ログインだけ失敗する、本番ビルドの違い（事前読み込み・<code>error.message</code> が伏せられる）。
+          <b>(2)</b> <strong>転職活動中に、動く URL を見せられる。</strong>
+          <b>(3)</b> PR ごとに Vercel のプレビュー URL ができ、マージ前に本番と同じ環境で確かめられる。
+        </dd>
+        <dt>代償</dt>
+        <dd>誰でも新規登録できる状態で公開される（未解決の問いへ）</dd>
+        <dt>時期</dt>
+        <dd><strong>UI の土台のブランチをマージした直後</strong>。目的の違う作業を混ぜない</dd>
       </dl>
     </div>
   </section>
