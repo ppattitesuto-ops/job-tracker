@@ -562,7 +562,7 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-09</b></span>
+      <span>最終更新 <b>2026-10-10</b></span>
       <span>エントリ <b>99</b></span>
       <span>決定記録 <b>43</b></span>
       <span>進捗 <b>UI の土台（色分け・ボタン） → デプロイへ</b></span>
@@ -7141,8 +7141,9 @@ export default function Button({ variant, ...rest }: Props) {
             </dd>
             <dt><code>Cross-Origin-Opener-Policy policy would block the window.closed call.</code></dt>
             <dd>
-              Firebase の SDK（<code>popup.ts</code>）が、ポップアップが<strong>閉じられたか</strong>を確かめようとして、Google のログイン画面の<strong>別サイトからの参照を制限する設定</strong>（COOP）に止められている。
-              <strong>自分のコードの問題ではなく、こちらからは直せない。</strong>ログインは成功している
+              Firebase の SDK（<code>popup.ts</code>）は、ポップアップが<strong>閉じられたか</strong>を2秒ごとに確かめている。
+              Chrome は、Google のログイン画面の<strong>別サイトからの参照を制限する設定</strong>（COOP）が<strong>この確認を止める</strong>（<em>would block</em>）と知らせている。
+              <strong>自分のコードの問題ではなく、こちらからは直せない。</strong><strong>実際には止められていない</strong>ことを、下で確かめた
             </dd>
           </dl>
           <p>
@@ -7154,14 +7155,79 @@ export default function Button({ variant, ...rest }: Props) {
               <thead><tr><th scope="col">見たこと</th><th scope="col">結果</th></tr></thead>
               <tbody>
                 <tr><th scope="row">届いたエラー</th><td><code>auth/popup-closed-by-user</code>（<code>getAuthErrorMessage</code> が空文字を返す分岐）</td></tr>
-                <tr><th scope="row">届くまで</th><td>閉じてから<strong>約2秒</strong></td></tr>
+                <tr><th scope="row">届くまで</th><td>体感では閉じてから約2秒。<strong>SDK のコードでは約8〜10秒のはずで、合わない</strong>（下の訂正）</td></tr>
                 <tr><th scope="row">画面</th><td>何も出ない</td></tr>
                 <tr><th scope="row">直後にもう一度押す</th><td>新しいポップアップが普通に開く</td></tr>
               </tbody>
             </table>
           </div>
           <p>
-            <strong>警告は出ているが、扱いには影響していない。</strong>2秒の遅れも、何も表示しない作りなのでユーザーから見た違いは無い。確かめ終えたら <code>console.log</code> は消した。
+            <strong>閉じたときの扱い</strong>（届くコード・画面・次の操作）は<strong>想定どおり</strong>だった。確かめ終えたら <code>console.log</code> は消した。
+            ただし<strong>届くまでの秒数が SDK のコードと合わなかった</strong>ので、警告が実際に効いているかを確かめ直した（下）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）：警告の文面と、届くまでの秒数</div>
+          <dl class="wrong-right">
+            <dt>Firebase の「閉じたか」の確認は、COOP に<strong>止められている</strong>（と言い切った）</dt>
+            <dd>
+              <strong>警告の文面だけでは決まらない。</strong><em>would block</em> は「止めるだろう」で、<strong>報告するだけで実際には止めていない</strong>場合もある。
+              どちらなのかは、<strong>動きで確かめる</strong>しかない
+            </dd>
+            <dt>「すぐ届けば影響なし、かなり遅れて届けば COOP の影響」で判定できる</dt>
+            <dd>
+              SDK の <code>pollUserCancellation</code> を読むと、閉じたかの確認は<strong>2秒ごと</strong>（<code>new Delay(2000, 10000)</code>、スマホ以外は短い方）。
+              閉じたと気づいてから、さらに<strong>わざと8秒待って</strong>（<code>8000 /* _Timeout.AUTH_EVENT */</code>）から <code>popup-closed-by-user</code> を返す——<strong>ウィンドウが閉じても、ログインの通信がまだ途中かもしれないから</strong>。
+              想定は<strong>約8〜10秒</strong>。講師が出した基準は、<strong>SDK のコードを読まずに立てていた</strong>
+            </dd>
+          </dl>
+          <p>
+            一度は「秒数がずれても、届いた・画面に出ない・次が開けるという<strong>結論は変わらない</strong>」と説明した。
+            しかし体感の約2秒は、<strong>確認が本当に止められている場合にも説明がつく</strong>。その場合は結論が変わる。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">止められていない</th><th scope="col">止められている</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Firebase から見たポップアップ</th><td>開いている間は「開いている」</td><td>Google の画面に移った時点で<strong>「閉じた」に見える</strong></td></tr>
+                <tr><th scope="row"><code>popup-closed-by-user</code> が届くのは</th><td>閉じてから約8〜10秒</td><td><strong>閉じたかに関係なく</strong>、開いてから約10〜12秒</td></tr>
+                <tr><th scope="row">約2秒の説明</th><td>数え始めの違い</td><td>開いて約8秒後に閉じたのなら合う</td></tr>
+                <tr><th scope="row">ログインに時間がかかると</th><td>問題ない</td><td><strong>約10秒を過ぎると失敗し、画面には何も出ない</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            確かめ方：ポップアップを<strong>閉じずに、何も選ばずに20秒待つ</strong>。開いたままなのに <code>popup-closed-by-user</code> が届けば、止められている。
+          </p>
+          <p>
+            普通のウィンドウでは、ポップアップが<strong>何も押さなくてもすぐ閉じて、ログインされた</strong>。
+            アプリのログアウト（Firebase の <code>signOut</code>）は<strong>ブラウザの Google アカウントのログアウトではない</strong>。Google は「ログイン済み・このアプリへの許可も済み」と覚えていて、アカウント選択を飛ばしてすぐ結果を返す。
+            そこで <strong>Google にログインしていないシークレットウィンドウ</strong>で行い、ポップアップをメールアドレスの入力画面で止めた。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">見たこと</th><th scope="col">結果</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">開いたまま20秒待つ</th><td><strong>何も届かない</strong></td></tr>
+                <tr><th scope="row">その後メールとパスワードを入力</th><td><strong>ログインできた</strong>（入力を含めて10秒を大きく超えた）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <strong>止められていない。</strong>警告は「報告するだけ」のものだった、と<strong>動きで</strong>分かった。
+            体感の約2秒は、止められていない場合のコード（閉じてから8〜10秒）とも合わず、数え始めの違いと考える（測り直してはいない）。
+          </p>
+          <p>
+            <strong>警告を消したのではなく、「出ても害がない」と確かめただけ</strong>で、警告はこれからも出る。
+            確かめたのは<strong>今のブラウザと <code>@firebase/auth</code> 1.13.4 での結果</strong>。ブラウザが COOP を本当に効かせるようになれば変わりうるが、それは Firebase 側の更新で直るべき問題。
+          </p>
+          <p>
+            止められていない場合でも、秒数が効いてくる場面がある。将来「<strong>ポップアップを開いている間は Google ボタンを押せなくする</strong>」状態を足したとき。<code>finally</code> で戻すまで、<strong>閉じた後も8〜10秒押せないまま</strong>になる。
+          </p>
+          <p>
+            待っている間にもう一度押すと、Firebase は前の処理を <code>auth/cancelled-popup-request</code>（<code>AuthErrorCodes.EXPIRED_POPUP_REQUEST</code>）で取り消してから、新しいポップアップを開く。
+            <code>getAuthErrorMessage</code> はこれも空文字を返す分岐に入れてあるので、画面には何も出ない。
           </p>
         </div>
       </div>
@@ -7188,9 +7254,14 @@ export default function Button({ variant, ...rest }: Props) {
         <code>layout.tsx</code> の保証は型に現れない（エントリ76）。null なら例外を投げて <code>User</code> を返すフックにすれば、絞り込みが1か所にまとまる。
         作るなら、<strong><code>layout.tsx</code> の外で呼ばれたときにどう振る舞うべきか</strong>も決める。
       </li>
+      <li>
+        <strong>ログアウトした後、Google でのログインで毎回アカウントを選ばせるか。</strong>
+        今は Google 側のログインが残っているので、<strong>別のアカウントを選ぶ機会がないまま</strong>同じアカウントで戻る（エントリ99）。
+        <code>GoogleAuthProvider</code> には毎回選ばせる設定がある。ログイン画面を作り直すとき（決定記録の並び順・<code>autoComplete</code> と一緒に）決める。
+      </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 「Google のポップアップを × で閉じたとき、COOP の警告の影響を受けないか」は、<strong>実際に閉じて測り、影響が無いことを確かめた</strong>（エントリ99）。
+      ※ 「Google のポップアップの『閉じたか』の確認が、COOP に止められていないか」は、<strong>シークレットウィンドウでポップアップを開いたまま20秒待ち、止められていないことを確かめた</strong>（エントリ99。一度「影響なし」としたが、秒数の食い違いから確かめ直した）。
       「破壊的操作の配色と <code>disabled</code> の見た目」は、色の体系（エントリ90）と共通ボタン（エントリ96）で解決。削除まわりで<strong>仕様書3-6 の「赤系の配色」を満たした</strong>。
       「企業を削除したとき、紐づく予定・振り返りをどう扱うか」は決定記録で解決（<strong>一緒に削除する</strong>。実装はフェーズ3・4）。
       「保存後の遷移中に送信ボタンが押せてしまわないか」は<strong>実際に起きることを確かめ</strong>、エントリ 81 と決定記録で解決。
