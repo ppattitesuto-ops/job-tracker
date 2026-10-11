@@ -12,10 +12,10 @@ export const COMPANY_STATUSES = [
 ] as const;
 
 // ブラウザで実行時に使われるもの(COMPANY_STATUSES)を、ビルド時に使って消えるものとしても使いたいから、CompanyStatusでその型に変えてる
-// typeofは値を受け取って、その型を返すもの、numberは配列の中身を数字で取り出せることを示す
+// typeofは値(配列)を、型の世界に持ってくる。
+// [number]は配列のどの番号の要素か分からないという聞き方をする。だから、答えはありうる全部→ユニオンになる。ここでCompanyStatusは、配列に入っている７つの文字列のどれか一つというユニオン型になる。
+// 配列(値)につけたas constは配列の中身を値までそれと決めているからこそCompanyStatusが配列で決められた値のユニオン型になる。as constがなければCompanyStatusの中身はstringになり文字列ならなんでも入るようになってしまう。
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
-// Companyの型からIDをOmitによって抜き、新しい型を作る
-export type CompanyInput = Omit<Company, "id">;
 
 // Companyではデータに当てはめる型、ビルド時に消える型として型をエクスポートしてる
 export type Company = {
@@ -28,7 +28,32 @@ export type Company = {
   memo: string;
 };
 
+// Companyの型からIDをOmitによって抜き、新しい型を作る
+export type CompanyInput = Omit<Company, "id">;
+
 // keyof CompanyInput:CompanyInputからキーだけを取り出すためのもの
 // Record：キーの集合と値の型からオブジェクト型を組み立てる。→Record<keyof CompanyInput, string>でCompanyInputのキーを取り出し、値をstringにしてオブジェクトを作る。→statusも値がstringになったことでエラーメッセージが入れられるようになった。
 // Partial<T>:すべてのプロパティを省略可能にする(これがないと6項目全てに文字列を入れないと型が通らない)→Partialで{}から始められるようにしてあとからエラーメッセージがあるものを項目として生やしていく設計になっている。
 export type CompanyInputErrors = Partial<Record<keyof CompanyInput, string>>;
+
+// ダッシュボードで段階を順に並べて集計する時にこの値の配列を使う
+export const COMPANY_STATUS_STAGES = [
+  "screening",
+  "interview",
+  "offer",
+  "rejection",
+] as const;
+
+export type CompanyStatusStage = (typeof COMPANY_STATUS_STAGES)[number];
+
+// Partialをつけなかった理由：今後キー(今ならCompanyStatus)が追加された場合に、それが対応表に更新されていなかったらエラーが出るようにしたいから。それと、Partialをつけたら表を引くたびにCompanyStatusStage | undefinedの処理を書かなければいけない。
+// ステータスを受け取る事で段階が分かる表。CompanyStatus自体がキーなのでkeyofはいらない。
+export const STAGE_BY_STATUS: Record<CompanyStatus, CompanyStatusStage> = {
+  "応募済": "screening",
+  "書類選考中": "screening",
+  "一次面接": "interview",
+  "二次面接": "interview",
+  "最終面接": "interview",
+  "内定": "offer",
+  "お断り": "rejection",
+};
