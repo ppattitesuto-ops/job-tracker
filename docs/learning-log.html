@@ -562,7 +562,7 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-10</b></span>
+      <span>最終更新 <b>2026-10-11</b></span>
       <span>エントリ <b>99</b></span>
       <span>決定記録 <b>43</b></span>
       <span>進捗 <b>UI の土台（色分け・ボタン） → デプロイへ</b></span>
@@ -7250,6 +7250,15 @@ export default function Button({ variant, ...rest }: Props) {
         デプロイしたら、Firebase の使用量の上限とアラートを確認する。問題になったら App Check（仕様書3-1 で v1 対象外）を検討する。
       </li>
       <li>
+        <strong>公開した後、フォームを通らない書き込みで形の違うデータが入りうる。書き込むときに、ルールで形を検査するか。</strong>
+        Firebase の設定値は公開されるので、新規登録した人は <strong>SDK を直接使って、フォームの検証を通さずに</strong>書き込める。
+        決定記録「Firestore から読んだデータは <code>as</code> で型を付け、実行時の検証はしない」の前提（書き込むのは自分のアプリだけ）は、<strong>公開すると厳密には成り立たない</strong>。
+        ただしルールで書き込めるのは自分の <code>uid</code> の下だけなので、<strong>壊れるのはその人自身の画面だけ</strong>。v1 の判断は維持する。
+        守るなら、読む側（<code>as</code> の代わりに実行時に検査する）ではなく、<strong>書き込む側でルールが形を検査する</strong>案（例：<code>name</code> が文字列であること）。依存が増えず、検査がサーバー側で行われる。上の「どこまで許すか」と一緒に決める。
+        実例：Firestore のコンソールで <code>name</code> を数値にすると、編集フォームの <code>trim()</code> で落ちた（エントリ87・99）。
+        ただし<strong>コンソールからの書き込みはルールを通らない</strong>ので、この実例はルールの検査でも防げない。
+      </li>
+      <li>
         <strong><code>useAuth()</code> の null を毎回除く代わりに、<code>User</code> を返すフックを作るか。</strong>
         <code>layout.tsx</code> の保証は型に現れない（エントリ76）。null なら例外を投げて <code>User</code> を返すフックにすれば、絞り込みが1か所にまとまる。
         作るなら、<strong><code>layout.tsx</code> の外で呼ばれたときにどう振る舞うべきか</strong>も決める。
@@ -7633,6 +7642,8 @@ export default function Button({ variant, ...rest }: Props) {
           データ構造を変更してマイグレーションが必要になったとき、
           あるいは複数の書き込み経路（管理画面・バッチ・他アプリ）ができたときに (a) を入れる。
           <strong>「書き込む口が増えた瞬間」が境界。</strong>
+          <br><strong>2026-10-11 追記：</strong>公開すると、フォームを通らない書き込み（SDK を直接使う）が誰にでもできるようになり、この前提は厳密には崩れる。
+          影響がその人自身の領域で止まるので判断は維持し、書き込む側でルールが形を検査する案を未解決の問いに残した。
         </dd>
       </dl>
     </div>
