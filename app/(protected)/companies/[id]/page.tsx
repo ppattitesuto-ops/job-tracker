@@ -25,6 +25,9 @@ export default function CompanyPage() {
   const paramsId = params.id as string;
   // 削除中かどうかを表す。
   const [deleting, setDeleting] = useState(false);
+  // 削除済かどうかを表す。
+  // deletingはFirestoreに削除を頼んで、返事を待っている間、hasDeletedは削除が成功して画面が切り替わるまでの間、二つはtrueになっている期間で表すものが違うから分けた。
+  const [hasDeleted, setHasDeleted] = useState(false);
   // 削除が失敗した場合のエラー表示
   const [deleteError, setDeleteError] = useState("");
   // useRefが返すのは、currentというプロパティを１つだけ持つオブジェクト
@@ -72,9 +75,10 @@ export default function CompanyPage() {
   };
 
   // 削除中にEscキーが押されると、結果(削除の成功or失敗)を見せる先がなくなる。
-  // Escで閉じるのは<dialog>の既定の動き。だからe.preventDefaultで止める。
+  // 削除が成功して画面が切り替わるまでにEscキーが押されると、ダイアログが閉じて詳細ページの「削除」ボタンや「編集ページへ移動」のリンクを押すことが可能になってしまい、存在しない企業に対して削除を行なったり、編集しにいけてしまう。だから、cancelDialogの条件にhasDeletedをつけることでその間にEscキーでダイアログが閉じないようにしている。
+  // Escで閉じるのは<dialog>の既定の動き。だからe.preventDefaultで止める。→しかし、止めているのは1回目のEscだけで2回目はブラウザの仕様で止められない。(ダイアログにユーザーが閉じ込められることを防ぐ役割がある)
   const cancelDialog = (e: React.SyntheticEvent<HTMLDialogElement>) => {
-    if (deleting) {
+    if (deleting || hasDeleted) {
       e.preventDefault();
     }
   };
@@ -98,6 +102,8 @@ export default function CompanyPage() {
     try {
       await deleteCompany(user.uid, paramsId);
       router.push("/companies");
+      // 成功したら画面を離れる前提なのでtrueからfalseに戻さない
+      setHasDeleted(true);
     } catch {
       setDeleteError("企業データの削除に失敗しました");
     } finally {
@@ -136,8 +142,8 @@ export default function CompanyPage() {
       <dialog ref={dialogRef} onCancel={cancelDialog}>
         <div>本当に{company.name}を削除しますか？この操作は取り消せません。</div>
         {/* buttonは既定のtypeがsubmitになる。だから何も指定しない=送信ボタンになってしまうため、今後<form>を導入した場合にページの際読み込みが入ってしまう。なのでbuttonはtypeを明示的に毎回示すようにする */}
-        <Button variant="secondary" type="button" onClick={closeDialog} disabled={deleting}>キャンセル</Button>
-        <Button variant="danger" type="button" onClick={handleDelete} disabled={deleting}>削除する</Button>
+        <Button variant="secondary" type="button" onClick={closeDialog} disabled={deleting || hasDeleted}>キャンセル</Button>
+        <Button variant="danger" type="button" onClick={handleDelete} disabled={deleting || hasDeleted}>削除する</Button>
         {deleteError && <div>{deleteError}</div>}
       </dialog>
       <div>
