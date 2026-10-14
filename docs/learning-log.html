@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-10</b></span>
-      <span>エントリ <b>99</b></span>
-      <span>決定記録 <b>43</b></span>
-      <span>進捗 <b>UI の土台（色分け・ボタン） → デプロイへ</b></span>
+      <span>最終更新 <b>2026-10-13</b></span>
+      <span>エントリ <b>104</b></span>
+      <span>決定記録 <b>44</b></span>
+      <span>進捗 <b>本番公開・削除の二度押しを修正 → フェーズ3へ</b></span>
     </div>
   </header>
 
@@ -671,6 +671,11 @@
       <li><a href="#e97">「見える」ことを、数字と操作で確かめる</a></li>
       <li><a href="#e98">途中のコミットも、push 前なら書き直せる</a></li>
       <li><a href="#e99">部品を全部に当てた日に、見えたもの</a></li>
+      <li><a href="#e100">本番に出す：ビルドの時点で決まるもの</a></li>
+      <li><a href="#e101">承認済みドメインは、Google ログインの入口の許可リスト</a></li>
+      <li><a href="#e102">2段階認証のコードは、届くのを待つものではない</a></li>
+      <li><a href="#e103">本番で見つけた、削除の二度押し</a></li>
+      <li><a href="#e104">Esc の2回目は、ブラウザが止めさせない</a></li>
     </ol>
   </nav>
 
@@ -7233,6 +7238,290 @@ export default function Button({ variant, ...rest }: Props) {
       </div>
     </article>
 
+    <!-- 100 -->
+    <article class="entry" id="e100">
+      <div class="entry-no">100</div>
+      <div class="entry-body">
+        <h2>本番に出す：ビルドの時点で決まるもの</h2>
+
+        <p>
+          Vercel につなぐ前に、手元で <code>npm run build</code> → <code>npm run start</code> を通した。
+          開発サーバー（<code>dev</code>）は<strong>開いたページだけをその場で作る</strong>が、<code>build</code> は<strong>アプリ全体を一度に作り、検査も通す</strong>。Vercel で失敗すると切り分けが難しいので、手元で先に通す。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">ビルドの出力から読めること</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">出力</th><th scope="col">意味</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>Environments: .env.local</code></th><td><code>.env.local</code> を読んだ。<code>NEXT_PUBLIC_</code> の値は<strong>この時点で</strong> JavaScript に書き込まれる</td></tr>
+                <tr><th scope="row"><code>Finished TypeScript</code></th><td>ビルドの中で型検査も行われる</td></tr>
+                <tr><th scope="row">（出ない行）</th><td><strong>lint は行われない。</strong>「Next 16 で <code>next build</code> から lint を外す」（<code>next.md:105</code>）。<code>npm run lint</code> は別に実行する</td></tr>
+                <tr><th scope="row">○ Static</th><td><strong>ビルドの時点で HTML を作っておく</strong>。<code>/</code>・<code>/companies</code>・<code>/companies/new</code>・<code>/login</code></td></tr>
+                <tr><th scope="row">ƒ Dynamic</th><td><strong>アクセスのたびにサーバーで作る</strong>。<code>[id]</code> の付いた2ページ——どの <code>id</code> が来るか、ビルドの時点では分からない</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">Static でも、一覧は固定されていない</div>
+          <p>
+            <code>view-source:http://localhost:3000/companies</code> で、ビルドが作った HTML そのものを開いて確かめた。
+            登録した企業名は<strong>無く</strong>、「ログイン状態を確認しています」は<strong>あった</strong>。
+          </p>
+          <p>
+            ビルドはブラウザの外で行うので、ログインしている人がいない。<code>(protected)/layout.tsx</code> は確認中の画面のまま HTML になった。
+            データは、ブラウザに届いてから <code>useEffect</code> で入る。<strong>○ が前もって作るのは、データが入る前の「器」だけ。</strong>
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">Vercel では、環境変数を最初のビルドの前に登録する</div>
+          <p>
+            <code>NEXT_PUBLIC_</code> の値は、<code>next build</code> を実行した時点のものが書き込まれる（<code>environment-variables.md:158-166</code>。エントリ01 の実物）。
+            Vercel には <code>.env.local</code> が無い（コミットしていない）ので、プロジェクトを作る画面で <strong>Deploy を押す前に</strong>6つを登録した。
+            <strong>後から登録しても、作り直す（Redeploy）までは反映されない。</strong>名前を1文字間違えても同じことになる。
+          </p>
+          <p>本番のビルドのログも、手元と<strong>同じ7ページ・同じ ○ / ƒ</strong> だった。</p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">公開する前に確かめた3つ</div>
+          <ul>
+            <li><strong>ルール</strong>：コンソールのルールが <code>firestore.rules</code> と一字一句同じ。ファイルは書いただけでは効かず、<strong>反映して初めて効く</strong></li>
+            <li><strong>料金プラン</strong>：Spark（無料）。支払い方法が無いので<strong>請求は来ない</strong>。上限を超えるとその日の残りは読み書きが失敗し、翌日に戻る——お金の代わりに、<strong>自分も使えなくなる</strong>形で影響が出る</li>
+            <li><code>git log --all --oneline -- .env.local</code> が何も出さない＝<strong>一度もコミットされていない</strong>。公開したリポジトリは、今のファイルだけでなく<strong>過去の履歴まで</strong>読める</li>
+          </ul>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">これからは「マージ＝公開」</div>
+          <p>
+            <code>main</code> にマージすると、<strong>そのまま本番が更新される</strong>。PR のブランチにプッシュすると、そのブランチ専用の <strong>Preview の URL</strong> ができ、ビルドが通るかが PR に出る。
+            Preview の URL は毎回変わるので承認済みドメインに入っておらず、<strong>Preview では Google ログインは使えない</strong>（メールで確かめる）。
+          </p>
+          <p>
+            ついでに：マージ後の <code>git pull</code> が <strong>Fast-forward</strong> と出たのは、手元の <code>main</code> に独自のコミットが無く、GitHub が作ったマージコミットまで「進むだけ」だったから。
+            届いたものが1つ（<code>Total 1</code>）だったのは、ブランチのコミットはもともと手元にあり、新しいのは<strong>マージコミットだけ</strong>だったから。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 101 -->
+    <article class="entry" id="e101">
+      <div class="entry-no">101</div>
+      <div class="entry-body">
+        <h2>承認済みドメインは、Google ログインの入口の許可リスト</h2>
+
+        <p>
+          本番の URL を、Firebase の Authentication → 設定 → <strong>承認済みドメイン</strong>に足した。足すまでは、本番で <strong>Google ログインだけ</strong>が失敗する。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">守るもの、守らないもの</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ログインの方法</th><th scope="col">承認済みドメインとの関係</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Google（ポップアップ）</th><td><strong>守る。</strong>設定値は公開されているので、制限が無ければ他人のサイトで「<strong>自分のプロジェクトの Google ログイン</strong>」を動かせてしまう（偽のサイトへの誘導に使われる）</td></tr>
+                <tr><th scope="row">メールとパスワード</th><td><strong>関係しない。</strong>別のサイトを経由せず、アプリが Firebase に直接問い合わせるだけ</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            だから承認済みドメインは<strong>万能の壁ではない</strong>。公開された設定値を使えば、他人のサイトやプログラムから、メールとパスワードで<strong>自分のプロジェクトにアカウントを作れる</strong>。
+            それを防ぐのは App Check などの別の仕組み（未解決の問い）。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">推測の URL を足さない</div>
+          <p>
+            <code>job-tracker.vercel.app</code> になると思っていたが、実際は <code>job-tracker-olive-beta.vercel.app</code> だった。名前は Vercel の利用者全体で<strong>早い者勝ち</strong>なので、すでに使われていれば別の名前になる。
+            推測で足していたら、<strong>他人のサイトに、自分のプロジェクトのログインを使う許可を与えていた</strong>かもしれない。
+          </p>
+          <ul>
+            <li>URL が決まってから、Vercel の Settings → Domains で<strong>本番のドメイン</strong>だと確かめて足した（デプロイのたびに変わる長い URL ではない方）</li>
+            <li>入れるのは<strong>ドメインだけ</strong>。<code>https://</code> も <code>/login</code> も付けない——許可するのは「どのサイトか」であって、ページの場所ではない</li>
+            <li><code>localhost</code> は手元の開発で使うので残す</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 102 -->
+    <article class="entry" id="e102">
+      <div class="entry-no">102</div>
+      <div class="entry-body">
+        <h2>2段階認証のコードは、届くのを待つものではない</h2>
+
+        <p>
+          Vercel にログインしようとして、「認証コードが届かない」で止まった。前のアプリ（<code>daily-quest-react</code>）のときに、<strong>認証アプリでの2段階認証</strong>を設定していた。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>認証コードは、メールか SMS で届く</dt>
+            <dd>
+              <strong>届かない種類がある。</strong>URL の <code>token</code> の中身を読むと、使える方法は <code>totp</code>（認証アプリ）と <code>recovery-code</code>（回復用コード）だけだった。
+              認証アプリは、設定したときに QR コードで<strong>秘密の値</strong>を受け取り、<strong>今の時刻から</strong> Vercel と同じ6桁を計算する。どこからも送られてこないし、通信もしていない
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">足止めされた原因と、入った後にすること</div>
+          <ul>
+            <li>どのアプリに登録したか分からなくなっていた。<strong>回復用コード</strong>で入った（1つにつき1回しか使えない）</li>
+            <li>途中で<strong>試行の上限</strong>に達した。回復用コードは、<strong>専用の入力に切り替えてから</strong>入れる。6桁の欄に入れると、間違ったコードとして数えられる。待ち時間は Vercel が公開していない</li>
+            <li>入った後にすること：認証アプリを<strong>同期やバックアップのあるもの</strong>で登録し直す → 回復用コードを作り直して安全な場所に保存する → パスキーも足して、<strong>手段を2つ持つ</strong></li>
+            <li>2段階認証の設定は、チームではなく<strong>個人のアカウントの設定</strong>（Account Settings → Authentication）にある</li>
+          </ul>
+          <p>
+            <code>token=</code> の付いた URL をチャットに貼っていた。今回は2段階目の手前の値で、5分で切れるものだった。
+            ただ、<code>token</code>・<code>code</code>・<code>session</code> の付いた URL は<strong>ログインの鍵の一部</strong>であることが多い。人に見せるときは、その部分を消す。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 103 -->
+    <article class="entry" id="e103">
+      <div class="entry-no">103</div>
+      <div class="entry-body">
+        <h2>本番で見つけた、削除の二度押し</h2>
+
+        <p>
+          本番で Network を 3G にして試すと、ダイアログの「削除する」が<strong>途中から何度も押せ</strong>、押すたびに削除が始まっているように見えた。
+          <code>handleDelete</code> の順番を追うと、隙間がどこにあるかが分かる。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">順</th><th scope="col">起きること</th><th scope="col"><code>deleting</code></th><th scope="col">ボタン</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1</th><td><code>setDeleting(true)</code></td><td>true</td><td>押せない</td></tr>
+              <tr><th scope="row">2</th><td><code>await deleteCompany(...)</code>（3G だと長い）</td><td>true</td><td>押せない</td></tr>
+              <tr><th scope="row">3</th><td>成功。<code>router.push</code> で<strong>移動を始める</strong>（完了は待たない）</td><td>true</td><td>押せない</td></tr>
+              <tr><th scope="row">4</th><td><code>finally</code> の <code>setDeleting(false)</code> が<strong>すぐに</strong>動く</td><td><strong>false</strong></td><td><strong>押せる</strong></td></tr>
+              <tr><th scope="row">5</th><td>一覧の読み込みが終わり、画面が切り替わる</td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          4 から 5 の間、まだ詳細ページにいるのにボタンが押せる。<strong>エントリ81 の二重送信と同じ隙間</strong>で、フォームには対策を入れたが、削除の流れには入れていなかった。
+          押すたびに削除が成功してエラーが出なかったのは、<code>deleteDoc</code> が<strong>冪等</strong>だから。データは壊れないが、無駄な削除と移動が重なる。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>ローカルでは押せなかったので、本番だけで起きる問題だ</dt>
+            <dd>
+              ローカルで見ていたのは、表の<strong>2</strong>（<code>deleting</code> が効いている間）だった。隙間（表の4〜5）は<strong>ローカルにもある</strong>。3G だと一覧の読み込みが遅く、隙間が長くなって気づいた
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">直し方は、決定記録をそのまま当てはめた</div>
+          <p>
+            二重送信の決定記録で (a)「成功したら戻さない」を捨てた理由——<strong>名前が事実と食い違う</strong>——は削除にも当てはまる。
+            <code>deleting</code>（通信中）とは別に <code>hasDeleted</code>（削除済み）を足し、<code>await</code> の後、<code>try</code> の中で <code>true</code> にした。失敗すると <code>catch</code> に飛ぶので <code>true</code> にならない。
+            <code>setHasDeleted(true)</code> は <code>finally</code> の <code>setDeleting(false)</code> より先に動くので、<strong>どの瞬間も <code>deleting || hasDeleted</code> が <code>false</code> にならない</strong>。
+          </p>
+          <p>
+            <code>deleting</code> を見ていた<strong>3か所すべて</strong>（キャンセル・削除する・<code>cancelDialog</code>）で <code>hasDeleted</code> も見る。Esc の処理を忘れると、隙間の間にダイアログが閉じる。
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">本番と同じ動き方で確かめた</div>
+          <ol>
+            <li><code>npm run build</code> → <code>npm run start</code> にし、Network を 3G にする</li>
+            <li><code>handleDelete</code> の先頭に一時的に <code>console.log</code> を入れ、切り替わるまで「削除する」と Esc を何度も押す</li>
+            <li>切り替わるまで2つのボタンは<strong>薄いまま</strong>、<code>handleDelete</code> は<strong>1回だけ</strong></li>
+            <li><code>console.log</code> を消し、<code>git diff</code> に残っていないことを確かめた</li>
+          </ol>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：state が初期値に戻る理由</div>
+          <dl class="wrong-right">
+            <dt><code>false</code> に戻さなくてよいのは、<strong>再レンダリング</strong>で state が初期値に戻るから</dt>
+            <dd>
+              <strong>再レンダリングでは state は戻らない</strong>（戻らないのが <code>useState</code> の役割）。一覧に移ると、詳細ページのコンポーネントは<strong>破棄</strong>（アンマウント）され、次に開くと<strong>新しく作られる</strong>（マウント）。新しく作られたものが初期値から始まる
+            </dd>
+          </dl>
+          <p>
+            この前提には条件がある。<code>cacheComponents</code> を有効にすると、ページは破棄されず <code>&lt;Activity&gt;</code> で<strong>隠されるだけ</strong>になり、state が残る（最大3ルート。<code>preserving-ui-state.md:15-19</code>）。
+            今の <code>next.config.ts</code> では無効。<code>hasSaved</code> も同じ前提に立っている（決定記録に追記）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）：BloomFilter の警告</div>
+          <dl class="wrong-right">
+            <dt><code>BloomFilter error</code> は、削除と移動が何度も重なったのがきっかけ。直せば出にくくなる</dt>
+            <dd>
+              直した後、<code>handleDelete</code> が<strong>1回しか動いていないのに出た</strong>。1回の削除の後に一覧を取り直す、普通の流れでも出る。
+              SDK のコード（<code>@firebase/firestore</code> の <code>common-DugxmK6F.esm.js:5372</code>）では <code>logWarn</code> で、ブルームフィルターが使えないときは<strong>一覧を丸ごと取り直す</strong>ので、結果は正しい。対応は要らない
+            </dd>
+          </dl>
+          <p>先頭の <code>installHook.js</code> は、React DevTools がコンソールの出力を中継しているだけで、出どころは Firestore。</p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">名前と文で直したこと</div>
+          <ul>
+            <li><strong>ブランチ名に空白は使えない。</strong>ターミナルは空白で別の引数に分ける。英語は動詞 → 対象の順で <code>fix/prevent-double-delete</code></li>
+            <li>コミットの <code>-m</code> は複数書ける。<strong>1つ目が1行目の要約、2つ目以降が本文の段落</strong></li>
+            <li>「削除ボタンが二重削除される」は、ボタンが消えるという意味になる。<strong>主語と述語を合わせる。</strong>「送信」はフォームの言葉なので、削除には使わない</li>
+            <li>コメントは「<strong>今のコードがなぜこうなっているか</strong>」を書く。「条件に追加した」という経緯はコミットが受け持つ</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 104 -->
+    <article class="entry" id="e104">
+      <div class="entry-no">104</div>
+      <div class="entry-body">
+        <h2>Esc の2回目は、ブラウザが止めさせない</h2>
+
+        <p>
+          直した後の確認で、Esc を2回続けて押すと、<code>preventDefault()</code> していてもダイアログが閉じた。コードの誤りではない。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">利用者を閉じ込めないための仕組み</div>
+          <p>
+            <code>cancel</code> を <code>preventDefault()</code> で止められるのは、<strong>利用者がページを操作するたびに1回だけ</strong>。
+            操作を挟まずにもう一度 Esc を押すと、2回目の <code>cancel</code> は<strong>止められないもの</strong>として届き、ダイアログが閉じる。
+            悪いサイトが「Esc を何度押しても出られない」画面を作れないようにしている（close watcher の仕組み。ブラウザの動作確認用のテストにも、1回目は止められ2回目は閉じる順番が書かれている）。
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">閉じた時期</th><th scope="col">起きうること</th><th scope="col">実害</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">削除が成功した後</th><td>消えた企業の詳細が一瞬見える。「削除」を押してもボタンは押せない（<code>hasDeleted</code>）。「編集」へ行くと「見つかりません」</td><td><strong>データは壊れない</strong></td></tr>
+              <tr><th scope="row">削除中</th><td>失敗したとき、エラーは<strong>ダイアログの中</strong>に出るので見えない</td><td><strong>失敗に気づけない</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          コメントを「<strong>1回目の Esc は止める。2回目はブラウザの仕様で止められない</strong>」に直した。この制限は <code>preventDefault()</code> そのものの限界なので、削除中・削除後の<strong>両方に効く行</strong>に書いた。
+          閉じた後に開き直して抵抗する案は捨てた（決定記録）。失敗が見えない件は未解決の問いへ。
+        </p>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -7243,11 +7532,24 @@ export default function Button({ variant, ...rest }: Props) {
         <code>process.env.X</code> の型は <code>string | undefined</code> で、Firebase の <code>FirebaseOptions</code> は
         <code>apiKey?: string</code> なので<strong>型チェックは通ってしまう</strong>。
         値が空のまま実行時に初めて意味不明なエラーになる。検証を入れるか、入れるならどこに置くか。
+        分かっていること：API キーが空だと、Firebase は <code>auth/invalid-api-key</code>（<strong>不正</strong>です）を出す——実際は空なので、原因を取り違えやすい。ほかの値は、使うときまで何も起きない。
+        名前を配列にして <code>process.env[name]</code> で調べる書き方は、<strong>ブラウザでは値が書き込まれない</strong>（<code>environment-variables.md:182-189</code>）。
+        最初のデプロイは、6つを目で確かめて通した（エントリ100）。次は、1つずつコメントにして実際の動きを見るところから。
       </li>
       <li>
         <strong>公開した後、知らない人のアカウント作成や書き込みをどこまで許すか。</strong>
         セキュリティルールで他人のデータは読めないが、<strong>誰でも新規登録して、自分の領域に書き込むことはできる</strong>。
-        デプロイしたら、Firebase の使用量の上限とアラートを確認する。問題になったら App Check（仕様書3-1 で v1 対象外）を検討する。
+        Spark プランなので請求は来ないが、上限を超えるとその日は<strong>自分も使えなくなる</strong>（エントリ100）。
+        承認済みドメインは、メールとパスワードでの登録を止めない（エントリ101）。問題になったら App Check（仕様書3-1 で v1 対象外）を検討する。
+      </li>
+      <li>
+        <strong>公開した後、フォームを通らない書き込みで形の違うデータが入りうる。書き込むときに、ルールで形を検査するか。</strong>
+        Firebase の設定値は公開されるので、新規登録した人は <strong>SDK を直接使って、フォームの検証を通さずに</strong>書き込める。
+        決定記録「Firestore から読んだデータは <code>as</code> で型を付け、実行時の検証はしない」の前提（書き込むのは自分のアプリだけ）は、<strong>公開すると厳密には成り立たない</strong>。
+        ただしルールで書き込めるのは自分の <code>uid</code> の下だけなので、<strong>壊れるのはその人自身の画面だけ</strong>。v1 の判断は維持する。
+        守るなら、読む側（<code>as</code> の代わりに実行時に検査する）ではなく、<strong>書き込む側でルールが形を検査する</strong>案（例：<code>name</code> が文字列であること）。依存が増えず、検査がサーバー側で行われる。上の「どこまで許すか」と一緒に決める。
+        実例：Firestore のコンソールで <code>name</code> を数値にすると、編集フォームの <code>trim()</code> で落ちた（エントリ87・99）。
+        ただし<strong>コンソールからの書き込みはルールを通らない</strong>ので、この実例はルールの検査でも防げない。
       </li>
       <li>
         <strong><code>useAuth()</code> の null を毎回除く代わりに、<code>User</code> を返すフックを作るか。</strong>
@@ -7255,13 +7557,14 @@ export default function Button({ variant, ...rest }: Props) {
         作るなら、<strong><code>layout.tsx</code> の外で呼ばれたときにどう振る舞うべきか</strong>も決める。
       </li>
       <li>
-        <strong>ログアウトした後、Google でのログインで毎回アカウントを選ばせるか。</strong>
-        今は Google 側のログインが残っているので、<strong>別のアカウントを選ぶ機会がないまま</strong>同じアカウントで戻る（エントリ99）。
-        <code>GoogleAuthProvider</code> には毎回選ばせる設定がある。ログイン画面を作り直すとき（決定記録の並び順・<code>autoComplete</code> と一緒に）決める。
+        <strong>削除中に Esc を2回押してダイアログが閉じ、その削除が失敗したとき、失敗をどう見せるか。</strong>
+        エラーはダイアログの中に出るので、閉じていると見えない（エントリ104）。2回目の Esc はブラウザの仕様で止められない。
+        候補は、エラーをダイアログの外にも出す／失敗したときだけダイアログを開き直す／受け入れる（失敗すれば一覧に移らないので、何も起きなかったことには気づける）。
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 「Google のポップアップの『閉じたか』の確認が、COOP に止められていないか」は、<strong>シークレットウィンドウでポップアップを開いたまま20秒待ち、止められていないことを確かめた</strong>（エントリ99。一度「影響なし」としたが、秒数の食い違いから確かめ直した）。
+      ※ 「ログアウトした後、毎回アカウントを選ばせるか」は、ログイン画面の作り直しと一緒に<strong>次のアプリへ持ち越し</strong>（決定記録）。
+      「Google のポップアップの『閉じたか』の確認が、COOP に止められていないか」は、<strong>シークレットウィンドウでポップアップを開いたまま20秒待ち、止められていないことを確かめた</strong>（エントリ99。一度「影響なし」としたが、秒数の食い違いから確かめ直した）。
       「破壊的操作の配色と <code>disabled</code> の見た目」は、色の体系（エントリ90）と共通ボタン（エントリ96）で解決。削除まわりで<strong>仕様書3-6 の「赤系の配色」を満たした</strong>。
       「企業を削除したとき、紐づく予定・振り返りをどう扱うか」は決定記録で解決（<strong>一緒に削除する</strong>。実装はフェーズ3・4）。
       「保存後の遷移中に送信ボタンが押せてしまわないか」は<strong>実際に起きることを確かめ</strong>、エントリ 81 と決定記録で解決。
@@ -7633,6 +7936,8 @@ export default function Button({ variant, ...rest }: Props) {
           データ構造を変更してマイグレーションが必要になったとき、
           あるいは複数の書き込み経路（管理画面・バッチ・他アプリ）ができたときに (a) を入れる。
           <strong>「書き込む口が増えた瞬間」が境界。</strong>
+          <br><strong>2026-10-11 追記：</strong>公開すると、フォームを通らない書き込み（SDK を直接使う）が誰にでもできるようになり、この前提は厳密には崩れる。
+          影響がその人自身の領域で止まるので判断は維持し、書き込む側でルールが形を検査する案を未解決の問いに残した。
         </dd>
       </dl>
     </div>
@@ -8164,7 +8469,11 @@ export default function Button({ variant, ...rest }: Props) {
         <dd>
           <strong>保存に成功したら、このフォームから離れる。</strong>だから <code>hasSaved</code> を <code>false</code> に戻すコードが要らない。
           「保存して続けて登録する」画面を作るなら、ここを見直す。
+          <br><strong>2026-10-13 追記：</strong>「離れると初期値に戻る」のは、画面を離れるとコンポーネントが<strong>破棄される</strong>から（再レンダリングでは戻らない）。
+          <code>cacheComponents</code> を有効にすると、ページは隠されるだけで state が残る（エントリ103）。有効にするときは <code>hasSaved</code>・<code>hasDeleted</code> を見直す。
         </dd>
+        <dt>同じ判断を当てた場所</dt>
+        <dd>企業の削除（<code>hasDeleted</code>）。本番で同じ隙間を見つけた（エントリ103）。</dd>
         <dt>見直す条件</dt>
         <dd><strong>ボタン以外から保存を呼ぶ入口が増えたら</strong>、(b) に切り替える。画面の制御では守れなくなるため。</dd>
       </dl>
@@ -8403,8 +8712,13 @@ export default function Button({ variant, ...rest }: Props) {
         <dt>並べ方</dt>
         <dd>
           Google のボタンとメールのフォームを<strong>別のかたまり</strong>にし、間に「または」を挟む。<strong>色の強弱ではなく、並び順で優先を伝える。</strong>
-          いまは Google のボタンがフォームの<strong>中</strong>にあるので、構造の上でも外に出す（未実装）。
-          あわせて入力欄に <code>autoComplete</code> を付ける（エントリ99。未実装）。
+          いまは Google のボタンがフォームの<strong>中</strong>にあるので、構造の上でも外に出す（次のアプリへ持ち越し）。
+          あわせて入力欄に <code>autoComplete</code> を付ける（エントリ99。次のアプリへ持ち越し）。
+        </dd>
+        <dt>持ち越し</dt>
+        <dd>
+          2026-10-11、ログイン画面の作り直し（Google のボタンをフォームの外へ・「または」・<code>autoComplete</code>・毎回アカウントを選ばせるか）は、<strong>このアプリでは行わず、次のアプリに持ち越す</strong>と決めた。
+          今の作りで困るのは、Chrome の <code>autoComplete</code> の提案がコンソールに出ることだけで、動きに問題はない。
         </dd>
         <dt>捨てた案</dt>
         <dd>
@@ -8441,6 +8755,28 @@ export default function Button({ variant, ...rest }: Props) {
         <dd>誰でも新規登録できる状態で公開される（未解決の問いへ）</dd>
         <dt>時期</dt>
         <dd><strong>UI の土台のブランチをマージした直後</strong>。目的の違う作業を混ぜない</dd>
+        <dt>結果</dt>
+        <dd>
+          2026-10-12 に公開（<code>job-tracker-olive-beta.vercel.app</code>）。環境変数は最初のビルドの前に登録し、承認済みドメインは URL が決まってから足した（エントリ100・101）。
+          (1) のとおり、<strong>本番の 3G で削除の二度押しを見つけた</strong>（エントリ103）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>2回目の Esc でダイアログが閉じるのを、開き直して抵抗しない</h3>
+      <dl>
+        <dt>問題</dt>
+        <dd>削除中・削除後に Esc を2回続けて押すと、<code>preventDefault()</code> していてもダイアログが閉じる（エントリ104）。</dd>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> <code>close</code> のときに、削除中・削除後なら <code>showModal()</code> で開き直す</dd>
+        <dt>理由</dt>
+        <dd>
+          ブラウザが2回目を止めさせないのは、<strong>利用者を閉じ込めないため</strong>。(a) はその保護をすり抜ける形になり、2回押した利用者の「出たい」という意思にも逆らう。
+          閉じても<strong>データは壊れない</strong>（<code>deleteDoc</code> は冪等で、ボタンは <code>hasDeleted</code> で止まる）。
+        </dd>
+        <dt>残る問題</dt>
+        <dd>削除中に閉じて、しかも削除が失敗したとき、失敗が見えない（未解決の問い）。</dd>
       </dl>
     </div>
   </section>
