@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-13</b></span>
-      <span>エントリ <b>104</b></span>
-      <span>決定記録 <b>44</b></span>
-      <span>進捗 <b>本番公開・削除の二度押しを修正 → フェーズ3へ</b></span>
+      <span>最終更新 <b>2026-10-17</b></span>
+      <span>エントリ <b>107</b></span>
+      <span>決定記録 <b>48</b></span>
+      <span>進捗 <b>本番公開・削除の二度押しを修正 → フェーズ3（予定）に着手</b></span>
     </div>
   </header>
 
@@ -676,6 +676,9 @@
       <li><a href="#e102">2段階認証のコードは、届くのを待つものではない</a></li>
       <li><a href="#e103">本番で見つけた、削除の二度押し</a></li>
       <li><a href="#e104">Esc の2回目は、ブラウザが止めさせない</a></li>
+      <li><a href="#e105">環境変数が欠けたときの壊れ方は、値によって違う</a></li>
+      <li><a href="#e106">XSS は、入力ではなく表示で防ぐ</a></li>
+      <li><a href="#e107">PR は「機能ごと」に縦に切る</a></li>
     </ol>
   </nav>
 
@@ -7522,20 +7525,205 @@ export default function Button({ variant, ...rest }: Props) {
       </div>
     </article>
 
+    <!-- 105 -->
+    <article class="entry" id="e105">
+      <div class="entry-no">105</div>
+      <div class="entry-body">
+        <h2>環境変数が欠けたときの壊れ方は、値によって違う</h2>
+
+        <p>
+          未解決の問い「環境変数が未設定のまま起動したとき、どう気づくか」を決める前に、<strong>今の作りで何が起きるかを測った</strong>。
+          <code>.env.local</code> の1行の先頭に <code>#</code> を付けて無効にし、確かめたら元に戻す。値を消さないので、戻し忘れにくい。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">実験1：<code>API_KEY</code> を消す</th><th scope="col">実験2：<code>PROJECT_ID</code> を消す</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">試し方</th><td><code>npm run build</code></td><td><code>npm run dev</code> → ログイン → <code>/companies</code></td></tr>
+              <tr><th scope="row">結果</th><td><strong>ビルドが失敗</strong>。<code>lib/firebase.ts:21</code> の <code>getAuth(app)</code> で <code>auth/invalid-api-key</code></td><td>ログインは<strong>できる</strong>。一覧は<strong>ずっと「データを取得しています」</strong></td></tr>
+              <tr><th scope="row">止まった時点</th><td>ファイルが読み込まれた瞬間（<code>at module evaluation</code>）。ビルドで HTML を作る途中に読み込まれた</td><td>止まらない。Firestore への問い合わせが<strong>成功も失敗もせず、終わらない</strong></td></tr>
+              <tr><th scope="row">手がかり</th><td>「<strong>不正</strong>な API キー」。実際は<strong>空</strong>なので、原因を取り違えやすい。変数の名前は出ない</td><td>Console にもターミナルにも<strong>何も出ない</strong></td></tr>
+              <tr><th scope="row">Vercel で起きること</th><td>ビルドが失敗し、<strong>壊れた版は公開されない</strong>（前の版が動き続ける）</td><td>ビルドは成功し、<strong>壊れた版がそのまま公開される</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong>一番危ないのは実験2</strong>——公開は成功し、ログインもでき、データだけが出ず、どこにも手がかりが残らない。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">なぜ画面が止まったままで、どこにも何も出ないのか</div>
+          <ul>
+            <li>一覧の取得は <code>try / catch / finally</code> で、<code>finally</code> で <code>setLoading(false)</code> する。<code>await</code> している取得が<strong>終わらない</strong>ので、<code>catch</code> にも <code>finally</code> にも届かない。COOP のときの「<strong>async 関数には、終わらないまま止まる状態もある</strong>」の実物（エントリ99）</li>
+            <li>Firestore への問い合わせは、ブラウザから Google に<strong>直接</strong>行く。Next.js のサーバーを通らないので、ターミナルには何も記録されない</li>
+          </ul>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：エラーの場所の読み方</div>
+          <dl class="wrong-right">
+            <dt>実験1では、<code>db</code>（Firestore）と <code>getAuth</code> の両方がエラーになった</dt>
+            <dd>
+              エラーは <strong><code>&gt;</code> と <code>^</code> が指す21行目の <code>getAuth(app)</code> だけ</strong>。19・20行目は、場所が分かるように<strong>前後を見せているだけ</strong>。
+              また <code>getAuth</code> は Firestore ではなく <strong>Authentication（ログイン）</strong>の側。API キーが空だと、ログインの部品を作る時点で Firebase が止める
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">6つの値の意味</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">値</th><th scope="col">意味</th><th scope="col">このアプリでの使い道</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>API_KEY</code></th><td>Google のサーバーに「<strong>どのプロジェクトへの問い合わせか</strong>」を伝える識別子。秘密ではない（データを守るのはルール。エントリ03）</td><td>すべての通信。ログインの部品を作る時点で必須</td></tr>
+                <tr><th scope="row"><code>AUTH_DOMAIN</code></th><td>ログインの中継ページが置かれるドメイン（<code>〜.firebaseapp.com</code>）。Google のポップアップは、まずここを開く</td><td>Google でのログイン</td></tr>
+                <tr><th scope="row"><code>PROJECT_ID</code></th><td>プロジェクトの名前。Firestore はこれでデータベースの場所を組み立てる</td><td>Firestore のすべての読み書き</td></tr>
+                <tr><th scope="row"><code>APP_ID</code></th><td>プロジェクトの中で「<strong>このウェブアプリ</strong>」を区別する番号</td><td>今は直接使っていない（Analytics や App Check などで使う）</td></tr>
+                <tr><th scope="row"><code>STORAGE_BUCKET</code></th><td>Cloud Storage（ファイルの保存場所）の名前</td><td>使っていない</td></tr>
+                <tr><th scope="row"><code>MESSAGING_SENDER_ID</code></th><td>Cloud Messaging（プッシュ通知）の送信者の番号</td><td>使っていない</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">仕組みは次のアプリへ。それまでの運用</div>
+          <ul>
+            <li>Vercel の環境変数を触ったら、<strong>6つの名前と値を目で確かめる</strong></li>
+            <li>本番で「<strong>ログインはできるのに、データがずっと読み込み中で、どこにもエラーが出ない</strong>」ときは、まず <code>PROJECT_ID</code> を疑う</li>
+          </ul>
+          <p>次のアプリで作るものと、その書き方の注意は決定記録に残した。</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 106 -->
+    <article class="entry" id="e106">
+      <div class="entry-no">106</div>
+      <div class="entry-body">
+        <h2>XSS は、入力ではなく表示で防ぐ</h2>
+
+        <p>
+          予定の「場所」には住所も URL も入る。URL のときはリンクにしたいが、XSS が怖い。どこで何を守るのかを整理した。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">エスケープとは</div>
+          <p>
+            HTML で特別な意味を持つ記号を、<strong>「ただの文字」として表示される形に置き換える</strong>こと（例：タグの始まりの <code>&lt;</code> を <code>&amp;lt;</code> に）。
+            React は <code>{location}</code> の値を<strong>文字の入れ物</strong>（テキストノード）に入れるので、ブラウザは中身を HTML として読まない。<code>&lt;script&gt;</code> と書かれていても、ただの文字になる。
+          </p>
+          <p>
+            これは<strong>入力に対してではなく、表示に対して</strong>働く。React は値がどこから来たか（ユーザーの入力か、Firestore か）を区別せず、<code>{ }</code> で表示する値を<strong>すべて</strong>文字として扱う。
+            Firestore には <code>&lt;script&gt;</code> という文字がそのまま保存されるが、文字として表示する限り無害。<code>dangerouslySetInnerHTML</code> はこの守りを素通りさせるので使わない。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">リンクの <code>href</code> だけは、エスケープで守れない</div>
+          <p>
+            <code>href="javascript:..."</code> は、HTML として壊れているわけではない。ブラウザが<strong>クリックされたときに中身を URL として実行する</strong>ので、文字として正しく入っていても危ない。
+            そこで、リンクにするかどうかを<strong>表示するときに判定する</strong>。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">考え方</th><th scope="col">中身</th><th scope="col">弱点</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">ブラックリスト</th><td>危ないもの（<code>javascript:</code>・<code>data:</code> など）を並べて弾く</td><td>並べ忘れたもの、新しく出てきたものが<strong>素通りする</strong></td></tr>
+                <tr><th scope="row"><strong>ホワイトリスト</strong></th><td>許すもの（<code>http:</code>・<code>https:</code>）だけを並べ、<strong>それ以外はすべて文字として出す</strong></td><td>知らないものは<strong>最初から許されない</strong>（安全側に倒れる）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            ルールの「<strong>デフォルトで拒否し、必要なものだけを明示的に許可する</strong>」（仕様書5章）と同じ考え方。
+            判定は <code>isHttpUrl</code>（<code>new URL()</code> で解析し、<code>protocol</code> を見る）で行う。「<code>http</code> という文字が含まれるか」で見てはいけない——<code>javascript:alert('http://')</code> にも <code>http</code> は含まれるが、先頭の種類は <code>javascript:</code>。
+          </p>
+          <p>
+            入力時に URL の形を求める案は捨てた。この欄には住所も入るので、正しい住所が登録できなくなる。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>target="_blank"</code> に付ける <code>rel</code></div>
+          <dl class="wrong-right">
+            <dt><code>noopener noreferrer</code> は、外部リンクの先から自分のサイトが読まれるのを防ぐ</dt>
+            <dd>
+              2つは別のものを防ぐ。<strong><code>noopener</code></strong> は、開いた先のページが <code>window.opener</code> を通して<strong>自分のタブを操作する</strong>こと（偽のログイン画面への差し替えなど）を防ぐ——<strong>セキュリティ</strong>。
+              <strong><code>noreferrer</code></strong> は、開いた先に<strong>どのページから来たか</strong>（自分のページの URL）を伝えないようにする——<strong>プライバシー</strong>
+            </dd>
+          </dl>
+          <p>
+            <code>noopener</code> が切っているのは、COOP のときに学んだ「<strong>開いた側と開かれた側のつながり</strong>」（エントリ99）。今度はこちらが開く側なので、相手に悪用させないようにつながりを切る。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 107 -->
+    <article class="entry" id="e107">
+      <div class="entry-no">107</div>
+      <div class="entry-body">
+        <h2>PR は「機能ごと」に縦に切る</h2>
+
+        <p>
+          フェーズ3を小さな PR に分けるとき、最初は「型とデータ層だけ」の PR を考えた。層ごとに<strong>横に</strong>切るか、機能ごとに<strong>縦に</strong>切るかを比べた。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">縦に切る（機能ごと）</th><th scope="col">横に切る（層ごと）</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1つの PR に入るもの</th><td>型・データ層・画面を少しずつ</td><td>型だけ、データ層だけ、画面だけ</td></tr>
+              <tr><th scope="row">動作の確認</th><td><strong>毎回、画面で確かめられる</strong></td><td>データ層の PR は、画面ができるまで動かして確かめられない</td></tr>
+              <tr><th scope="row">設計の決まり方</th><td><strong>使う画面から逆算</strong>して関数の形が決まる。要らない関数を作らない</td><td>先に全部作るので、使うときに作り直しが起きやすい</td></tr>
+              <tr><th scope="row">レビュー</th><td>「この機能が動くか」を見る</td><td>1つの層を<strong>まとめて見比べられる</strong></td></tr>
+              <tr><th scope="row">チームでの利点</th><td>1人が1つの機能を最後まで受け持てる</td><td><strong>型とデータ層を先に <code>main</code> に入れれば、別の人が画面を並行して作れる</strong></td></tr>
+              <tr><th scope="row"><code>main</code> の状態</th><td>作りかけの機能が公開される</td><td>使われていないコードが入るだけ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          横に切るのが向くのは、<strong>複数人が同じ機能を並行して作るとき</strong>。1人で作る今回は、毎回確かめられる縦を選んだ（決定記録）。
+          「確かめられないものを先に書かない」（エントリ28）とも合う。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>縦に切ると、コンフリクトが起きにくくなる</dt>
+            <dd>
+              コンフリクトが起きにくいのは、<strong>ブランチの寿命が短い</strong>から。縦か横かとは関係なく、どちらでも小さく出せば得られる
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">今までも縦だった。ただしコミットは層ごとでもよい</div>
+          <p>
+            フェーズ2も、PR は機能ごとだった。たとえば色分けの PR は、型の追加（<code>30f0f50</code>）→ バッジと一覧での使用（<code>ba723f2</code>）と、<strong>コミットは層ごと</strong>に分かれていた。
+            <strong>PR はマージする単位なので、それだけで動くこと</strong>。コミットは取り消す単位なので、PR の中で層ごとに分けてよい。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">縦に切ると、作りかけが公開される</div>
+          <p>
+            この環境では<strong>マージ＝公開</strong>。「登録できるが、見る画面が無い」状態が本番に出る。そこで、<strong>ナビゲーションのリンクは機能がそろうまで置かない</strong>。URL を直接打たない限り、誰も作りかけの画面にたどり着けない。
+          </p>
+          <p>
+            また、登録フォームは「保存に成功したら画面を離れる」前提（<code>hasSaved</code>）。離れる先の<strong>詳細ページが無いと、登録だけの PR は成り立たない</strong>。だから最初の PR に詳細ページ（表示だけ）も入れた。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
     <h2>未解決の問い</h2>
     <ol>
-      <li>
-        <strong>環境変数が未設定のまま起動したとき、どう気づくか。</strong>
-        <code>process.env.X</code> の型は <code>string | undefined</code> で、Firebase の <code>FirebaseOptions</code> は
-        <code>apiKey?: string</code> なので<strong>型チェックは通ってしまう</strong>。
-        値が空のまま実行時に初めて意味不明なエラーになる。検証を入れるか、入れるならどこに置くか。
-        分かっていること：API キーが空だと、Firebase は <code>auth/invalid-api-key</code>（<strong>不正</strong>です）を出す——実際は空なので、原因を取り違えやすい。ほかの値は、使うときまで何も起きない。
-        名前を配列にして <code>process.env[name]</code> で調べる書き方は、<strong>ブラウザでは値が書き込まれない</strong>（<code>environment-variables.md:182-189</code>）。
-        最初のデプロイは、6つを目で確かめて通した（エントリ100）。次は、1つずつコメントにして実際の動きを見るところから。
-      </li>
       <li>
         <strong>公開した後、知らない人のアカウント作成や書き込みをどこまで許すか。</strong>
         セキュリティルールで他人のデータは読めないが、<strong>誰でも新規登録して、自分の領域に書き込むことはできる</strong>。
@@ -7563,7 +7751,8 @@ export default function Button({ variant, ...rest }: Props) {
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
-      ※ 「ログアウトした後、毎回アカウントを選ばせるか」は、ログイン画面の作り直しと一緒に<strong>次のアプリへ持ち越し</strong>（決定記録）。
+      ※ 「環境変数が未設定のまま起動したとき、どう気づくか」は、<strong>値を1つずつ消して壊れ方を確かめた</strong>うえで、確かめる仕組みは<strong>次のアプリへ持ち越し</strong>（エントリ105・決定記録）。
+      「ログアウトした後、毎回アカウントを選ばせるか」は、ログイン画面の作り直しと一緒に<strong>次のアプリへ持ち越し</strong>（決定記録）。
       「Google のポップアップの『閉じたか』の確認が、COOP に止められていないか」は、<strong>シークレットウィンドウでポップアップを開いたまま20秒待ち、止められていないことを確かめた</strong>（エントリ99。一度「影響なし」としたが、秒数の食い違いから確かめ直した）。
       「破壊的操作の配色と <code>disabled</code> の見た目」は、色の体系（エントリ90）と共通ボタン（エントリ96）で解決。削除まわりで<strong>仕様書3-6 の「赤系の配色」を満たした</strong>。
       「企業を削除したとき、紐づく予定・振り返りをどう扱うか」は決定記録で解決（<strong>一緒に削除する</strong>。実装はフェーズ3・4）。
@@ -8777,6 +8966,128 @@ export default function Button({ variant, ...rest }: Props) {
         </dd>
         <dt>残る問題</dt>
         <dd>削除中に閉じて、しかも削除が失敗したとき、失敗が見えない（未解決の問い）。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>環境変数を確かめる仕組みは、このアプリでは入れず、次のアプリで作る</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          未解決の問いだった。値を1つずつ消して確かめると、<code>API_KEY</code> はビルドで止まるが、<code>PROJECT_ID</code> は<strong>壊れた版がそのまま公開され、手がかりも残らない</strong>と分かった（エントリ105）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 今このアプリに入れる</dd>
+        <dt>理由</dt>
+        <dd>
+          フェーズ3（予定）に進むことを優先した。
+          危険が生じるのは Vercel の環境変数を<strong>触ったとき</strong>で、最初のデプロイの後はほとんど触らない。その間は運用で代える（エントリ105）。
+        </dd>
+        <dt>次のアプリで作るもの</dt>
+        <dd>
+          Firebase を初期化する前に環境変数がそろっているかを確かめ、<strong>欠けていたら変数の名前を出して止める</strong>。
+          <b>(1)</b> 範囲は<strong>6つすべて</strong>（すすめ）。目的は「登録したか」を確かめることなので、そのまま対応させる。使うものだけに絞ると、機能を足したときに更新し忘れる。
+          <b>(2)</b> <strong>空文字も「無い」と扱う</strong>。<code>名前=</code> の右が空だと値は <code>""</code> になり、Vercel でも空のまま保存できる。
+          <b>(3)</b> 置き場所は、初期化をまとめたファイルの <code>initializeApp</code> の<strong>前</strong>、ファイルの一番外側。実験1と同じく、ビルドの時点で止まるはず。
+        </dd>
+        <dt>書き方の注意</dt>
+        <dd>
+          <code>process.env[name]</code> で調べない。ビルドで値が書き込まれるのは、<code>process.env.NEXT_PUBLIC_〜</code> と<strong>名前をそのまま書いた箇所だけ</strong>（<code>environment-variables.md:182-189</code>）。
+          名前をそのまま書いて値を読み、その名前を見出しにした<strong>表（オブジェクト）を1か所で作り</strong>、それを順に見て空のものを探す。
+          <strong>欠けているものを全部集めてから止める</strong>（1つずつ止めると、直してはまた止まるを繰り返す）。確かめた後の値は <code>string</code> として扱えるので、<code>string | undefined</code> が型から消える。
+        </dd>
+        <dt>確かめ方</dt>
+        <dd>
+          エントリ105 の2つの実験を繰り返す。<strong>どちらもビルドの時点で、欠けた変数の名前を出して止まる</strong>ことを確かめる。特に <code>PROJECT_ID</code> が「公開されてしまう」から「ビルドで止まる」に変わること。
+          ビルドで止まるのは、ビルドの途中で初期化のファイルが読み込まれるから——ページの作りにたまたま頼っているので、毎回この実験で確かめる。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>予定の企業（<code>companyId</code>）は必須にする</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          仕様書3-3 では企業は<strong>任意</strong>。しかしカレンダーの一覧には「企業名・時刻・種別」を出すことになっていて、<strong>企業の無い予定で何を出すかが書かれていない</strong>。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 任意にし、企業の無い予定には自由に名前（例：合同説明会）を入れられるようにする</dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は、仕様書に無い項目が増え、「企業か名前のどちらか一方は必須」という2つの欄にまたがる検査が要る。カレンダー・詳細・ダッシュボードのすべてに分かれ道ができ、フェーズ4の振り返り（<code>companyId</code> を持つ）にも影響する。<strong>アプリの完成を優先した。</strong>
+          そして<strong>緩めるのは後からでも安く、締めるのは高い</strong>。必須で始めれば全部の予定に企業があり、後で任意に緩めても既存のデータは書き換えずに済む。逆に任意で始めて後で必須にすると、企業の無い予定の扱いに困る。
+        </dd>
+        <dt>運用</dt>
+        <dd>
+          合同説明会なども、<strong>企業として登録</strong>して紐づける。
+          企業が1件も無いときは、予定の登録画面に「<strong>先に企業を登録してください</strong>」と企業の登録ページへの導線を出す（企業一覧のエンプティステートと同じ形）。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>企業に紐づかない予定を、企業として登録せずに入れたくなったら (a) にする。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>予定の入力の決まり：時刻・持ち物・場所</h3>
+      <dl>
+        <dt>時刻</dt>
+        <dd>
+          <strong>開始と終了が同じ時刻は許す。</strong>エラーにするのは、開始が終了より後のときだけ。
+          終わりが分からない予定や、時間がない予定は、2つを同じにして登録することがあるため。仕様書3-6-2 のエラー文「開始時刻が終了時刻よりも後に設定されています」とも矛盾しない（仕様書は同じ時刻を許すかを書いていなかった）。
+        </dd>
+        <dt>持ち物</dt>
+        <dd>
+          入力は<strong>改行で区切る</strong>1つの欄。こだわり出すときりがないので、メモに近い形にする。
+          保存するときに、各行の<strong>前後の空白を取り</strong>、<strong>空になった行は捨てて</strong>、仕様書どおり <code>string[]</code> にする。編集ページでは、改行でつないで文字列に戻す。
+          <strong>フォームの中では文字列のまま持ち、保存するときに1回だけ変換する</strong>（入力のたびに配列にすると、改行を打った瞬間に空の行として捨てられ、次の行に進めない）。
+        </dd>
+        <dt>持ち物の捨てた案</dt>
+        <dd>
+          <b>(b)</b> 1つの文字列のまま保存する。変換は要らないが、仕様書と違い、箇条書きの表示や将来の「持ち物チェック」で結局分けることになる。
+          変換の手間は小さく、<strong>フォームの形とデータの形を分ける</strong>練習にもなる。
+        </dd>
+        <dt>場所</dt>
+        <dd>
+          住所も URL も入る。<strong>表示するときに</strong>、<code>isHttpUrl</code> が真なら（<code>http:</code> / <code>https:</code>）リンクにし、それ以外は文字として出す。リンクには <code>target="_blank"</code> と <code>rel="noopener noreferrer"</code> を付ける（エントリ106）。
+          入力時に URL の形を求める案は、住所が登録できなくなるので捨てた。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>フェーズ3は機能ごとに縦に切り、仕様書と順番を変える</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>仕様書7章の順番は、カレンダー → 登録・編集・削除 → 詳細。<strong>仕様書は書き換えず、変えた理由をここに残す。</strong></dd>
+        <dt>順番</dt>
+        <dd>
+          <b>PR1</b> 型＋<code>addSchedule</code>・<code>getSchedule</code>＋登録ページ＋詳細ページ（表示だけ）
+          <b>PR2</b> 削除と編集（<code>deleteSchedule</code>・<code>updateSchedule</code>、登録フォームの使い回し）
+          <b>PR3</b> カレンダー（月の範囲で取る関数）。ナビゲーションのリンクもここで足す
+          <b>PR4</b> 企業との紐付け（企業詳細の予定一覧、企業を削除したら予定も削除）
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 仕様書の順番（カレンダーから）
+          <b>(b)</b> 層ごとに横に切る（型とデータ層だけの PR から）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は、カレンダーに表示するデータが無いので、作っても確かめられない。
+          (b) は、データ層の PR を画面ができるまで動かして確かめられない。横に切る利点（層を見比べられる、並行して作れる）は、1人で作る今回は小さい（エントリ107）。
+        </dd>
+        <dt>作りかけの公開</dt>
+        <dd>マージ＝公開なので、ナビゲーションのリンクは PR3 まで置かない。登録フォームは保存後に詳細へ移るので、PR1 に詳細ページを入れた。</dd>
+        <dt>画面ごとに決めること</dt>
+        <dd>
+          仕様書の書き漏れのうち、画面を作るときに決めるもの：
+          企業詳細に予定の一覧を出す（3-2 にあるが7章のフェーズ3に無い。PR4）／
+          予定詳細に日付・種別・企業も出す（3-3 の項目から漏れている。PR1）／
+          カレンダーのエンプティステートが何を指すか（3-7。PR3）／
+          予定の削除の確認で何を示すか（3-6。PR2）／
+          予定を削除したときの振り返りの扱い（フェーズ4）
+        </dd>
       </dl>
     </div>
   </section>
