@@ -29,6 +29,7 @@ export type Company = {
 };
 
 // Companyの型からIDをOmitによって抜き、新しい型を作る
+// ここでidを抜くのはデータを保存する時のデータにはidが入っていないから。データをFirestoreに登録して、取り出すときにid+データのオブジェクトを取ってくる。
 export type CompanyInput = Omit<Company, "id">;
 
 // keyof CompanyInput:CompanyInputからキーだけを取り出すためのもの
