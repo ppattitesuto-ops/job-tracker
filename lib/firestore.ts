@@ -1,5 +1,9 @@
 // ⭐️ここは実際にfirestoreで扱うデータの処理を書くところ
+// uidを引数として受け取るのはデータの住所を作るため。→users/{uid}/companies or schedules
+// Firestoreに設定したルールでは、この住所とそれをしようとしている人が誰なのかを突き合わせている。※ログインした時にFirebaseが「この人のuidが〜です」という証明書(IDトークン)を発行してSDKが通信のたびにその証明書を自動で添えている。(googleの署名があるため書き換えられない)
+// if request.auth != nullは、ログインしていない人は証明書が無いので request.auth が null になり断られるが、あえて書くことで「ログインしていない人は断る」というのを明示的に示している
 import type { Company, CompanyInput, CompanyStatus } from "@/types/company";
+import type { Schedule, ScheduleInput } from "@/types/schedule";
 // collection():どこにデータがあるかを示す関数（複数を指定）→getDocsを使う
 // doc():どこにデータがあるかを示す関数(一つを指定)→getDocを使う
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
@@ -26,6 +30,7 @@ export async function getCompanies(uid: string): Promise<Company[]> {
     ...(doc.data() as CompanyInput),
   }));
 }
+
 // 引数にユーザーの識別子とIDがまだない状態のデータが使われる。→IDは中身ではなく、置き場所
 export async function addCompany(uid: string, data: CompanyInput):
 // voidは値を返さない関数ということを示す、つまりこの関数には返り値がないよと宣言。
@@ -71,4 +76,30 @@ export async function updateCompany(uid: string, id: string, data: CompanyInput)
 export async function deleteCompany(uid: string, id: string): Promise<void> {
   const companyRef = doc(db, "users", uid, "companies", id);
   await deleteDoc(companyRef);
+}
+
+// ⭐︎⭐︎ここから予定
+// 予定を保存する関数
+// フォームの形を知っているのはフォームと変換の関数だけ、lib/firestore.ts は保存する形のデータをFirestoreに出し入れするだけ、と分けておけば後でフォームを作り替えてもlib/firestore.ts は変えなくて済む。
+// 企業では保存が成功した後に一覧ページに遷移するため返り値はPromise<void>でよかったが、予定は保存が成功した後に詳細ページ（/schedule/[id]）に遷移するのでidがいる。そのため、addDocから参照を受け取り、そこから ID を取り出して返す。返り値の型は文字列。
+export async function addSchedule(uid: string, data: ScheduleInput): Promise<string> {
+  const schedulesRef = collection(db, "users", uid, "schedules");
+  // addDocは返り値として新しいドキュメントの参照(その中にidがある)を返す
+  // それを変数で受け取り、下でidを取り出しreturnしている
+  const scheduleDocumentRef = await addDoc(schedulesRef, data);
+  return scheduleDocumentRef.id;
+}
+
+// 予定を取得する関数
+export async function getSchedule(uid: string, id: string): Promise<Schedule | null> {
+  const scheduleRef = doc(db, "users", uid, "schedules", id);
+  const snapshot = await getDoc(scheduleRef);
+  if (!snapshot.exists()) return null;
+  return {
+    // キー id に、ドキュメントの名前を入れる
+    id: snapshot.id,
+    // ドキュメントの中身(data)を、同じオブジェクトに展開する
+    // as ScheduleInputはdataの中身をScheduleInputとして扱えと宣言してる
+    ...(snapshot.data() as ScheduleInput),
+  };
 }
