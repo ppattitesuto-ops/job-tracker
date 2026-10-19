@@ -37,6 +37,11 @@ export type CompanyInput = Omit<Company, "id">;
 // Partial<T>:すべてのプロパティを省略可能にする(これがないと6項目全てに文字列を入れないと型が通らない)→Partialで{}から始められるようにしてあとからエラーメッセージがあるものを項目として生やしていく設計になっている。
 export type CompanyInputErrors = Partial<Record<keyof CompanyInput, string>>;
 
+// 予定と振り返りで企業を選択するときに使う型
+// 予定と振り返りのフォームはidとnameをもらうことで企業を選択できるようになる。
+// ページからフォームはCompanyのままpropsを受け取ることができる。なぜなら、typescriptは必要なidとnameが揃っていれば余分な項目があったとしても型の検査の時には無視するから。しかし、フォームではcompany.memoのように余分なデータを扱うことはできず、CompanyOptionでpropsで受け取る型として指定したidとnameしか使うことができない。
+export type CompanyOption = Pick<Company, "id" | "name">;
+
 // ダッシュボードで段階を順に並べて集計する時にこの値の配列を使う
 export const COMPANY_STATUS_STAGES = [
   "screening",
