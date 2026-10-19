@@ -1,4 +1,4 @@
-// ⭐️ここはフォームを書くところ、使うページからPropsを受け取って表示する
+// ⭐️ここは企業のフォームを書くところ、使うページからPropsを受け取って表示する
 
 import { normalizeCompanyInput, validateCompanyInput } from "@/lib/company";
 import { COMPANY_STATUSES } from "@/types/company";
