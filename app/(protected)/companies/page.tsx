@@ -1,4 +1,5 @@
 "use client";
+// ⭐︎企業一覧ページ
 
 import { useAuth } from "@/contexts/AuthContext";
 import { getCompanies } from "@/lib/firestore";
@@ -18,6 +19,7 @@ export default function CompaniesPage() {
   const { user } = useAuth();
 
   // リアクトのルール：useEffectに渡した関数の返り値が関数なら、後始末関数として保存する→今回はデータをFirebaseからとってくるためasyncを書く必要があるが、asyncのついた関数の返り値は必ずPromiseになる。つまり、useEffectに渡す関数にasyncは書けない。だから、中で別の非同期関数を定義して呼ぶ形になる(下にあるloadのこと)
+  // 問題は保存されるものが関数ではないこと。後始末関数は例えば「取得の途中で画面を離れたら、届いた結果を捨てる」といった使い方をするが、Promiseは関数じゃないからこの時に呼べない。TypeScriptはエラー(型検査が止まる）、Reactは開発中の警告（Consoleに出るが動き続ける）を出す
   useEffect(() => {
     // userがnullの場合を初めから早期リターンで消しておくことで中身をUserに絞っている、これがなくても動くけどコンパイル時に弾かれる
     if (!user) return;

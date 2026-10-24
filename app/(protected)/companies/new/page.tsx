@@ -1,5 +1,5 @@
 "use client";
-
+// ⭐︎企業登録ページ
 // ページの仕事は「初期値を作る」「保存の仕方を渡す」「見出しを出す」になった
 
 import CompanyForm from "@/components/CompanyForm";
