@@ -63,7 +63,7 @@ export default function EditCompany() {
 
   return (
     <div>
-      <h1>編集フォーム</h1>
+      <h1>企業編集フォーム</h1>
       <div>
         <Link href={`/companies/${paramsId}`}>詳細ページに戻る</Link>
       </div>

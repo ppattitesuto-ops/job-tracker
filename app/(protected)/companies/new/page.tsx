@@ -48,7 +48,7 @@ export default function NewCompanyPage() {
 
   return (
     <div>
-      <h1>登録フォーム</h1>
+      <h1>企業登録フォーム</h1>
       {/* CompanyFormにpropsで渡すときに何で囲むかの基準は「JavaScriptの式か文字列そのものか」で使い分ける */}
       {/* 実際の型検査はここのpropsを渡すところでコンパイル時(typecheck や build のときに検査される)に行われる。→npm run devは型を消してJSに変換するだけ。  */}
       {/* ここでリアクトは属性(save initialData submitLabel)を一つのオブジェクトにする。→リアクトがCompanyFormを呼ぶときの引数になる */}
