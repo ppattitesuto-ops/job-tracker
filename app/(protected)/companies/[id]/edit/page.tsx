@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export default function EditCompany() {
+export default function EditCompanyPage() {
 
   // 編集ページではFirestoreから受け取った値をidを除いた形に変えてその値をもとに処理する必要がある。editDataはその値を入れるための器。
   const [editData, setEditData] = useState<CompanyInput | null>(null);
