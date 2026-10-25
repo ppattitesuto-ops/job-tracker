@@ -1,4 +1,5 @@
 "use client";
+// 企業編集ページ
 
 // ページの仕事は「保存の仕方を渡す」「見出しを出す」「データを取ってくる」「取得を待つ(読み込み中・見つかりません)」「詳細ページへの戻るリンクを出す」になった
 
@@ -10,7 +11,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export default function EditCompany() {
+export default function EditCompanyPage() {
 
   // 編集ページではFirestoreから受け取った値をidを除いた形に変えてその値をもとに処理する必要がある。editDataはその値を入れるための器。
   const [editData, setEditData] = useState<CompanyInput | null>(null);
@@ -62,7 +63,7 @@ export default function EditCompany() {
 
   return (
     <div>
-      <h1>編集フォーム</h1>
+      <h1>企業編集フォーム</h1>
       <div>
         <Link href={`/companies/${paramsId}`}>詳細ページに戻る</Link>
       </div>
