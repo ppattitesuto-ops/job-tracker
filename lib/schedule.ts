@@ -19,6 +19,16 @@ export function toScheduleInput(data: ScheduleFormValues): ScheduleInput {
   };
 }
 
+// 予定編集ページで取得した予定をフォームの値に作り替える関数
+// idは編集ページで外してから渡すようにする→idの入ったScheduleを編集ページでこの関数に渡してもそのまま型は止めない。(外し忘れるとidが文書の項目として書き込まれる)
+export function toScheduleFormValues(data: ScheduleInput): ScheduleFormValues {
+  return {
+    ...data,
+    // trim()で空白を取らない理由は、空白で何も判断しないから。それに、保存するときにtoScheduleInputで整えるためここでする必要がない
+    belongings: data.belongings.join("\n"),
+  };
+}
+
 // 予定を保存する際に検査する関数
 // 企業と同じで変換は検査と保存の前に一回だけして、同じ値をそれぞれに渡す
 export function validateScheduleInput(data: ScheduleInput): ScheduleFormErrors {
