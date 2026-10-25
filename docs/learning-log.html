@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-17</b></span>
-      <span>エントリ <b>107</b></span>
-      <span>決定記録 <b>48</b></span>
-      <span>進捗 <b>本番公開・削除の二度押しを修正 → フェーズ3（予定）に着手</b></span>
+      <span>最終更新 <b>2026-10-25</b></span>
+      <span>エントリ <b>113</b></span>
+      <span>決定記録 <b>50</b></span>
+      <span>進捗 <b>フェーズ3：予定の登録と詳細（PR1） → 削除と編集へ</b></span>
     </div>
   </header>
 
@@ -679,6 +679,12 @@
       <li><a href="#e105">環境変数が欠けたときの壊れ方は、値によって違う</a></li>
       <li><a href="#e106">XSS は、入力ではなく表示で防ぐ</a></li>
       <li><a href="#e107">PR は「機能ごと」に縦に切る</a></li>
+      <li><a href="#e108">フォームの値と、保存する値を型で分ける</a></li>
+      <li><a href="#e109">データ層は ID だけを返す。uid は住所で、認証ではない</a></li>
+      <li><a href="#e110">変換と検査：型検査では見つからない誤り</a></li>
+      <li><a href="#e111">フォームは入力だけ。取得と判断はページが持つ</a></li>
+      <li><a href="#e112">詳細ページ：古い state と、止まらない <code>useEffect</code></a></li>
+      <li><a href="#e113">1つのファイルを、目的ごとに2つのコミットに分ける</a></li>
     </ol>
   </nav>
 
@@ -7719,6 +7725,331 @@ export default function Button({ variant, ...rest }: Props) {
       </div>
     </article>
 
+    <!-- 108 -->
+    <article class="entry" id="e108">
+      <div class="entry-no">108</div>
+      <div class="entry-body">
+        <h2>フォームの値と、保存する値を型で分ける</h2>
+
+        <p>
+          企業では、フォームの値と保存するデータが同じ形だったので、<code>CompanyInput</code> 1つで済んだ。予定は<strong>持ち物だけ形が違う</strong>（フォームでは改行入りの文字列、保存は配列）。そこで型を分けた。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">型</th><th scope="col">中身</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>ScheduleInput</code></th><td>保存する値（<code>belongings</code> は <code>string[]</code>）。<code>Omit&lt;Schedule, "id"&gt;</code></td></tr>
+              <tr><th scope="row"><code>ScheduleFormValues</code></th><td>フォームの中の値（<code>belongings</code> は <code>string</code>）。<code>Omit</code> で外して <code>&amp;</code> で付け直す（<code>Button</code> の <code>Props</code> と同じ作り方）</td></tr>
+              <tr><th scope="row"><code>ScheduleFormErrors</code></th><td>エラーは<strong>フォームの欄の近く</strong>に出すので、キーはフォームの値の型から取る</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">任意の項目に <code>?</code> を付けず、空文字で持つ</div>
+          <p>
+            <code>location?: string</code> の <code>?</code> は、空文字を禁じるのではなく、「<strong>項目が無い</strong>」という可能性を<strong>足す</strong>記号。付けない理由は3つ。
+          </p>
+          <ul>
+            <li><strong>空の表し方が2通りになる</strong>（<code>""</code> と <code>undefined</code>）。読む側が毎回両方を考えることになる</li>
+            <li>値が <code>undefined</code> の項目を渡すと、<strong>Firestore は保存を断る</strong>（既定の設定）</li>
+            <li><code>value={undefined}</code> を渡すと、React は入力欄を「state が管理していない欄」と見なし、途中で文字列に変わると警告が出る</li>
+          </ul>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label"><code>Pick</code> と、余分な項目を受け入れる型の比べ方</div>
+          <p>
+            フォームが企業から使うのは <code>id</code> と <code>name</code> だけなので、<code>CompanyOption = Pick&lt;Company, "id" | "name"&gt;</code> を作った。<code>Omit</code>（外す）の反対で、<strong>残すもの</strong>を書く。
+            TypeScript は名前ではなく<strong>形</strong>で比べ、<strong>求められた項目がそろっていれば、余分な項目があってもよい</strong>とする。だから <code>getCompanies</code> の <code>Company[]</code> を、作り直さずにそのまま渡せる。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>余分な項目は、TypeScript が無視するので消えてなくなる</dt>
+            <dd>
+              無視するのは<strong>型の検査のときだけ</strong>。実際のデータには <code>position</code> も <code>memo</code> も入ったまま渡る。
+              ただし受け取った側では、型の上で <code>id</code> と <code>name</code> しか<strong>使えない</strong>（<code>company.memo</code> と書くとエラー）。フォームがうっかり余分な項目に頼るのを、型が防ぐ
+            </dd>
+          </dl>
+          <p>例外：その場で書いたオブジェクト（<code>{ id: "1", name: "A", memo: "" }</code>）を直接この型に入れると、余分な <code>memo</code> はエラーになる。打ち間違いを見つけるための特別な確認。</p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">名前で直したこと</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">最初の名前</th><th scope="col">問題</th><th scope="col">直した名前</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>SCHEDULE_STATUSES</code></th><td>種別は<strong>進まない</strong>。ステータス（応募済 → 書類選考中…）とは違う。項目名も <code>type</code></td><td><code>SCHEDULE_TYPES</code>・<code>ScheduleType</code>（ユニオンは「4つのうちの1つ」なので<strong>単数形</strong>）</td></tr>
+                <tr><th scope="row"><code>ScheduleForm</code>（型）</th><td>これから作る<strong>部品</strong>と同じ名前になる</td><td><code>ScheduleFormValues</code></td></tr>
+                <tr><th scope="row"><code>ScheduleInputValue</code></th><td><code>ScheduleInput</code> との違いが名前から分からない。複数の値をまとめたものなのに単数形</td><td>同上（<code>Form</code> を入れて <code>Values</code> で終える）</td></tr>
+                <tr><th scope="row"><code>CompanySelected</code></th><td>「<strong>選ばれた</strong>」企業。中身は選ぶ前の<strong>選択肢</strong></td><td><code>CompanyOption</code>（<code>&lt;option&gt;</code> と同じ言葉）</td></tr>
+                <tr><th scope="row"><code>hasGotSchedule</code></th><td><code>has〜</code> は true / false の名前（<code>hasSaved</code>・<code>hasDeleted</code>）。中身は予定そのもの</td><td><code>fetchedSchedule</code></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>項目名の <code>type</code> は TypeScript の言葉と同じ綴りだが、<strong>プロパティ名としては問題なく使える</strong>。仕様書5章のデータ設計に合わせて、そのままにした。</p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 109 -->
+    <article class="entry" id="e109">
+      <div class="entry-no">109</div>
+      <div class="entry-body">
+        <h2>データ層は ID だけを返す。uid は住所で、認証ではない</h2>
+
+        <div class="note check">
+          <div class="note-label"><code>addSchedule</code> は、参照ではなく ID を返す</div>
+          <p>
+            企業は登録の後に一覧へ移るので <code>Promise&lt;void&gt;</code> だった。予定は<strong>詳細ページ</strong>へ移るので、URL を作るための ID が要る。
+            <code>addDoc</code> が返す<strong>参照</strong>（<code>DocumentReference</code>）をそのまま返すと、ページが Firestore の型を知ることになる。<strong>参照から <code>.id</code> を取り出し、文字列で返す</strong>（<code>Promise&lt;string&gt;</code>）。
+          </p>
+          <p>
+            受け取る型は <code>ScheduleInput</code>（保存する形）。持ち物の変換は <code>lib/schedule.ts</code> が受け持ち、<code>lib/firestore.ts</code> は<strong>保存する形のデータを出し入れするだけ</strong>にする。フォームの作りを変えても、データ層は変えずに済む。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>関数が uid を受け取るのは、認証に必要だから</dt>
+            <dd>
+              uid は<strong>データの住所</strong>（<code>users/{uid}/schedules</code>）を組み立てるため。誰が頼んでいるかは、SDK が<strong>自動で</strong>添える証明書（ID トークン。Google の署名入りで偽造できない）が伝える。
+              ルールはこの2つ（住所の <code>userId</code> と証明書の <code>request.auth.uid</code>）を<strong>突き合わせる</strong>。住所に他人の uid を入れても、証明書が一致しないので断られる
+            </dd>
+            <dt><code>request.auth != null</code> は、ログインしていない人の uid を防ぐ</dt>
+            <dd>
+              ログインしていない人には<strong>証明書そのものが無い</strong>ので、<code>request.auth</code> が丸ごと <code>null</code> になる。
+              これが無くても、<code>null</code> の <code>.uid</code> を読もうとして評価がエラーになり、エラーは拒否として扱われる。それでも書くのは、<strong>「ログインしていない人は断る」という意図をルールに書く</strong>ため
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 110 -->
+    <article class="entry" id="e110">
+      <div class="entry-no">110</div>
+      <div class="entry-body">
+        <h2>変換と検査：型検査では見つからない誤り</h2>
+
+        <div class="note check">
+          <div class="note-label">持ち物を配列にする3つの道具</div>
+<pre><code>data.belongings
+  .split("\n")                              // 改行で切って配列に（"/n" ではない）
+  .map((belonging) =&gt; belonging.trim())     // 各要素の前後の空白を取る
+  .filter((belonging) =&gt; belonging !== "")  // 空の要素を捨てる</code></pre>
+          <p>
+            <code>map</code> と <code>filter</code> には「各要素に何をするか」の関数を渡す。<code>=&gt;</code> の右に1つの式を書くと、その結果がそのまま新しい要素（<code>filter</code> なら残すかどうか）になる。
+            <code>&lt;textarea&gt;</code> の値の改行は <code>\n</code> にそろえられて渡ってくる。<code>.</code> で始まる行は前の行の続きなので、1つずつ改行すると3つの手順が縦に読める。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>!belonging === ""</code></div>
+          <dl class="wrong-right">
+            <dt><code>!belonging === ""</code> で「空文字ではない」を表せる</dt>
+            <dd>
+              <code>!</code> は <code>===</code> より<strong>先に</strong>計算される。<code>!belonging</code> で真偽値になり、それと文字列 <code>""</code> を比べるので、<strong>いつも <code>false</code></strong>。持ち物はいつも空の配列になる（型検査も「真偽値と文字列は重ならない」と指摘する）。
+              「等しくない」は <code>!==</code> という1つの記号で書く。<code>!(a === b)</code> でも動くが、決まった書き方から外れると読む人が立ち止まる
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">1つの欄に1つの文。条件を重ねない</div>
+          <p>
+            エラーの型は <code>Record&lt;キー, string&gt;</code> なので、<strong>1つの欄に1つの文</strong>しか持てず、後に書いた方が上書きする。
+            終了の欄には「必須」と「前後」の2種類があるので、前後は<strong>開始と終了の両方が入っているときだけ</strong>比べ、2つの条件が同時に成り立たないようにした。
+          </p>
+          <p>
+            最初の版には、<strong>型検査も lint も通るのに間違っている</strong>所が2つあった。
+          </p>
+          <ul>
+            <li>前後の条件に <code>data.endTime === ""</code>（終了が<strong>空</strong>）と書いた。出したい場面では出ず、空のときに必須の文を<strong>上書き</strong>していた</li>
+            <li>企業のエラーを <code>errors.date</code> に入れていた。<code>date</code> も <code>companyId</code> も型にあるキーなので止まらない。<strong>コピーして書き換えるときのキーの直し忘れ</strong></li>
+          </ul>
+          <p>
+            見つけ方：<strong>入力の組み合わせの表</strong>（開始だけ空、終了だけ空、両方空、開始＞終了、開始＝終了、開始＜終了、企業が未選択）を作り、どの欄にどの文が出るかを1行ずつ追う。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 111 -->
+    <article class="entry" id="e111">
+      <div class="entry-no">111</div>
+      <div class="entry-body">
+        <h2>フォームは入力だけ。取得と判断はページが持つ</h2>
+
+        <div class="note check">
+          <div class="note-label">企業の一覧はページで取って、フォームに渡す</div>
+          <p>
+            最初は「登録と編集の両方で要るから、共通のフォームで取る」と考えた。しかし、<strong>0件のときの導線はページが出す</strong>と決めていた。フォームで取るとページは件数を知らず、ページでも取ることになり、<strong>同じ取得が2回</strong>走る。
+            フォームで取ると、取得中・失敗の表示や <code>useAuth</code> まで受け持つことにもなる。<code>CompanyForm</code> と同じく、<strong>フォームは Firestore に触らない</strong>。
+            重複が3か所以上になったら、取得を<strong>カスタムフック</strong>に切り出す（フォームを Firestore に縛らずに重複を消せる）。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">選択肢は「値は ID、表示は名前」</div>
+          <p>
+            一覧は props で受け取り、フォームの中では変わらないので <strong>state にしない</strong>。配列そのものに <code>map</code> を呼び、引数は<strong>1社分を表す単数形</strong>（<code>companyOption</code>）。
+            <code>&lt;option value={id}&gt;{name}&lt;/option&gt;</code> で、利用者は名前を見て選び、フォームには ID が入る。先頭に <code>value=""</code> の「選択してください」を手で置く。
+          </p>
+          <p>
+            JavaScript は大文字と小文字を区別する（<code>CompanyOption</code> と <code>companyOption</code> は別の名前）。型・部品は大文字、変数・引数は小文字で始める。
+            一覧の型は <code>CompanyOption[]</code>。<code>[]</code> が無いと1社分の型になり、<code>map</code> が無いと言われる。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：制御された <code>&lt;select&gt;</code></div>
+          <dl class="wrong-right">
+            <dt>初期値で「面接」を選ばせると、表示が「面接」から変わらなくなる</dt>
+            <dd>
+              <code>value={formData.type}</code> なら変わる。選ぶ → <code>onChange</code> で state が変わる → 描き直されて表示も変わる。初期値は <code>useState(initialData)</code> の<strong>最初の1回だけ</strong>。
+              実際に変わらなくなったのは、<code>value={initialData.type}</code> と<strong>初期値の方を見ていた</strong>とき。画面は「面接」のまま、保存されるのは選んだ値、と<strong>画面と保存がずれた</strong>。型はどちらも <code>ScheduleType</code> なので止まらない
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">ほかに直したこと</div>
+          <ul>
+            <li><code>import { useRouter } from "next/router"</code>（<strong>2回目</strong>）。Pages Router の方で、App Router のページでは開いた時点で止まる。<code>next/router</code> も実在するので型検査は通る。<strong>候補に出たら <code>next/navigation</code> を選ぶ</strong></li>
+            <li>時刻は <code>type="time"</code>。<code>text</code> だと自由に打てて、「2桁・24時間表記なので文字列のまま比べられる」が成り立たない</li>
+            <li>持ち物の説明の文（「1行に1つずつ」）は <code>&lt;textarea&gt;</code> の<strong>前</strong>に置き、<code>aria-describedby</code> で結ぶ（<code>id</code> は <code>-hint</code> でエラーの <code>-error</code> と区別）。<code>placeholder</code> は打ち始めると消える。検査しない欄に <code>aria-invalid</code> は付けない</li>
+            <li>ページの <code>save</code> は <code>Promise&lt;void&gt;</code> のまま。<code>addSchedule</code> の ID は <code>await</code> で変数に受け取り、移動にだけ使う。フォームには返さない</li>
+          </ul>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label"><code>useEffect</code> に <code>async</code> を付けない理由</div>
+          <p>
+            <code>useEffect</code> は、渡した関数の戻り値が<strong>関数なら後始末</strong>として保存し、画面から消えるときに呼ぶ。<code>async</code> の関数は必ず Promise を返すので、<strong>呼べないものが後始末として渡る</strong>。
+            TypeScript はエラー（型検査が止まる）、React は開発中の警告（Console に出るが動き続ける）を出す。本物の後始末を返す場所も無くなる。だから外側は普通の関数にして、中で <code>load</code> を作って呼ぶ。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 112 -->
+    <article class="entry" id="e112">
+      <div class="entry-no">112</div>
+      <div class="entry-body">
+        <h2>詳細ページ：古い state と、止まらない <code>useEffect</code></h2>
+
+        <p>予定を取ってから、その <code>companyId</code> で企業を取る。最初は <code>useEffect</code> を2つに分けて、どちらも動かなかった。</p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書いたもの</th><th scope="col">起きたこと</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>if (!company) return;</code> で企業を取る</th><td><code>company</code> は最初 <code>null</code>。「まだ取っていないから <code>null</code>」なのに、<strong>必ずここで止まる</strong></td></tr>
+              <tr><th scope="row"><code>setSchedule(...)</code> の直後に <code>schedule.companyId</code></th><td><code>setSchedule</code> は「次の描画で新しい値にして」と頼むだけ。この関数の中の <code>schedule</code> は<strong>古い値（<code>null</code>）のまま</strong></td></tr>
+              <tr><th scope="row">依存配列に <code>schedule</code> を足す</th><td>取得 → <code>setSchedule</code> → <code>schedule</code> が変わる → また取得……と<strong>止まらない</strong>。Firestore の読み取りも増え続ける</td></tr>
+              <tr><th scope="row">2つの <code>useEffect</code> の両方で <code>setLoading(false)</code></th><td>予定が先に届くと、企業を取る前に読み込み中が終わる</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          直し方：<code>useEffect</code> は1つ。<code>load</code> の中で、取ってきた予定を<strong>変数に入れて</strong>から <code>if (!fetchedSchedule) return;</code>、その変数の <code>companyId</code> で企業を取る。
+          「企業を取るには先に予定が要る」という順番を、<strong>1つの関数の中で上から順に</strong>書ける。<strong><code>try</code> の中で <code>return</code> しても <code>finally</code> は動く</strong>ので、読み込み中のまま止まらない。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">先頭の <code>/</code> が抜けたリンクは、相対パスになる</div>
+          <p>
+            <code>href={`companies/${company.id}`}</code> は、今いる <code>/schedule/（ID）</code> からの<strong>相対的な場所</strong>になり、<code>/schedule/companies/…</code> の 404 になる。
+            仕様書3-6-2 が求人 URL について警告していた「<code>https://</code> が抜けると相対パスと解釈される」と同じ仕組み。<strong>アプリ内のリンクは <code>/</code> で始める。</strong>
+          </p>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">表示で使ったこと</div>
+          <ul>
+            <li>出し分けは <code>{ }</code> の中で<strong>三項演算子</strong>（<code>条件 ? JSX : JSX</code>）。テンプレートリテラルの中に <code>&amp;&amp;</code> や <code>:</code> を書くと、条件ではなく<strong>ただの文字</strong>として出る。値は <code>{ }</code> で囲む</li>
+            <li>改行を含む「準備すること」は <code>whitespace-pre-line</code>（改行はそのまま、続く空白は1つにまとめる、折り返す）。<code>pre-wrap</code> は続く空白もそのまま</li>
+            <li>持ち物の <code>key</code> は、<code>map</code> の<strong>2つ目の引数</strong>（何番目か）。文字列そのものだと、同じ持ち物が2行あると重なる。表示するだけで並び替えも追加もしないので、インデックスで崩れない</li>
+            <li>詳細ページは見るだけの画面なので、種別は <code>&lt;select&gt;</code> ではなく文字で出す（<code>onChange</code> の無い <code>value</code> は React が警告する）</li>
+          </ul>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：後で使うコードをコメントにして残す</div>
+          <dl class="wrong-right">
+            <dt>削除や編集のコードを、企業の詳細ページから写してコメントにしておけば、PR2 で楽になる</dt>
+            <dd>
+              コメントの中は<strong>型検査も lint も見ない</strong>ので、<code>deleteCompany</code> で予定を消そうとする、<code>schedule.name</code>（存在しない）を読む、といった<strong>中身のずれ</strong>に気づけない。
+              手本は企業のページと Git の履歴にもうある。<strong>確かめられないものを先に書かない</strong>（エントリ28）。コミットには入れない
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">企業が見つからない予定は、連鎖削除の後も起きる</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">場面</th><th scope="col">理由</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">連鎖削除（PR4）より前に企業を消した</th><td>連鎖削除は、入れた後の削除にしか効かない</td></tr>
+                <tr><th scope="row">連鎖削除の途中で失敗した</th><td>企業と予定を別々の操作で消すと、片方だけ成功することがある</td></tr>
+                <tr><th scope="row">削除と同時に、別のタブでその企業の予定を作った</th><td>消す予定を集めた後に作られた予定は、消す対象に入らない</td></tr>
+                <tr><th scope="row">Firestore のコンソールで企業を消した</th><td>アプリの外の操作には、連鎖削除が効かない</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            根本の理由は、<strong>Firestore には「参照先が必ず存在する」ことを保証する仕組みが無い</strong>こと（リレーショナルデータベースの外部キーとは違う）。だからアプリの側で「見つからないこともある」と考える。
+            <code>getCompany</code> の戻り値が <code>Company | null</code> である以上、<code>null</code> を書かずに済ませるには型に嘘をつくことになる（決定記録）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 113 -->
+    <article class="entry" id="e113">
+      <div class="entry-no">113</div>
+      <div class="entry-body">
+        <h2>1つのファイルを、目的ごとに2つのコミットに分ける</h2>
+
+        <p>
+          企業の登録ページと編集ページに、<strong>コメントの追加</strong>と<strong>見出しの変更</strong>（画面に出る文字）が混ざっていた。目的が違うので、別のコミットにした。
+        </p>
+<pre><code>git restore --staged "app/(protected)/companies/new/page.tsx"   # ステージから外す（ファイルの中身は変わらない）
+git add -p "app/(protected)/companies/new/page.tsx"              # かたまりごとに y / n で選ぶ
+git diff --cached                                                 # ステージ済みの中身を目で確かめる</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"><code>git status</code></th><th scope="col">意味</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>M </code>（左だけ）</th><td>変更が全部ステージ済み</td></tr>
+              <tr><th scope="row"><code> M</code>（右だけ）</th><td>変更したが、まだステージしていない</td></tr>
+              <tr><th scope="row"><code>MM</code></th><td>一部はステージ済み、残りはまだ（<code>git add -p</code> で分けた状態）</td></tr>
+              <tr><th scope="row"><code>A </code> / <code>??</code></th><td>新しいファイルをステージ済み／Git がまだ記録していない新しいファイル</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">ターミナルとメッセージでつまずいたこと</div>
+          <ul>
+            <li>パスに <code>(</code> <code>)</code> があるときは<strong>引用符で囲む</strong>（ターミナルが特別な記号として読む）</li>
+            <li>閉じの引用符が全角の <code>”</code> だと、ターミナルは閉じたと認めず <code>dquote&gt;</code> で待ち続ける（<strong>Ctrl + C</strong> で抜ける）。<code>--oneline-3</code> は空白が<strong>足りず</strong>、2つの引数がつながった</li>
+            <li>メッセージは<strong>足したものと同じ言葉</strong>で：「関数」ではなく「型」、「選択する」ではなく「選択肢に使う」</li>
+            <li>コミットの時点で<strong>まだ履歴に無いもの</strong>を理由にしない（「予定フォームを追加したため」→「予定のフォームと区別するため」）</li>
+            <li>画面に出る文字の変更は <code>docs:</code> ではない（<code>fix:</code>）。名前を変えるだけで動きが変わらないなら <code>refactor:</code></li>
+            <li>ブランチ名は、部品の並び（<code>type-newform-detail</code>）ではなく、<strong>できるようになること</strong>（<code>create-and-view-schedule</code>）で付けると長くならない</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -9052,6 +9383,18 @@ export default function Button({ variant, ...rest }: Props) {
           住所も URL も入る。<strong>表示するときに</strong>、<code>isHttpUrl</code> が真なら（<code>http:</code> / <code>https:</code>）リンクにし、それ以外は文字として出す。リンクには <code>target="_blank"</code> と <code>rel="noopener noreferrer"</code> を付ける（エントリ106）。
           入力時に URL の形を求める案は、住所が登録できなくなるので捨てた。
         </dd>
+        <dt>種別・企業・日付（PR1 で追加）</dt>
+        <dd>
+          <strong>種別</strong>は最初から「面接」を選んだ状態にし、検査しない（4つのどれかしか入らない。企業の <code>status</code> と同じ）。間違えても「面談」が「面接」になるだけで、詳細で気づいて直せる。
+          <strong>企業</strong>は「選択してください」（<code>""</code>）から始め、選ばずに送ると「企業を選択してください」。最初の企業を選んだ状態で始めると、選び忘れても気づかずに紐づき、その企業の削除で<strong>予定も消える</strong>。
+          <strong>日付</strong>の初期値は空。企業の応募日は「登録する日が応募日」が多いので今日にしたが、予定はほとんどが未来の日。今日を入れておくと、書き換え忘れても検査に引っかからない。
+        </dd>
+        <dt>時刻のエラー（PR1 で追加）</dt>
+        <dd>
+          必須の文（「〜が入力されていません」）と前後の文（仕様書の文）の2種類。前後の文は<strong>終了の欄</strong>に出す（最後に入れる欄で、目が向いている所）。
+          1つの欄に1つの文しか持てないので、前後は<strong>両方が入っているときだけ</strong>比べ、条件を重ねない（エントリ110）。
+          検査を外す案も考えたが、残した。仕様書3-6-2 が求めていて、間違いは<strong>編集で開始だけ直したとき</strong>に起きやすく、カレンダーの並びや「直近の予定」もこの前提に頼るため。
+        </dd>
       </dl>
     </div>
 
@@ -9087,6 +9430,46 @@ export default function Button({ variant, ...rest }: Props) {
           カレンダーのエンプティステートが何を指すか（3-7。PR3）／
           予定の削除の確認で何を示すか（3-6。PR2）／
           予定を削除したときの振り返りの扱い（フェーズ4）
+        </dd>
+        <dt>PR1 の詳細ページで決めたこと</dt>
+        <dd>
+          予定詳細に日付・種別・企業を出した（上の2つ目）。企業は名前を企業詳細へのリンクにする。
+          空のときは、場所が「場所が入力されていません」（オンラインか、遠ければ道順を調べるかが毎回大事）、準備と持ち物は「なし」。見出しだけ出して中身を空にすると、<strong>読み込みの失敗と見分けられない</strong>。
+          予定が見つからないときの戻るリンクは置かず、PR3 でカレンダーへのリンクを足す（仮のリンクを置くと、差し替え忘れる）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>企業の一覧はページが取り、フォームには選択肢として渡す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 登録と編集の両方で要るので、フォームの中で <code>getCompanies</code> を呼ぶ</dd>
+        <dt>理由</dt>
+        <dd>
+          企業が0件のときの導線は<strong>ページが出す</strong>（出すのは登録ページだけで、編集ページには場面が無い）。フォームで取るとページは件数を知らず、同じ取得が2回になる。
+          フォームが取得中・失敗の表示や <code>useAuth</code> まで受け持つことにもなる。<code>CompanyForm</code> と同じく、フォームは入力だけにして Firestore に触らせない。
+          型は <code>CompanyOption[]</code>（<code>id</code> と <code>name</code> だけ）。<code>Company[]</code> をそのまま渡せる（エントリ108）。
+        </dd>
+        <dt>見直す条件</dt>
+        <dd>企業の一覧を取るページが3か所以上になったら（振り返りの登録・編集など）、取得をカスタムフックに切り出す。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>予定詳細の「企業が見つかりません」は、連鎖削除の後も残す</h3>
+      <dl>
+        <dt>表示</dt>
+        <dd>企業が見つからなくても予定は表示し、企業の欄だけ「企業が見つかりません（削除された可能性があります）」。リンクは付けない。</dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 予定登録ページへ移す
+          <b>(b)</b> PR4 で連鎖削除を入れたら、この表示を消す
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は、予定そのもの（日付・場所・持ち物）が見られなくなり、新しい予定を作っても<strong>この予定の問題は解決しない</strong>（必要なのは PR2 の編集か削除）。開いたページから勝手に移ると、何が起きたか分からない。
+          (b) は、連鎖削除の後も、前に消した分・途中の失敗・同時の操作・コンソールでの削除で起きうる。<strong>Firestore は参照先の存在を保証しない</strong>ので、アプリの側で「見つからないこともある」と扱う（エントリ112）。
         </dd>
       </dl>
     </div>
