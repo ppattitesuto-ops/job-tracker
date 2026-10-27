@@ -34,7 +34,7 @@ export default function SchedulePage() {
         // getCompanyのidに予定のcompanyIdを指定することで対応する企業のデータを取ってくる
         setCompany(await getCompany(user.uid, fetchedSchedule.companyId));
       } catch {
-        setError("予定データの取得に失敗しました");
+        setError("データの取得に失敗しました");
       } finally {
         setLoading(false);
       }
