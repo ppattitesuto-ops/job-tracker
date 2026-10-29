@@ -1,14 +1,15 @@
 "use client";
 // 予定詳細ページ
 
+import Button from "@/components/Button";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCompany, getSchedule } from "@/lib/firestore";
+import { deleteSchedule, getCompany, getSchedule } from "@/lib/firestore";
 import { isHttpUrl } from "@/lib/validation";
 import type { Company } from "@/types/company";
 import type { Schedule } from "@/types/schedule";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 export default function SchedulePage() {
 
@@ -19,6 +20,17 @@ export default function SchedulePage() {
   const { user } = useAuth();
   const params = useParams();
   const paramsId = params.id as string;
+  // deleting：削除中かどうか
+  const [deleting, setDeleting] = useState(false);
+  // hasDeleted：削除済かどうか
+  // deletingとhasDeletedの二つはtrueになっている期間で表すものが違うから分けた。
+  const [hasDeleted, setHasDeleted] = useState(false);
+  // 削除が失敗した場合のエラー表示
+  const [deleteError, setDeleteError] = useState("");
+  // useRefが返すのは、currentというプロパティを１つだけ持つオブジェクト
+  // <HTMLDialogElement>は型引数。この箱のcurrentには<dialog>要素が入ると宣言してる。
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!user) return;
@@ -41,6 +53,42 @@ export default function SchedulePage() {
     }
     load();
   }, [user, paramsId]);
+
+  // 削除が成功して画面が切り替わるまでにEscキーが押されると、ダイアログが閉じて存在しない予定に対して操作を行えてしまう。また、失敗した時の文はダイアログの中に出るので、閉じると見えなくなる。1回目のEscは止め、2回目はブラウザの仕様で止められない
+  const cancelDialog = (e: React.SyntheticEvent<HTMLDialogElement>) => {
+    if (deleting || hasDeleted) {
+      e.preventDefault();
+    }
+  };
+
+  const openDialog = () => {
+    // currentがnullなら何もしない
+    if (!dialogRef.current) return;
+    // currentに入っている<dialog>要素のメソッドを呼ぶ
+    dialogRef.current.showModal();
+  };
+
+  const closeDialog = () => {
+    if (!dialogRef.current) return;
+    dialogRef.current.close();
+  };
+
+  const handleDelete = async () => {
+    if (!user) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteSchedule(user.uid, paramsId);
+      // 今は仮でダッシュボード、PR3でカレンダーへの遷移に変える
+      router.push("/");
+      // 成功したら画面を離れる前提なのでtrueからfalseに戻さない
+      setHasDeleted(true);
+    } catch {
+      setDeleteError("予定データの削除に失敗しました");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) return <div>データを取得しています</div>;
   if (error) return <div>{error}</div>;
@@ -92,9 +140,25 @@ export default function SchedulePage() {
       </ul>);
   }
 
+  // 企業がnullの場合に表示を分ける
+  const displayCompanyName = company ? company.name : "企業が見つかりません";
+
   return (
     <div>
       <h1>予定情報の詳細</h1>
+
+      <Button variant="dangerOutline" type="button" onClick={openDialog}>削除</Button>
+
+      <dialog ref={dialogRef} onCancel={cancelDialog}>
+        <div>{schedule.date} {schedule.startTime}〜{displayCompanyName}の{schedule.type}を削除しますか？この操作は取り消せません。</div>
+        <Button variant="secondary" type="button" onClick={closeDialog} disabled={deleting || hasDeleted}>キャンセル</Button>
+        <Button variant="danger" type="button" onClick={handleDelete} disabled={deleting || hasDeleted}>削除する</Button>
+        {deleteError && <div>{deleteError}</div>}
+      </dialog>
+
+      <div>
+        <Link href={`/schedule/${paramsId}/edit`}>編集ページへ移動</Link>
+      </div>
 
       <dl>
         <dt>日付</dt>
@@ -109,7 +173,7 @@ export default function SchedulePage() {
         <dt>企業</dt>
         {/* 三項演算子で企業があるときはその企業詳細へのリンク、ない場合はそれを画面に出す*/}
         {/* Firestoreには、参照先が必ず存在することを保証する仕組みが無い。だから、連鎖削除を入れた後も、この(削除された可能性があります)表示は残す*/}
-        <dd>{company ? <Link href={`/companies/${company.id}`}>{company.name}</Link> : "企業が見つかりません(削除された可能性があります)"}</dd>
+        <dd>{company ? <Link href={`/companies/${company.id}`}>{displayCompanyName}</Link> : "企業が見つかりません(削除された可能性があります)"}</dd>
 
         <dt>場所</dt>
         <dd>{locationContent}</dd>
