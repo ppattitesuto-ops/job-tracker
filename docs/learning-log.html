@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-25</b></span>
-      <span>エントリ <b>113</b></span>
-      <span>決定記録 <b>50</b></span>
-      <span>進捗 <b>フェーズ3：予定の登録と詳細（PR1） → 削除と編集へ</b></span>
+      <span>最終更新 <b>2026-10-29</b></span>
+      <span>エントリ <b>116</b></span>
+      <span>決定記録 <b>53</b></span>
+      <span>進捗 <b>フェーズ3：予定の削除と編集（PR2） → カレンダーへ</b></span>
     </div>
   </header>
 
@@ -685,6 +685,9 @@
       <li><a href="#e111">フォームは入力だけ。取得と判断はページが持つ</a></li>
       <li><a href="#e112">詳細ページ：古い state と、止まらない <code>useEffect</code></a></li>
       <li><a href="#e113">1つのファイルを、目的ごとに2つのコミットに分ける</a></li>
+      <li><a href="#e114">保存した値をフォームに戻す：対になる変換と、<code>trim</code> を置く基準</a></li>
+      <li><a href="#e115">編集ページ：<code>Promise.all</code> と、見つからない企業の選び直し</a></li>
+      <li><a href="#e116">予定の削除：何を消すのかを、1つに特定できる言葉で示す</a></li>
     </ol>
   </nav>
 
@@ -8050,6 +8053,169 @@ git diff --cached                                                 # ステージ
       </div>
     </article>
 
+    <!-- 114 -->
+    <article class="entry" id="e114">
+      <div class="entry-no">114</div>
+      <div class="entry-body">
+        <h2>保存した値をフォームに戻す：対になる変換と、<code>trim</code> を置く基準</h2>
+
+        <p>
+          編集ページでは、保存されている予定をフォームの初期値にする。<code>toScheduleInput</code> の逆向きの <code>toScheduleFormValues</code> を作った。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">向き</th><th scope="col">関数</th><th scope="col">持ち物</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">フォーム → 保存</th><td><code>toScheduleInput</code></td><td>改行で<strong>分ける</strong>（<code>split</code>）</td></tr>
+              <tr><th scope="row">保存 → フォーム</th><td><code>toScheduleFormValues</code></td><td>改行で<strong>つなぐ</strong>（<code>join</code>）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          2つが対になっているので、編集して保存しても何度でも同じ形に戻る。もし配列のまま <code>&lt;textarea&gt;</code> に渡すと、React は<strong>カンマでつないで</strong>表示し（「傘,履歴書」）、保存のときに改行で分けても1つの持ち物になる——<strong>何も変えずに保存しただけでデータが崩れる</strong>。型を分けておいたので、この取り違えは型のエラーで止まった。
+          戻り値の型（<code>: ScheduleFormValues</code>）を書いておくと、変換を書き忘れたときに、使う側ではなく<strong>この関数の中で</strong>止まる。
+        </p>
+
+        <div class="note check">
+          <div class="note-label"><code>trim()</code> を置く基準：空白で何かを判断するか</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">場所</th><th scope="col">空白で判断するか</th><th scope="col"><code>trim()</code></th></tr></thead>
+              <tbody>
+                <tr><th scope="row">企業の正規化</th><td>—（保存する値をきれいにするのが<strong>仕事</strong>）</td><td>要る</td></tr>
+                <tr><th scope="row">企業の検査（企業名・職種）</th><td><strong>する</strong>（空ならエラー）</td><td>要る（正規化を通し忘れたときの<strong>保険</strong>）</td></tr>
+                <tr><th scope="row">予定の検査（日付・時刻・企業）</th><td>しない（決まった形しか入らない欄だけを検査）</td><td>要らない</td></tr>
+                <tr><th scope="row">戻す関数</th><td>しない（値を移すだけ）</td><td>要らない（保存の入口の <code>toScheduleInput</code> で必ず整える）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            戻す関数で <code>trim()</code> すると、Firestore から型の違う値（数値など）が来たときに<strong>落ちる場所が1つ増える</strong>。判断しないなら、検証されていないデータに余計な処理を呼ばない。
+            企業の検査のコメント「正規化済みであることを型で表現できない」は、厳密には<strong>ブランド型</strong>（正規化を通った値にだけ付く目印）で表現できるが、今の規模では見合わない、と直した。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label"><code>id</code> の外し忘れは、型が止めない</div>
+          <p>
+            戻す関数の引数は <code>ScheduleInput</code>（<code>id</code> 無し）だが、<code>id</code> 入りの <code>Schedule</code> を<strong>そのまま渡しても型は止めない</strong>（余分な項目は許される。エントリ108）。
+            外し忘れると、<code>...data</code> で <code>id</code> がフォームの state に入り、保存のときに <code>toScheduleInput</code> の <code>...data</code> を通って、<strong>文書の項目として書き込まれる</strong>。
+            企業の編集ページと同じく、ページで <code>const { id, ...rest } = …</code> で外し、関数のコメントに「外してから渡す」と残した。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 115 -->
+    <article class="entry" id="e115">
+      <div class="entry-no">115</div>
+      <div class="entry-body">
+        <h2>編集ページ：<code>Promise.all</code> と、見つからない企業の選び直し</h2>
+
+        <div class="note check">
+          <div class="note-label">待たなくてよい2つの取得は、同時に始める</div>
+          <p>
+            編集ページには、予定の値と企業の一覧（選択肢）の両方が要る。詳細ページの「予定 → その企業」と違い、<strong>どちらかを待たないと取れない関係ではない</strong>。
+            <code>async</code> の関数は、<code>await</code> を付けずに呼ぶと<strong>すぐに始まり、箱（Promise）を返す</strong>。<code>Promise.all([箱, 箱])</code> は、全部の箱が埋まったら中身を<strong>渡した順番のまま</strong>配列にして返す。待ち時間は合計ではなく<strong>長い方だけ</strong>。どれか1つでも失敗したら、<code>catch</code> に1回届く。
+            受け取るのは <code>useState</code> と同じ配列の分割代入。並べる順番を間違えると、型（位置ごとに推論される）で気づける。
+          </p>
+          <p>
+            <code>await</code> が止めるのは<strong>この関数の続きだけ</strong>で、ブラウザ全体は止まらない（その間も「データを取得しています」が出ている）。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">一覧の「無い」は <code>null</code> ではなく <code>[]</code></div>
+          <p>
+            <code>getSchedule</code>・<code>getCompany</code>（<strong>1件</strong>を取る）は、文書が無ければ <code>null</code>（型は <code>〜 | null</code>）。<code>getCompanies</code>（<strong>一覧</strong>を取る）は、0件なら<strong>空の配列</strong>（型は <code>Company[]</code>）。
+            1件にとって「無い」は特別な結果だが、一覧にとっての「無い」は0件の一覧。取得そのものの失敗は、どちらも <code>null</code> ではなく<strong>例外</strong>で <code>catch</code> に届く。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">企業が見つからない予定を、そのまま編集させない</div>
+          <p>
+            消えた企業の <code>companyId</code> を初期値にすると、<code>&lt;select&gt;</code> の <code>value</code> がどの選択肢とも一致しない。React は<strong>先頭の選択肢を選んだ状態で表示</strong>するので、画面には「選択してください」が見える。
+            でも state には消えた企業の ID が残り、空ではないので検査をすり抜け、<strong>消えた企業に紐づいたまま保存できてしまう</strong>（画面と state が食い違う）。
+          </p>
+          <p>
+            対応：企業の一覧を先に（同時に）取り、<code>some</code>（条件に合う要素が<strong>1つでもあるか</strong>を真偽値で返す）で、一覧にその企業があるかを調べる。
+            無ければ <code>{ ...値, companyId: "" }</code> の新しいオブジェクトにして、選び直すまで保存できなくする。理由が分かるように「紐づいていた企業が見つからないため、企業を選び直してください」を、<strong>ページで</strong>フォームの上に出す（フォームに「企業が消えた」という事情を持ち込まない。決定記録49）。
+            調べた結果を使うときは、state ではなく<strong>受け取った変数</strong>を使う（<code>setState</code> の直後は古い値。エントリ112）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>この処理が複雑になったのは、機能ごとに縦に切ったから</dt>
+            <dd>
+              企業が見つからない予定は、<strong>どう切っても</strong>起きる（連鎖削除の前の削除、途中の失敗、同時の操作、コンソールでの削除）。根本は <strong>Firestore が参照先の存在を保証しない</strong>こと。縦に切って変わったのは、途中の状態が本番に出るので、<strong>備えが要ることに早く気づけた</strong>ことだけ
+            </dd>
+            <dt>企業の一覧を先に取れば、見つからない企業の問題は解決する</dt>
+            <dd>先に取るのは<strong>調べる材料をそろえる</strong>ところまで。そのうえで「あるか調べる → 無ければ空にする」処理が要る</dd>
+          </dl>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">名前と書き方で直したこと</div>
+          <ul>
+            <li><code>some</code> も <code>map</code> と同じく<strong>配列に対して</strong>呼び、引数は<strong>1つ分</strong>の名前（<code>companyData.id.some</code> ではない）。引数の <code>( )</code> には名前だけを書き、<code>.id</code> は <code>=&gt;</code> の右で取り出す</li>
+            <li>真偽値の名前は、<code>true</code> のときに成り立つ事実：<code>isCompanyFound</code>（<code>if</code> で「もし企業が見つかったら」と読める）、<code>isCompanyMissing</code>（その逆。<code>!isCompanyFound</code> を入れる）。<code>isInspect</code>（検査する？）は何が真か分からない</li>
+            <li>更新関数は <code>set</code> ＋ state の名前の先頭を大文字（<code>setIsCompanyMissing</code>）</li>
+            <li>変数は名詞：<code>passScheduleFormValues</code>（動詞）→ <code>initialScheduleFormValues</code>。<code>get〜</code> はこのアプリでは関数の名前なので変数に使わない → <code>fetchedScheduleFormValues</code>（詳細ページの <code>fetchedSchedule</code> とそろえる）</li>
+            <li><code>load</code> の中で state と<strong>同じ名前</strong>の変数（<code>editData</code>）を作ると、内側が外側を<strong>隠す</strong>。文法上は許されるので型も lint も止めないが、どちらを指すか読み間違える</li>
+            <li><code>return</code> は値を作る記号ではなく<strong>関数を終わらせる</strong>命令。<code>{ }</code> の中の <code>const</code> は外から見えない。2つのうちどちらかを選ぶなら、三項演算子で1つの変数に受ける</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 116 -->
+    <article class="entry" id="e116">
+      <div class="entry-no">116</div>
+      <div class="entry-body">
+        <h2>予定の削除：何を消すのかを、1つに特定できる言葉で示す</h2>
+
+        <div class="note check">
+          <div class="note-label">確認ダイアログの文（仕様書の書き漏れ B4）</div>
+          <p>
+            企業は企業名で示した。予定には名前が無く、<strong>1つの企業に予定がいくつも入る</strong>ので、企業名だけでは「A社の予定」が2つ並んでも見分けられない。
+            予定を1つに特定できるのは<strong>日付と時刻</strong>なので、「（日付） （開始時刻）〜（企業名）の（種別）を削除しますか？」にした。日付の形は詳細ページの表示（<code>2026-11-01</code>）にそろえた。
+          </p>
+          <p>
+            企業が見つからない予定でも、<strong>削除はできる</strong>ようにした（企業名の所だけ「企業が見つかりません」）。企業の消えた予定は、利用者が一番消したくなる予定で、削除を止めると<strong>消す方法が無くなる</strong>。
+            企業名は <code>return</code> の前で1つの変数に決め、ダイアログで使う。詳細の <code>&lt;dd&gt;</code> は、リンク（企業の <code>id</code> が要る）と理由付きの文で<strong>出すものが違う</strong>ので、三項演算子のまま残した。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">企業の削除を写したときに残ったもの</div>
+          <ul>
+            <li>削除の失敗の文が「<strong>企業</strong>データの削除に失敗しました」、Esc のコメントが「存在しない<strong>企業</strong>に対して」のまま</li>
+            <li>編集へのリンクが <code>`/schedule${paramsId}/edit`</code>——<code>schedule</code> と ID の間の <code>/</code> が無く、<code>/scheduleabc/edit</code> の 404 になる。URL の文字列の中身は型検査が見ない</li>
+            <li>変数の名前を変えた後、使っている所に古い名前が残った（<code>displayCompany</code>）。VS Code の <strong>F2</strong> で、使っている所ごとまとめて名前を変えられる</li>
+          </ul>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">更新と削除の関数</div>
+          <p>
+            <code>updateSchedule</code> は <code>updateDoc</code>。<code>setDoc</code> は文書が<strong>無ければ新しく作る</strong>ので、別のタブで消した予定を編集ページで保存すると、<strong>消したはずの予定がよみがえる</strong>。<code>updateDoc</code> なら「無い」というエラーで止まる。
+            <code>deleteSchedule</code> は <code>deleteDoc</code>（冪等）。予定を消すと、<code>scheduleId</code> でこの予定を指す振り返り（フェーズ4）が孤立する。企業のコメントを写して「一緒に削除する」と書きかけたが、<strong>まだ決めていないことを決めたように書かない</strong>——「扱いはフェーズ4で決める」とした。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">ターミナルの <code>dquote&gt;</code></div>
+          <p>
+            閉じの <code>"</code> を忘れると、ターミナルは引用符の中身が続いていると判断し、<code>dquote&gt;</code> で待ち続ける。その間に打ったもの（<code>npm run dev</code> など）は<strong>引用符の中の文字</strong>として溜まるだけで実行されない。<strong>Ctrl + C</strong> で捨てて戻る。
+            ターミナルの幅で長いパスが2行に<strong>折り返して表示</strong>されるのは、改行が入ったわけではない。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -9421,7 +9587,10 @@ git diff --cached                                                 # ステージ
           (b) は、データ層の PR を画面ができるまで動かして確かめられない。横に切る利点（層を見比べられる、並行して作れる）は、1人で作る今回は小さい（エントリ107）。
         </dd>
         <dt>作りかけの公開</dt>
-        <dd>マージ＝公開なので、ナビゲーションのリンクは PR3 まで置かない。登録フォームは保存後に詳細へ移るので、PR1 に詳細ページを入れた。</dd>
+        <dd>
+          マージ＝公開なので、ナビゲーションのリンクは PR3 まで置かない。登録フォームは保存後に詳細へ移るので、PR1 に詳細ページを入れた。
+          <br><strong>PR3 で一緒に直すもの</strong>（PR2 で追記）：予定の削除の後の行き先（今は仮にダッシュボード）をカレンダーに変える／予定の詳細・編集ページの「見つかりません」にカレンダーへ戻るリンクを足す。
+        </dd>
         <dt>画面ごとに決めること</dt>
         <dd>
           仕様書の書き漏れのうち、画面を作るときに決めるもの：
@@ -9471,6 +9640,61 @@ git diff --cached                                                 # ステージ
           (a) は、予定そのもの（日付・場所・持ち物）が見られなくなり、新しい予定を作っても<strong>この予定の問題は解決しない</strong>（必要なのは PR2 の編集か削除）。開いたページから勝手に移ると、何が起きたか分からない。
           (b) は、連鎖削除の後も、前に消した分・途中の失敗・同時の操作・コンソールでの削除で起きうる。<strong>Firestore は参照先の存在を保証しない</strong>ので、アプリの側で「見つからないこともある」と扱う（エントリ112）。
         </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>予定の削除の確認ダイアログは、日付・時刻・企業名・種別で示す</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>仕様書3-6 は「何が削除されるのか（例：企業名）を明示する」とだけあり、名前を持たない予定で何を示すかが書かれていない（書き漏れ B4）。</dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 企業名だけを出す
+          <b>(b)</b> 企業が見つからない予定は、削除ボタンを押せなくする
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (a) は、1つの企業に予定がいくつも入るので、どの予定を消すのか見分けられない。仕様書の目的は「誤操作を防ぐ」こと。
+          (b) は、企業の消えた予定を<strong>消す方法が無くなり</strong>、ずっと残る。企業名の所だけ「企業が見つかりません」にして、日付・時刻・種別で特定させる（エントリ116）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>予定を削除した後は、PR3 まで仮にダッシュボードへ移る</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>本来の行き先はカレンダー（PR3）だが、まだ無い。<code>hasDeleted</code> は「成功したら画面を離れる」前提なので、どこかへ移る必要がある。</dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(b)</b> その予定の企業の詳細ページ
+          <b>(c)</b> 予定の登録ページ
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          どれも PR3 で書き換える<strong>仮の行き先</strong>なので、書き換えやすい方を選んだ。
+          (b) は、企業が見つからない予定のために別の行き先（分かれ道）が要るうえ、企業詳細に予定の一覧が出るのは PR4 なので、移っても消えたことを確かめられない。
+          (c) は、消した後に「登録」へ移るのは利用者の意図とずれやすい。
+          予定の画面へのナビゲーションは PR3 まで無く、今ここを通るのは開発者だけなので、利用者への影響も小さい。
+        </dd>
+        <dt>差し替え忘れの防止</dt>
+        <dd>コードのコメントに「PR3 でカレンダーに移るように変える」と残し、決定記録48の PR3 の作業にも書いた。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>編集ページで企業が見つからない予定は、企業を空にして選び直させる</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 保存されている <code>companyId</code> をそのまま初期値にする</dd>
+        <dt>理由</dt>
+        <dd>
+          (a) では、画面は「選択してください」に見えるのに state は消えた企業の ID のままで、検査をすり抜けて<strong>消えた企業に紐づいたまま保存できる</strong>（エントリ115）。
+          空にすれば画面と state が一致し、検査が選び直しを求める。理由の文を<strong>ページで</strong>フォームの上に出す。
+        </dd>
+        <dt>作り</dt>
+        <dd>予定と企業の一覧を <code>Promise.all</code> で同時に取り、<code>some</code> で一覧にあるかを調べる。無ければ <code>companyId</code> を <code>""</code> にし、<code>isCompanyMissing</code> を立てる。</dd>
       </dl>
     </div>
   </section>

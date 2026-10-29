@@ -22,7 +22,7 @@ export function validateCompanyInput(data: CompanyInput): CompanyInputErrors {
   // errorsという変数を型にはめて、エラーメッセージを受け取る土台を作る
   const errors: CompanyInputErrors = {};
   // この .trim() は、正規化済みの値が渡る通常経路では何も変えない。
-  // それでも残すのは、「正規化済みで渡すこと」を型で表現できず、通し忘れを機械が検出できないため。⭐️⭐️
+  // それでも残すのは、「正規化済みで渡すこと」を型で表現するのは見合わないので、通し忘れを機械が検出できないため。⭐️⭐️
   // nameは前後に空白が入りうるからtrim()を使う。
   if (data.name.trim() === "") {
     errors.name = "企業名が入力されていません";

@@ -103,3 +103,17 @@ export async function getSchedule(uid: string, id: string): Promise<Schedule | n
     ...(snapshot.data() as ScheduleInput),
   };
 }
+
+// 予定を更新する関数
+export async function updateSchedule(uid: string, id: string, data: ScheduleInput): Promise<void> {
+  const scheduleRef = doc(db, "users", uid, "schedules", id);
+  // updateDocを選んだ理由は存在しない予定を更新しようとした場合にエラーを出してそれに気づけるから。setDocはそのまま新しい文書を作ってしまうので気付けない
+  await updateDoc(scheduleRef, data);
+}
+
+// 予定を削除する関数
+// 予定を削除すると、scheduleIdでこの予定を指す振り返り（フェーズ4）が孤立する。扱いはフェーズ4で決める
+export async function deleteSchedule(uid: string, id: string): Promise<void> {
+  const scheduleRef = doc(db, "users", uid, "schedules", id);
+  await deleteDoc(scheduleRef);
+}
