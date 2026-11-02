@@ -45,3 +45,24 @@ export function daysInMonth(date: Date): number {
 export function firstWeekdayOfMonth(date: Date): number {
   return date.getDay();
 }
+
+// カレンダーのマスを作る関数
+// 1日に揃えた月のDateを受け取って、日付(Date)か空白(null)の配列を返す
+export function createCalendarCells(date: Date): (Date | null)[] {
+  // これから入れるマスのために空の配列を作る
+  const cells: (Date | null)[] = [];
+  // 渡された月の最初の週の空白を調べる
+  const blankCells = firstWeekdayOfMonth(date);
+  // for文内でpushを使って空白(null)を配列の中に入れる
+  for (let i = 0; i < blankCells; i++) {
+    cells.push(null);
+  }
+  // 渡された月の日数を調べる
+  const days = daysInMonth(date);
+  // for文内でpushを使って日付(Date)を配列の中に入れる
+  // 変数名をiではなくdayにして今何日か分かるようにした
+  for (let day = 1; day <= days; day++) {
+    cells.push(new Date(date.getFullYear(), date.getMonth(), day));
+  }
+  return cells;
+}
