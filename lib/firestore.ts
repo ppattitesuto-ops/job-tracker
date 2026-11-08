@@ -117,3 +117,20 @@ export async function deleteSchedule(uid: string, id: string): Promise<void> {
   const scheduleRef = doc(db, "users", uid, "schedules", id);
   await deleteDoc(scheduleRef);
 }
+
+// 予定の一覧を取得する関数
+export async function getSchedules(uid: string): Promise<Schedule[]> {
+  // どの場所からデータを取得するか指定
+  const schedulesRef = collection(db, "users", uid, "schedules");
+  // 予定を取得する際にdateが古い順になるように指定→カレンダーや一覧では日付が時間の流れと同じ向きに並んだ方が読みやすいから
+  // 同じ日の中の開始時刻の順は、取ってきた後に並べ替える（dateとstartTimeの両方で並べると、DBで組み合わせの索引が要るため）
+  const schedulesQuery = query(schedulesRef, orderBy("date", "asc"));
+  // 実際に予定を取得する
+  const snapshot = await getDocs(schedulesQuery);
+  // Firebaseから取得したドキュメントはIDとDATAが別々になっているため、mapで一つのオブジェクトにする
+  // docsはFirebaseが決めたプロパティ
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as ScheduleInput),
+  }));
+}
