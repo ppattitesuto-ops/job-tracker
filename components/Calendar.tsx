@@ -1,6 +1,6 @@
 // ⭐️ここはカレンダーを使うページからPropsを受け取ってカレンダーを表示するところ
 
-import { addMonths, createCalendarCells, formatYmd, startOfMonth } from "@/lib/date";
+import { addMonths, createCalendarCells, formatYmd, startOfMonth, todayString } from "@/lib/date";
 import Button from "./Button";
 
 type Props = {
@@ -14,6 +14,10 @@ const CALENDAR_WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 // 画面に表示中の月を受け取ってカレンダーを描画する
 export default function Calendar({ displayMonth, onChangeMonth }: Props) {
   const calendarCells = createCalendarCells(displayMonth);
+
+  // 部品が描画されるたびに今日の日付として変わって欲しいからコンポーネントの中に置く
+  const today = todayString();
+
   return (
     <div>
       <Button
@@ -28,7 +32,7 @@ export default function Calendar({ displayMonth, onChangeMonth }: Props) {
         type="button"
         onClick={() => onChangeMonth(startOfMonth(new Date()))}
       >
-        今の月へ
+        今月へ
       </Button>
       <Button
         variant="secondary"
@@ -46,10 +50,26 @@ export default function Calendar({ displayMonth, onChangeMonth }: Props) {
           <div key={calendarWeekday}>{calendarWeekday}</div>
         ))}
         {/* 受け取ったDateに対応した空白と日付を並べる */}
-        {calendarCells.map((calendarCell, index) => (
-          // <div key={index}/>は中身がないとき(null)を表す
-          calendarCell ? <div key={formatYmd(calendarCell)}>{calendarCell.getDate()}</div> : <div key={index} />
-        ))}
+        {calendarCells.map((calendarCell, index) => {
+          // 空白(null)にはformatYmdを渡せないのでリターンする
+          if (calendarCell === null) {
+            // <div key={index}/>は中身がないとき(null)を表す
+            return (
+              <div key={index} />
+            );
+          }
+          // ===はオブジェクト同士だと「中身が同じか」でなく、「同じ一つのオブジェクトか」を比べる。マスのDateと今日の値(todayString)はそれぞれ別々に作ったもので時刻も違う可能性がある。そのため、文字列にしてから比べる必要がある
+          const isToday = formatYmd(calendarCell) === today;
+          return (
+            <div
+              key={formatYmd(calendarCell)}
+              // ringはborderと違いマスの外側に影として線を描くためマスの大きさが変わらない
+              className={isToday ? "font-bold ring-2 ring-indigo-500" : ""}
+            >
+              {calendarCell.getDate()}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
