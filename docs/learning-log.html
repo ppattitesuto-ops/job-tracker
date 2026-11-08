@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-10-29</b></span>
-      <span>エントリ <b>116</b></span>
-      <span>決定記録 <b>53</b></span>
-      <span>進捗 <b>フェーズ3：予定の削除と編集（PR2） → カレンダーへ</b></span>
+      <span>最終更新 <b>2026-11-08</b></span>
+      <span>エントリ <b>121</b></span>
+      <span>決定記録 <b>57</b></span>
+      <span>進捗 <b>フェーズ3：カレンダーの表示（PR3-1） → 予定と組み合わせる（PR3-2）へ</b></span>
     </div>
   </header>
 
@@ -688,6 +688,11 @@
       <li><a href="#e114">保存した値をフォームに戻す：対になる変換と、<code>trim</code> を置く基準</a></li>
       <li><a href="#e115">編集ページ：<code>Promise.all</code> と、見つからない企業の選び直し</a></li>
       <li><a href="#e116">予定の削除：何を消すのかを、1つに特定できる言葉で示す</a></li>
+      <li><a href="#e117">送った後のコミットを書き直す：<code>--amend</code> と <code>--force-with-lease</code></a></li>
+      <li><a href="#e118"><code>Date</code> の月は0から。<code>+ 1</code> の意味は、書く場所で変わる</a></li>
+      <li><a href="#e119">ブラウザの Console で、関数を試す</a></li>
+      <li><a href="#e120">カレンダーのマスを並べる：空白のマスにも意味がある</a></li>
+      <li><a href="#e121">state はページに置き、子は「もらった関数」で親に頼む</a></li>
     </ol>
   </nav>
 
@@ -8216,6 +8221,258 @@ git diff --cached                                                 # ステージ
       </div>
     </article>
 
+    <!-- 117 -->
+    <article class="entry" id="e117">
+      <div class="entry-no">117</div>
+      <div class="entry-body">
+        <h2>送った後のコミットを書き直す：<code>--amend</code> と <code>--force-with-lease</code></h2>
+
+        <p>
+          学習ログのコミットの本文に「エントリ114<strong>~</strong>116と決定記録51<strong>~</strong>53」と半角の <code>~</code> を使ったら、GitHub の画面で一部に<strong>取り消し線</strong>が引かれた。
+          GitHub の文章の書き方（Markdown）では、<code>~文字~</code> で囲んだ部分が取り消し線になる。1つ目の <code>~</code> から2つ目の <code>~</code> までが囲まれた形。全角の「〜」なら起きない。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">直し方：手元で作り直し、GitHub 側を置き換える</div>
+<pre><code>git commit --amend -m "1行目" -m "本文"   # 直前のコミットを作り直す（ハッシュが変わる）
+git status                                # [ahead 1, behind 1]：中身は同じでハッシュの違うコミットが1つずつ
+git push --force-with-lease               # GitHub 側を、作り直したコミットで置き換える</code></pre>
+          <p>
+            <code>--amend</code> はメッセージを<strong>丸ごと</strong>書き直すので、1行目も正しく打ち直す（余計な空白が入りかけた）。
+            作り直すとハッシュが変わり、GitHub 側の古いコミットと食い違うので、普通の <code>git push</code> は断られる。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">オプション</th><th scope="col">動き</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>--force</code></th><td>GitHub 側に何があっても<strong>問答無用で上書き</strong>する。ほかの人が足したコミットも消える</td></tr>
+                <tr><th scope="row"><code>--force-with-lease</code></th><td>GitHub 側が<strong>自分の知っている状態のまま</strong>のときだけ上書きする。誰かが足していたら止まる</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            履歴の書き換えは、<strong>自分だけが使っている作業ブランチ</strong>で、PR を作る前だから使えた。<code>main</code> のような共有のブランチでは使わない。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">学習ログを入れる前にプッシュしてしまっても</div>
+          <p>
+            プッシュは「その時点までのコミットを送る」だけ。後から足したコミットは、もう一度 <code>git push</code> すれば送られる（PR を作った後なら、PR に自動で追加される）。
+            <code>-u</code> は送り先を覚えさせる設定なので、2回目からは要らない。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 118 -->
+    <article class="entry" id="e118">
+      <div class="entry-no">118</div>
+      <div class="entry-body">
+        <h2><code>Date</code> の月は0から。<code>+ 1</code> の意味は、書く場所で変わる</h2>
+
+        <p>
+          カレンダーの計算を <code>lib/date.ts</code> にまとめた（<code>formatYmd</code>・<code>todayString</code>・<code>startOfMonth</code>・<code>addMonths</code>・<code>daysInMonth</code>・<code>firstWeekdayOfMonth</code>・<code>createCalendarCells</code>）。
+          どれも Console で実際の値を確かめてから書いた。
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書いた場所</th><th scope="col"><code>+ 1</code> の意味</th><th scope="col">どの月を指すか</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>formatYmd</code>、画面の「11月」</th><td>0から数える月を、<strong>人が読む1からの数字に書き換える</strong></td><td>変わらない</td></tr>
+              <tr><th scope="row"><code>new Date(年, getMonth() + 1, …)</code></th><td><strong>次の月にする</strong></td><td>変わる</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <strong><code>new Date(...)</code> の中の月は、いつも0から数える月</strong>。ここに <code>+ 1</code> を書けば、表示のためではなく必ず「次の月」になる。人に見せるための <code>+ 1</code> は、<strong>最後に文字にするときだけ</strong>書く。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt><code>daysInMonth</code> は、今月の0日を作れば今月の最終日になる</dt>
+            <dd>「0日」は<strong>前の月の最終日</strong>に繰り下がる。今月の日数を知るには「<strong>次の月の</strong>0日」（<code>getMonth() + 1</code>）を作る。今月のままだと、10月を渡して <code>30</code>（9月の日数）が返った</dd>
+            <dt>1日の曜日を出す関数でも、<code>daysInMonth</code> と同じく <code>+ 1</code> する</dt>
+            <dd>欲しいのは<strong>今月の</strong>1日なので、月には何も足さない。写したときに <code>+ 1</code> が残り、10月を渡して11月1日の曜日（<code>0</code>）が返った</dd>
+          </dl>
+        </div>
+
+        <div class="note check">
+          <div class="note-label">表示中の月を「1日」にそろえる理由</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">持っている日</th><th scope="col">次の月の同じ日を作ると</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">1月<strong>31日</strong></th><td>2月31日 → 繰り上がって<strong>3月3日</strong>。<strong>2月が飛ぶ</strong></td></tr>
+                <tr><th scope="row">1月<strong>1日</strong></th><td>2月1日。どの月にも1日はあるので飛ばない</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            1日の <code>getDay()</code> が、そのまま先頭の空白のマスの数になる（日曜が <code>0</code>）。<code>getDay()</code> は<strong>曜日</strong>、<code>getDate()</code> は<strong>何日</strong>——名前が似ていて取り違えやすい。
+            <code>new Date(年, 月, 日, 時, 分…)</code> は日から後ろを省略でき、省略した時刻は0時になる。日付だけを扱う関数では時刻を書かない。
+            <code>addMonths</code> は、月に足した数が12を超えても0を下回っても、<code>Date</code> が<strong>年を繰り上げ・繰り下げる</strong>（2026年12月＋1 → 2027年1月、2026年1月−1 → 2025年12月を確かめた）。うるう年の2月の日数（29）も <code>Date</code> が判断する。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label"><code>toISOString()</code> を使わない／関数の向き／名前</div>
+          <ul>
+            <li><code>toISOString()</code> は<strong>世界標準時</strong>の日付を返すので、日本の朝9時前には前の日になる。<code>getFullYear()</code>・<code>getMonth()</code>・<code>getDate()</code> は<strong>端末の時刻（日本時間）</strong>で返す</li>
+            <li><code>formatYmd(date)</code> が本体（受け取った日付を文字列に）。<code>todayString()</code> は今日の <code>Date</code> を作って渡すだけ。<code>formatYmd</code> の中で <code>todayString</code> を呼ぶと、何を渡しても今日になり、互いに呼び合えば止まらなくなる</li>
+            <li><code>Date</code> の値に <code>()</code> を付けて呼ぶことはできない（<code>now()</code>）。関数に値を<strong>渡す</strong></li>
+            <li>引数に <code>Date</code> という名前を付けると、標準の <code>Date</code> が<strong>隠れて</strong>使えなくなる。型も <code>string</code> ではなく <code>Date</code></li>
+            <li><code>toDateString</code> は <code>Date</code> に最初から付いている機能と同じ名前なので避け、<code>formatYmd</code> にした。ファイル名は動詞（<code>dateCalculate</code>）ではなく、ほかの <code>lib/</code> とそろえて名詞の <code>date.ts</code></li>
+            <li>関数のコメントには、使う場所（「企業の登録ページで使う」）ではなく<strong>何をするか</strong>を書く。使う場所が増えても書き換えずに済む</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 119 -->
+    <article class="entry" id="e119">
+      <div class="entry-no">119</div>
+      <div class="entry-body">
+        <h2>ブラウザの Console で、関数を試す</h2>
+
+        <p>関数を書くたびに、Console に貼って実際の値を確かめた。そこでつまずいたこと。</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">起きたこと</th><th scope="col">理由</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>Unexpected token ':'</code></th><td>Console は JavaScript しか読めない。<code>: Date</code> は TypeScript の型なので、<strong>型を外して</strong>貼る（ふだんはビルドが型を消している）</td></tr>
+              <tr><th scope="row"><code>date.getFullYear is not a function</code></th><td><code>(2026, 11, 1, 7, 35)</code> のように <code>new Date</code> 無しでカンマを並べると、<strong>最後の値（<code>35</code>）</strong>になる。日付は <code>new Date(...)</code> で作って渡す</td></tr>
+              <tr><th scope="row">3つ貼ったのに結果が1つ</th><td>まとめて貼ると、<strong>最後の式の結果だけ</strong>が表示される。1行ずつ実行するか、<code>console.log(...)</code> で囲む</td></tr>
+              <tr><th scope="row">使った関数が無いと言われる</th><td>中で使っている関数（<code>firstWeekdayOfMonth</code> など）も一緒に貼る</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          ファイルの方では、<code>addMonths(35, 1)</code> のように数字を渡すと、<code>npm run typecheck</code> の時点で止まる。型の無い Console では、<strong>実行してみるまで</strong>分からなかった——型の利点が見えた。
+          配列の <code>[[Prototype]]</code> を開くと出てくる一覧（<code>push</code>・<code>map</code>・<code>filter</code>・<code>join</code>・<code>some</code>…）は、<strong>どの配列も共通に持っている機能</strong>。
+        </p>
+      </div>
+    </article>
+
+    <!-- 120 -->
+    <article class="entry" id="e120">
+      <div class="entry-no">120</div>
+      <div class="entry-body">
+        <h2>カレンダーのマスを並べる：空白のマスにも意味がある</h2>
+
+        <div class="note check">
+          <div class="note-label">マスの配列を作る</div>
+          <p>
+            <code>createCalendarCells</code> は、先頭の空白（<code>null</code>）と、1日〜最終日の <code>Date</code> を並べた配列を返す。戻り値の型は <code>(Date | null)[]</code>——括弧が無い <code>Date | null[]</code> は「<code>Date</code> 1つ」か「<code>null</code> の配列」になり、意味が違う（<code>[]</code> はすぐ左の型にだけ付く）。
+            空の配列に <code>push</code> で足していく（<code>const</code> が禁じるのは別の配列を入れ直すことだけ）。
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col"></th><th scope="col">空白のマス</th><th scope="col">日付のマス</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">数え始め</th><td><code>0</code></td><td><code>1</code>（1日から）</td></tr>
+                <tr><th scope="row">終わりの条件</th><td><code>i &lt; 空白の数</code>（未満）</td><td><code>day &lt;= 日数</code>（以下。最終日も入れる）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>2026年10月で、長さ <code>35</code>（空白4＋31日）、5つ目が10月1日、最後が10月31日になることを確かめた。</p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：<code>return;</code> で空白のマスが消えた</div>
+          <dl class="wrong-right">
+            <dt><code>null</code> のマスは <code>formatYmd</code> に渡せないので、<code>return;</code> で飛ばせばよい</dt>
+            <dd>
+              <code>return;</code> は <code>undefined</code> を返し、React は<strong>何も表示しない</strong>。空白のマスは「1日を正しい曜日の列に置くために<strong>マスを空ける</strong>」役割なので、空の <code>&lt;div&gt;</code> を返す必要がある。
+              11月（1日が日曜で空白0）では<strong>ずれが見えず</strong>、12月（1日が火曜）を開いて初めて分かる。型検査も lint も止めない
+            </dd>
+          </dl>
+          <p>
+            <code>map</code> の中で変数を作るときは、<code>=&gt;</code> の右を <code>{ }</code> で囲み、<code>return</code> を自分で書く。<code>null</code> を先に早期リターンすれば、その後は必ず <code>Date</code> のマスになる。<code>if</code> の中身が複数行なら <code>{ }</code> で囲む。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">今日の印</div>
+          <ul>
+            <li><strong>文字列にしてから比べる</strong>：<code>===</code> はオブジェクトどうしだと「同じ1つのオブジェクトか」を比べる。マスの <code>Date</code> と今日は別々に作られ、時刻も違う</li>
+            <li><code>today</code> は部品の<strong>中</strong>に置く。外だとファイルが読み込まれたときの1回だけ計算され、日付が変わっても昨日のまま。<strong>部品の外に置いてよいのは、いつ計算しても同じ結果になる値だけ</strong>（曜日の配列 <code>CALENDAR_WEEKDAYS</code> など）</li>
+            <li>印は <code>font-bold ring-2 ring-indigo-500</code>。PR3-2 の「予定がある日」「選んだ日」と重なっても見分けられるように、<strong>印ごとに違う種類の目立たせ方</strong>を割り当てる（今日＝太字と線、選んだ日＝背景、予定＝点）</li>
+            <li><code>border</code> はマスの<strong>内側</strong>に幅をとり、中身が押される。<code>ring</code> は<strong>外側に影として</strong>描くので、マスの大きさが変わらない。同じ大きさのマスを並べる所では <code>ring</code></li>
+          </ul>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">JSX と Tailwind で直したこと</div>
+          <ul>
+            <li><code>&lt;calendarComponent&gt;</code>：小文字で始まるタグは <strong>HTML のタグ</strong>として探される。自分の部品は大文字で始め、<code>import</code> する</li>
+            <li>タグの<strong>間</strong>は <code>{値}文字{値}</code> と並べられる。属性の<strong>中</strong>は文字か <code>{ }</code> のどちらか1つなので、混ぜるなら <code>{`文字${値}`}</code> で1つの文字列にする</li>
+            <li>見出しで <code>+ 1</code> を忘れて「10月」、「月」を忘れて「2026年11」と出た。どちらも文字列として正しいので型は止めない</li>
+            <li><code>grid grid-cols-7</code> は<strong>親</strong>に付ける。子が7つごとに自動で折り返すので、末尾の空白は要らない。HTML の <code>class</code> は JSX では <code>className</code></li>
+            <li>変数はキャメルケース（<code>calendarCells</code>）。固定の値は大文字のスネークケース。<code>useState(startOfMonth(new Date()))</code> は初期値から <code>Date</code> と分かるので、<code>&lt;Date&gt;</code> は要らない（要るのは <code>null</code> や <code>[]</code> から始めるとき）</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 121 -->
+    <article class="entry" id="e121">
+      <div class="entry-no">121</div>
+      <div class="entry-body">
+        <h2>state はページに置き、子は「もらった関数」で親に頼む</h2>
+
+        <p>
+          表示中の月の state は、カレンダーの部品ではなく<strong>ページ</strong>が持つ。PR3-2 では、ページが「表示中の月の予定」を取ってきて、カレンダーにも、その下の「その日の予定」にも渡す。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">もし部品が月の state を持ったら</th><th scope="col">困ること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">部品の中で予定を取る</th><td>下の一覧でも予定が要るので、<strong>同じ取得が2回</strong>になる。部品が Firestore とログイン状態に縛られ、取得中・失敗の表示も散らばる</td></tr>
+              <tr><th scope="row">部品が月を変えるたびにページへ知らせる</th><td><strong>同じ情報を2か所で持つ</strong>。片方だけ変わると、表示と取ってくる予定がずれる</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          これは「部品が自分で取得してはいけない」という絶対の決まりではない。<strong>このアプリでは、データをページの全体で使うので、ページで取る方が合っている</strong>という判断（決定記録49 と同じ考え方）。カレンダーのエンプティステート（仕様書3-7）も、予定を持つページでなければ判断できない。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">子から親へ値を届ける</div>
+          <p>
+            props は親から子への<strong>一方通行</strong>で、子から直接は渡せない。親が渡した<strong>関数を、子が値を付けて呼ぶ</strong>ことで届く。
+            ページは <code>onChangeMonth={setDisplayMonth}</code> と <code>setDisplayMonth</code> を<strong>そのまま</strong>渡し、部品のボタンが <code>addMonths</code> や <code>startOfMonth</code> で行き先の月を計算して呼ぶ。ページが知りたいのは「表示中の月が何か」だけで、どのボタンで変わったかは関係ない。
+          </p>
+          <p>
+            <code>onClick={() =&gt; onChangeMonth(…)}</code> と <code>() =&gt;</code> で包む。<code>onClick={onChangeMonth(…)}</code> だと<strong>描画のたびにその場で呼ばれ</strong>、state が変わる → 描き直す → また呼ぶ、と止まらない。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>ページに「前の月へ」「次の月へ」「今日へ」の3つの関数を作り、部品に渡す</dt>
+            <dd>
+              渡し方はもう1つあった。<strong>月を変える関数を1つだけ</strong>渡し、計算は部品のボタンに書けば、ページの関数が増えず、props も4つから2つになる。最初に1つの案しか示していなかった
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">○（Static）なのに、日付がビルドの日で固まらない理由</div>
+          <p>
+            <code>/schedule</code> は ○ で、ビルドの時点で HTML が作られる。それでも <code>startOfMonth(new Date())</code> や <code>todayString()</code> はビルドした日で固まらない。
+            ビルドにはログインしている人がいないので、<code>(protected)/layout.tsx</code> が「ログイン状態を確認しています」を返し、<strong>カレンダーを描かない</strong>から。カレンダーは、ブラウザでログインが確かめられた後に、<strong>開いた日の日付</strong>で描かれる。
+          </p>
+          <p>
+            これは<strong>ログイン確認のレイアウトの中にあるから守られている</strong>だけ。ログイン確認の外（ログイン画面など）で今日の日付を表示すると、ビルドした日で固まる危険がある。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -9590,6 +9847,7 @@ git diff --cached                                                 # ステージ
         <dd>
           マージ＝公開なので、ナビゲーションのリンクは PR3 まで置かない。登録フォームは保存後に詳細へ移るので、PR1 に詳細ページを入れた。
           <br><strong>PR3 で一緒に直すもの</strong>（PR2 で追記）：予定の削除の後の行き先（今は仮にダッシュボード）をカレンダーに変える／予定の詳細・編集ページの「見つかりません」にカレンダーへ戻るリンクを足す。
+          <br><strong>PR3 は2つに分けた</strong>（PR3-1 で追記）：表示の PR3-1 と、予定と組み合わせる PR3-2。上の「一緒に直すもの」とナビゲーションのリンクは PR3-2 で行う（決定記録の「カレンダー（PR3）を…分ける」）。
         </dd>
         <dt>画面ごとに決めること</dt>
         <dd>
@@ -9695,6 +9953,75 @@ git diff --cached                                                 # ステージ
         </dd>
         <dt>作り</dt>
         <dd>予定と企業の一覧を <code>Promise.all</code> で同時に取り、<code>some</code> で一覧にあるかを調べる。無ければ <code>companyId</code> を <code>""</code> にし、<code>isCompanyMissing</code> を立てる。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>カレンダー（PR3）を、表示（PR3-1）と予定との組み合わせ（PR3-2）に分ける</h3>
+      <dl>
+        <dt>中身</dt>
+        <dd>
+          <b>PR3-1</b> 予定のデータを使わずに、月の日付を7列に並べ、月を切り替え、今日を目立たせる（ナビゲーションのリンクは置かない）
+          <b>PR3-2</b> 予定の印、その日の一覧、ナビゲーションのリンク、PR2 までの仮のもの（決定記録48）
+        </dd>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 1つの PR にまとめる</dd>
+        <dt>理由</dt>
+        <dd>
+          日付の計算は間違えやすい。先にカレンダーを仕上げてから予定と組み合わせれば、表示がおかしいときに<strong>計算とデータのどちらを直せばよいか</strong>分かる。
+          PR3-1 も、日付の並び（1日の曜日、月末、年またぎ）を画面で確かめられるので、「確かめられる単位」の条件を満たす。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>表示中の月は、1日にそろえた <code>Date</code> でページが持ち、月を変える関数を1つ渡す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 年と月の数字を2つ持つ
+          <b>(b)</b> カレンダーの部品が月の state を持つ
+          <b>(c)</b> ページに「前の月へ」「次の月へ」「今日へ」の3つの関数を作って渡す
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          <code>Date</code> にしたのは、12月の次が翌年の1月になる繰り上げ、月の日数、曜日を <code>Date</code> が計算してくれ、資料も多いため（月は0から数えるので、人に見せる所で <code>+ 1</code>）。
+          <strong>1日（0時）にそろえる</strong>のは、31日のまま次の月を作ると月が飛ぶため。月を変えるときは <code>setMonth()</code> で書き換えず、<strong>新しい <code>Date</code> を作る</strong>（同じオブジェクトだと React が変化に気づかない）。
+          (b) は、PR3-2 でページが表示中の月の予定を取るので、月を2か所で持つか、部品が Firestore に触ることになる（エントリ121）。
+          (c) より、<code>setDisplayMonth</code> をそのまま渡し、計算を部品のボタンに書く方が短い。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>カレンダーの見た目：日曜始まり、前後の月は出さない、今日は太字と線</h3>
+      <dl>
+        <dt>週の始まり</dt>
+        <dd>日曜。一般的なカレンダーに合わせた。1日の <code>getDay()</code>（日曜が <code>0</code>）が、そのまま先頭の空白のマスの数になる。</dd>
+        <dt>前後の月の日付</dt>
+        <dd>
+          出さずに空白にする。一度は「薄く出す」と決めたが、出すとかえって見にくく、計算も複雑になるので考え直した。月によって4〜6行になる。
+          （出していた場合、PR3-2 で前後の月の予定も取る必要があった）
+        </dd>
+        <dt>今日の印</dt>
+        <dd>
+          <code>font-bold ring-2 ring-indigo-500</code>。選考の段階の色（青・黄・緑・灰）と削除の赤を避けた。PR3-2 の「選んだ日」（背景）と「予定がある日」（点）と<strong>違う種類の目立たせ方</strong>にして、重なっても見分けられるようにした。<code>border</code> ではなく <code>ring</code> でマスの大きさを変えない。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>日付の処理は <code>lib/date.ts</code> にまとめる</h3>
+      <dl>
+        <dt>中身</dt>
+        <dd>
+          企業の登録ページにあった <code>todayString</code> を移し（<code>refactor</code>）、<code>YYYY-MM-DD</code> にする本体を <code>formatYmd</code> に切り出した。カレンダーの月の計算（<code>startOfMonth</code>・<code>addMonths</code>・<code>daysInMonth</code>・<code>firstWeekdayOfMonth</code>）とマスの並び（<code>createCalendarCells</code>）も同じファイルに置く。
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          画面と関係のない<strong>計算だけ</strong>の処理なので、ページや部品から切り離す。同じ処理（<code>+ 1</code> や <code>padStart</code>）を2か所に書かない。
+          マス1つは <code>Date | null</code> で表す（表示は <code>getDate()</code>、PR3-2 の予定との突き合わせは <code>formatYmd()</code> の両方に使える。日の数字や文字列だと、どちらかで組み立て直しが要る）。
+        </dd>
       </dl>
     </div>
   </section>

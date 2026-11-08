@@ -4,19 +4,10 @@
 
 import CompanyForm from "@/components/CompanyForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { todayString } from "@/lib/date";
 import { addCompany } from "@/lib/firestore";
 import type { CompanyInput } from "@/types/company";
 import { useRouter } from "next/navigation";
-
-// appliedAtの初期値として使うために、コンポーネントの外側に日付の計算処理を用意する。コンポーネントの外側に置くのは設計のため、todayStringはこのコンポーネントのstateを一切見ていません、独立した計算です。というのをコンポーネントの外に置くことで分からせる。
-function todayString(): string {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  // padStartは(目標の長さ、埋める文字)→文字にしか使えない
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 export default function NewCompanyPage() {
   // CompanyInput：ID以外の要素を指定(登録の際にはまだIDはないため)→ここで初期値に対して型をつけることでstatusがstringと推論されることを防ぐ。CompanyInputがなかったらstatusは７つの値から選ばれるというのが機械には分からない。
