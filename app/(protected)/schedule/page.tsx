@@ -3,7 +3,7 @@
 
 import Calendar from "@/components/Calendar";
 import { useAuth } from "@/contexts/AuthContext";
-import { startOfMonth } from "@/lib/date";
+import { startOfMonth, todayString } from "@/lib/date";
 import { getCompanies, getSchedules } from "@/lib/firestore";
 import type { Company } from "@/types/company";
 import type { Schedule } from "@/types/schedule";
@@ -16,6 +16,8 @@ export default function CalendarPage() {
   const [displayMonth, setDisplayMonth] = useState(startOfMonth(new Date()));
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  // カレンダーで選んだ日の値をstateとしてもつ
+  const [selectedDate, setSelectedDate] = useState(todayString());
   const { user } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function CalendarPage() {
     <div>
       <h1>カレンダー</h1>
       {/* setDisplayMonthはDateを受け取ってstateを変える関数なので、部品が求める型と合う。部品はonChangeMonthをボタンで行き先の月を計算して呼ぶ */}
-      <Calendar displayMonth={displayMonth} onChangeMonth={setDisplayMonth} scheduledDatesSet={scheduledDatesSet} />
+      <Calendar displayMonth={displayMonth} onChangeMonth={setDisplayMonth} scheduledDatesSet={scheduledDatesSet} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
     </div>
   );
 }
