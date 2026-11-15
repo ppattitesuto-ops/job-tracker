@@ -1,12 +1,10 @@
-// ⭐️ここはカレンダーを使うページからPropsを受け取ってカレンダーを表示するところ
+// ⭐️ここはカレンダーの部品。表示中の月はCalendarしか使わないので自分で持つ。選んだ日は下の一覧でも使うので、ページが持つ
 
 import { addMonths, createCalendarCells, formatYmd, startOfMonth, todayString } from "@/lib/date";
 import Button from "./Button";
+import { useState } from "react";
 
 type Props = {
-  displayMonth: Date;
-  // 表示する月を受け取るから引数はDate
-  onChangeMonth: (month: Date) => void;
   // Set<string>：予定がある日付（YYYY-MM-DDの文字列）を、重複なしで集めたもの
   // <>は型引数という。Setという集まりの中に何が入るのかを指定する。関数の引数が「値」を受け取るように、型が「型」を受け取る仕組み。
   scheduledDatesSet: Set<string>;
@@ -19,8 +17,10 @@ type Props = {
 // 固定の値を変数に持つ場合は名前をすべて大文字のスネークケースにする
 const CALENDAR_WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-// 画面に表示中の月を受け取ってカレンダーを描画する
-export default function Calendar({ displayMonth, onChangeMonth, scheduledDatesSet, selectedDate, onSelectDate }: Props) {
+export default function Calendar({ scheduledDatesSet, selectedDate, onSelectDate }: Props) {
+  // 初期値のstartOfMonth(new Date())はデータを取り終わってCalendarが初めて表示されたときの日付からその月の1日を返す
+  const [displayMonth, setDisplayMonth] = useState(startOfMonth(new Date()));
+
   const calendarCells = createCalendarCells(displayMonth);
 
   // 部品が描画されるたびに今日の日付として変わって欲しいからコンポーネントの中に置く
@@ -31,21 +31,21 @@ export default function Calendar({ displayMonth, onChangeMonth, scheduledDatesSe
       <Button
         variant="secondary"
         type="button"
-        onClick={() => onChangeMonth(addMonths(displayMonth, -1))}
+        onClick={() => setDisplayMonth(addMonths(displayMonth, -1))}
       >
         前の月へ
       </Button>
       <Button
         variant="secondary"
         type="button"
-        onClick={() => onChangeMonth(startOfMonth(new Date()))}
+        onClick={() => setDisplayMonth(startOfMonth(new Date()))}
       >
         今月へ
       </Button>
       <Button
         variant="secondary"
         type="button"
-        onClick={() => onChangeMonth(addMonths(displayMonth, 1))}
+        onClick={() => setDisplayMonth(addMonths(displayMonth, 1))}
       >
         次の月へ
       </Button>
