@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-11-08</b></span>
-      <span>エントリ <b>121</b></span>
-      <span>決定記録 <b>57</b></span>
-      <span>進捗 <b>フェーズ3：カレンダーの表示（PR3-1） → 予定と組み合わせる（PR3-2）へ</b></span>
+      <span>最終更新 <b>2026-11-15</b></span>
+      <span>エントリ <b>128</b></span>
+      <span>決定記録 <b>62</b></span>
+      <span>進捗 <b>フェーズ3：予定と組み合わせる（PR3-2） → リンクと仮のものの差し替え（PR3-3）へ</b></span>
     </div>
   </header>
 
@@ -693,6 +693,13 @@
       <li><a href="#e119">ブラウザの Console で、関数を試す</a></li>
       <li><a href="#e120">カレンダーのマスを並べる：空白のマスにも意味がある</a></li>
       <li><a href="#e121">state はページに置き、子は「もらった関数」で親に頼む</a></li>
+      <li><a href="#e122">予定は全部取る：月の範囲で取る案を、要件から覆した</a></li>
+      <li><a href="#e123">予定のある日の印と、選んだ日：<code>Set</code> と「選んだ日を残す」</a></li>
+      <li><a href="#e124">選んだ日の一覧：<code>filter</code>・<code>sort</code>・<code>find</code></a></li>
+      <li><a href="#e125">エンプティステートと見出し：1つの判断は1か所に書く</a></li>
+      <li><a href="#e126">月の state を Calendar に移す：理由が消えたら、決定を見直す</a></li>
+      <li><a href="#e127">詳細から戻ると、月と選んだ日が今日に戻る</a></li>
+      <li><a href="#e128">コミットメッセージの形と、確かめる手順</a></li>
     </ol>
   </nav>
 
@@ -8438,6 +8445,9 @@ git push --force-with-lease               # GitHub 側を、作り直したコ�
         <p>
           これは「部品が自分で取得してはいけない」という絶対の決まりではない。<strong>このアプリでは、データをページの全体で使うので、ページで取る方が合っている</strong>という判断（決定記録49 と同じ考え方）。カレンダーのエンプティステート（仕様書3-7）も、予定を持つページでなければ判断できない。
         </p>
+        <p>
+          <strong>2026-11-15 追記：</strong>PR3-2 で、<strong>予定はページで取る</strong>はそのまま、<strong>月の state は Calendar に移した</strong>。予定を全部取る方式に変え（エントリ122）、月ごとのエンプティステートも作らないと決めた（エントリ125）ので、ページが月を使う場面が無くなったため（エントリ126）。
+        </p>
 
         <div class="note check">
           <div class="note-label">子から親へ値を届ける</div>
@@ -8469,6 +8479,366 @@ git push --force-with-lease               # GitHub 側を、作り直したコ�
           <p>
             これは<strong>ログイン確認のレイアウトの中にあるから守られている</strong>だけ。ログイン確認の外（ログイン画面など）で今日の日付を表示すると、ビルドした日で固まる危険がある。
           </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 122 -->
+    <article class="entry" id="e122">
+      <div class="entry-no">122</div>
+      <div class="entry-body">
+        <h2>予定は全部取る：月の範囲で取る案を、要件から覆した</h2>
+
+        <p>
+          PR3-2 の最初は、「全部取る方が単純だと思うが、<strong>範囲で取る方が勉強になる</strong>」という理由で、表示中の月の範囲で取る案を選んでいた。
+          作り始める前に考え直し、<strong>全部取る</strong>方式に変えた。就活の予定はそこまで多くならない。範囲で取るやり方は、次のアプリで DB を自作するときに学ぶ。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">(a) 表示中の月だけ取る</th><th scope="col">(b) 全部取る（採用）</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">取りに行く回数</th><td>月を変えるたびに1回</td><td>ページを開いたときに1回</td></tr>
+              <tr><th scope="row">読む件数</th><td>1か月分ずつ。予定が増えても変わらない</td><td>毎回すべて。予定が増えるほど増えるが、この規模では小さい</td></tr>
+              <tr><th scope="row">月をすばやく切り替えたとき</th><td>古い月の結果が<strong>後から届いて上書きする</strong>ことがある。<code>useEffect</code> の後始末が要る</td><td>取り直さないので<strong>起きない</strong></td></tr>
+              <tr><th scope="row">作り</th><td>範囲の取得（<code>where</code> を2つ）と、月が変わるたびの取得</td><td><code>getSchedules(uid)</code> を1回呼ぶだけ</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label"><code>getSchedules</code> と並べ方</div>
+          <p>
+            <code>orderBy("date", "asc")</code> で日付の古い順に取る。同じ日の中の開始時刻の順は、取ってきた後に <code>sort</code> で並べる。
+            Firestore で <code>date</code> と <code>startTime</code> の2つで並べると、<strong>組み合わせの索引</strong>を作る必要がある。取った後に並べ替えれば済むので、索引は作らない。
+          </p>
+          <p>
+            ページは <code>Promise.all</code> で、企業と予定を<strong>同時に</strong>取る。企業が要るのは、一覧に<strong>企業名</strong>を出すため（予定には <code>companyId</code> しか無い）。結果は、渡した順に返ってくる。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">学ぶ予定だったことが、設計の変更で要らなくなった</div>
+          <p>
+            PR3-2 の計画には「古い月の結果が後から届いて上書きする問題を、<code>useEffect</code> の後始末の関数で防ぐ」があった。全部取る方式では月を変えても取り直さないので、<strong>この問題そのものが起きない</strong>。
+            後始末の関数は、取得の条件（依存配列の値）が<strong>途中で変わる</strong>画面で必要になる。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>(b) の弱点は「予定が増えるほど、毎回の読み取りが増える（Spark の上限にも関わる）」</dt>
+            <dd>
+              件数の話としては正しいが、この規模では差が小さい。一方で、(a) には<strong>取りに行く回数の多さ</strong>と<strong>古い結果の上書き</strong>という弱点があり、それを並べていなかった。
+              就活の予定の量という<strong>要件から</strong>見直し、(b) に覆したのは学習者
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 123 -->
+    <article class="entry" id="e123">
+      <div class="entry-no">123</div>
+      <div class="entry-body">
+        <h2>予定のある日の印と、選んだ日：<code>Set</code> と「選んだ日を残す」</h2>
+
+        <div class="note check">
+          <div class="note-label"><code>Set</code>：予定がある日だけを、重複なしで集める</div>
+          <p>
+            カレンダーで知りたいのは「<strong>その日に予定があるか</strong>」だけ。ページで予定の配列から日付だけを <code>map</code> で取り出し、<code>new Set(…)</code> で重複を1つにまとめて、Calendar に渡す。マスごとに <code>scheduledDatesSet.has(cellYmd)</code> で調べ、あれば点を付ける。
+          </p>
+          <p>
+            Props の型は <code>Set&lt;string&gt;</code>。<code>&lt;&gt;</code> は<strong>型引数</strong>で、「何が入った Set か」を指定する。関数が値を受け取るように、型が型を受け取る仕組み。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">選んだ日の state はページが持つ</div>
+          <ul>
+            <li>選んだ日は、Calendar（選んだ日の背景）と、ページの下の一覧（その日の予定）の<strong>両方</strong>が使う。だから共通の親のページが持ち、Calendar には値と <code>onSelectDate={setSelectedDate}</code> を渡す</li>
+            <li>最初は<strong>今日</strong>を選んだ状態にする。何を押せばよいかが、見て分かる</li>
+            <li>月を変えても、選んだ日は<strong>残す</strong>。下の一覧の見出しに「<code>2026-11-15</code>の予定」と<strong>日付を出す</strong>ので、表示中の月と違う日の予定が出ていても迷わない</li>
+          </ul>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正</div>
+          <dl class="wrong-right">
+            <dt>月を変えたら、選んでいない状態に戻す方が自然（学習者の最初の案。講師も賛成していた）</dt>
+            <dd>
+              戻すと、月を変えるたびに下の一覧が<strong>空になる</strong>。予定を見ながら月を進めたいときに使いにくい。残しておけば、予定のある日を押した瞬間に一覧が切り替わる。
+              学習者が使い方を想像し直して覆した。講師は、賛成したときにこの使い方を考えていなかった
+            </dd>
+          </dl>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">マスは素の <code>&lt;button&gt;</code> にする（共通ボタンの例外）</div>
+          <p>
+            押せるマスは <code>&lt;div&gt;</code> ではなく <code>&lt;button type="button"&gt;</code> にする。キーボードでも移動して押せる。
+            共通の <code>Button</code> には「選んだ日は背景を塗る」に合う見た目が無いので、ここだけ<strong>素のボタン</strong>にし、理由をコメントに残した（決定記録）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 124 -->
+    <article class="entry" id="e124">
+      <div class="entry-no">124</div>
+      <div class="entry-body">
+        <h2>選んだ日の一覧：<code>filter</code>・<code>sort</code>・<code>find</code></h2>
+
+<pre><code>const selectedDateSchedules = schedules
+  .filter((schedule) =&gt; schedule.date === selectedDate)
+  .sort((a, b) =&gt; a.startTime.localeCompare(b.startTime));</code></pre>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">メソッド</th><th scope="col">返すもの</th><th scope="col">ここでの使い方</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>filter</code></th><td>条件に合う要素の<strong>新しい配列</strong></td><td>選んだ日の予定だけを取り出す</td></tr>
+              <tr><th scope="row"><code>sort</code></th><td><strong>元の配列を並べ替えて</strong>返す</td><td>開始時刻の順に並べる</td></tr>
+              <tr><th scope="row"><code>find</code></th><td>条件に合う<strong>最初の1つ</strong>。無ければ <code>undefined</code></td><td>予定の <code>companyId</code> から企業を探す</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note check">
+          <div class="note-label"><code>sort</code> の読み方</div>
+          <ul>
+            <li><code>a</code> と <code>b</code> は、配列の中の<strong>予定のオブジェクトそのもの</strong>。<code>sort</code> は2つずつ取り出して比べる</li>
+            <li>比べる関数がマイナスを返せば <code>a</code> が前、プラスなら <code>b</code> が前。文字列は引き算できないので <code>localeCompare</code> で比べる</li>
+            <li><code>"09:30"</code> と <code>"14:00"</code> は、<strong>桁をそろえた文字列</strong>なので、文字の順が時刻の順になる（<code>YYYY-MM-DD</code> と同じ理由）</li>
+            <li><code>sort</code> は元の配列を書き換える。state の配列に直接使うと、<strong>知らないうちに state が書き換わる</strong>。ここでは <code>filter</code> が作った新しい配列を並べているので、state は変わらない</li>
+          </ul>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">企業が見つからないとき</div>
+          <p>
+            企業が削除されていると、<code>find</code> は <code>undefined</code> を返す。そのまま <code>foundCompany.name</code> と書くとエラーで止まるので、三項演算子で「企業が見つかりません」に分ける。
+            <code>find</code> の結果は企業の<strong>オブジェクト</strong>なので、名前は <code>isCompanyId</code>（真偽値に見える）ではなく <code>foundCompany</code>。表示する文字列は <code>displayCompanyName</code>（詳細ページとそろえる）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：JSX の中の <code>;</code></div>
+          <dl class="wrong-right">
+            <dt><code>(</code> <code>&lt;ul&gt;…&lt;/ul&gt;;</code> <code>)</code> のように、JSX の後ろに <code>;</code> を付ける</dt>
+            <dd>
+              <code>;</code> は<strong>文の終わり</strong>に付けるもので、<code>( )</code> の<strong>外</strong>に書く。<code>( )</code> の中に書くと <code>')' expected</code>（TS1005）になる。
+              タグとタグの間に書いた <code>;</code> は、エラーにならず<strong>文字として画面に出る</strong>
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 125 -->
+    <article class="entry" id="e125">
+      <div class="entry-no">125</div>
+      <div class="entry-body">
+        <h2>エンプティステートと見出し：1つの判断は1か所に書く</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">空になる場面</th><th scope="col">出すもの</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">(1) 予定が1件も無い</th><td>「まだ予定がありません。最初の予定を登録しましょう！」と <code>/schedule/new</code> へのリンク。<strong>見出しは出さない</strong>。カレンダーは出したまま</td></tr>
+              <tr><th scope="row">(2) 選んだ日に予定が無い</th><td>見出しと「予定がありません」</td></tr>
+              <tr><th scope="row">(3) 表示中の月に予定が無い</th><td>何も出さない。<strong>点が無いことで見て分かる</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          (1) は企業の一覧と同じ文と導線にそろえた。予定の登録ページは、企業が0件なら「先に企業を登録してください」と案内するので、<strong>案内が順番につながる</strong>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">見出しは「区画の名前」</div>
+          <p>
+            見出しの役目は、<strong>そこが何の区画か</strong>を示すこと。「予定が無い」という状態は本文に書く。スクリーンリーダーの利用者は見出しの一覧でページの中を移動するので、見出しが「予定がありません」だと何の区画か分からない。
+            (1) のときは区画全体が「最初の予定を登録しましょう」という案内なので、「〇月〇日の予定」という<strong>1日の見出しが当てはまらない</strong>。
+          </p>
+          <p>
+            「何も出さない」は、<code>&lt;h2&gt;&lt;span&gt;&lt;/span&gt;&lt;/h2&gt;</code> では達成できない。文字は見えないが<strong>中身の無い見出し</strong>が残り、見出しの一覧に名前の無い項目が入る。余白を付けると、何も無い所に余白だけが出る。
+            React で何も出さないのは <code>null</code>。ただし <code>&lt;h2&gt;</code> が <code>return</code> の中に固定されていると、中身を <code>null</code> にしても <code>&lt;h2&gt;&lt;/h2&gt;</code> が残るので、<strong>タグごと</strong>出すかどうかを決める。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：組み立て直すまでの3回</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">書いた形</th><th scope="col">問題</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">見出しの if と一覧の if を別に書く</th><td><code>schedules.length === 0</code> が<strong>2か所</strong>にある。片方だけ変えると、見出しと本文が食い違う</td></tr>
+                <tr><th scope="row">if を3つ横に並べ、見出しは「予定がある」場合だけ</th><td>予定の無い日を選ぶと<strong>見出しが消え</strong>、どの日の話か分からない。押すたびに見出しが出たり消えたりする</td></tr>
+                <tr><th scope="row">(2) と一覧の両方に <code>&lt;h2&gt;</code> を書く</th><td>動くが、<strong>同じ見出しが2か所</strong>。見た目（Tailwind）や日付の形を変えるとき、片方を直し忘れると食い違う</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            最後は<strong>2段の if</strong> にした。先に内側の2択（「予定がありません」か一覧か）を <code>selectedDateContent</code> に決め、外側の if は「0件か、そうでないか」。そうでない側で、見出しと <code>selectedDateContent</code> を並べる。<code>&lt;h2&gt;</code> は1か所になる。
+            内側の変数を先に作っても、<strong>使うかどうかは外側が決める</strong>ので、0件のときは使われないだけ。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">要素は、置かれた場所での役割で選ぶ</div>
+          <ul>
+            <li>カレンダーの「予定がありません」は、見出しの下に<strong>それだけで置かれた文</strong>なので段落の <code>&lt;p&gt;</code></li>
+            <li>予定詳細の「なし」「場所が入力されていません」は、<code>&lt;dt&gt;</code> に対する<strong>値</strong>。値であることは <code>&lt;dd&gt;</code> が示しているので、<code>&lt;span&gt;</code> のままでよい</li>
+            <li><code>&lt;span&gt;</code> は文の中の一部を囲む要素で、中に入れてよいのは文字の仲間だけ。<code>&lt;span&gt;&lt;ul&gt;…&lt;/ul&gt;&lt;/span&gt;</code> は HTML の決まりに反する（ブラウザは黙って表示する）</li>
+            <li>JSX の <code>( )</code> は<strong>複数行</strong>のときに付ける。1行に収まるなら付けない。こうした書式は本来フォーマッター（Prettier など）に任せるが、依存が増えるので今は手でそろえる</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 126 -->
+    <article class="entry" id="e126">
+      <div class="entry-no">126</div>
+      <div class="entry-body">
+        <h2>月の state を Calendar に移す：理由が消えたら、決定を見直す</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">時点</th><th scope="col">月の state をページに置く理由</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">PR3-1</th><td>ページが<strong>表示中の月の予定</strong>を取るため（エントリ121）</td></tr>
+              <tr><th scope="row">予定を全部取ると決めた</th><td>1つ目の理由が消えた。「<strong>表示中の月に予定が無い</strong>エンプティステートを、ページが判断するため」とコメントを書き換えた（<code>docs:</code> のコミット）</td></tr>
+              <tr><th scope="row">エンプティステートを決めた</th><td>(3) 月に予定が無いときは「何も出さない」。<strong>2つ目の理由も消えた</strong></td></tr>
+              <tr><th scope="row">見直し</th><td>ページは受け取った月をそのまま渡すだけで、自分では使っていない。<strong>理由が無い</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          そのまま PR をマージすると、<strong>今のコードに当てはまらない理由</strong>が main に入る。だから PR3-2 の中で片付けた。
+          一方、<strong>予定をページで取る理由</strong>（カレンダーの下の一覧でも使う）は、全部取る方式でも成り立つ。理由が消えたのは月の state の方だけ、と学習者が切り分けた。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">state は、使う部品たちに一番近い共通の親に置く</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">state</th><th scope="col">使う部品</th><th scope="col">置く場所</th></tr></thead>
+              <tbody>
+                <tr><th scope="row"><code>selectedDate</code></th><td>ページ（見出しと一覧）と Calendar（選んだ日の背景）</td><td><strong>ページ</strong></td></tr>
+                <tr><th scope="row"><code>displayMonth</code></th><td>Calendar だけ</td><td><strong>Calendar 自身</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Calendar の Props は5つから3つ（<code>scheduledDatesSet</code>・<code>selectedDate</code>・<code>onSelectDate</code>）になり、ページから月のことが消えた。
+            Calendar で <code>useState</code> を使っても <code>"use client"</code> は要らない。<code>"use client"</code> はサーバーとクライアントの<strong>境目</strong>の印で、ページに付いていれば、そこから import される部品はクライアント側に入る（ScheduleForm・CompanyForm と同じ）。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label"><code>useState</code> の初期値が計算されるのはいつか</div>
+          <p>
+            ページは <code>if (loading) return …</code> で<strong>早期リターン</strong>している。読み込み中は、その下の <code>&lt;Calendar /&gt;</code> まで実行が届かず、Calendar はまだ無い。
+            データを取り終わって <code>setLoading(false)</code> → ページが描き直されて初めて Calendar が表示され、そこで <code>startOfMonth(new Date())</code> が計算される。
+            さらに外側では、<code>(protected)/layout.tsx</code> がログインを確かめる間ページ自体を描かない。順番は「layout がログインを確かめる → ページがデータを取る → Calendar が表示される」。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">確かめ方</div>
+          <ul>
+            <li>Props を変えたら、使っている側の直し漏れは <code>npm run typecheck</code> が<strong>エラーの一覧</strong>として示す。型を付けておく大きな利点</li>
+            <li>使わなくなった <code>startOfMonth</code> の import は、typecheck では出ず <strong>lint でだけ</strong>警告された（今の TypeScript の設定は、使っていない import を止めない）。確かめるときは両方を実行する</li>
+            <li><code>refactor</code> は「<strong>画面の動きを変えない</strong>改善」。月の切り替えと、月を変えても選んだ日が残ることを画面で確かめてから、その種別でコミットした</li>
+          </ul>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>1つ目の理由が消えても、「表示中の月に予定が無い」エンプティステートを判断するために、月はページに置いたままでよい</dt>
+            <dd>
+              2つ目の理由は講師が示したもので、<strong>まだ決めていない</strong>エンプティステートを前提にしていた。その後 (3) を「何も出さない」と決めたとき、講師は賛成したが、<strong>この理由が消えることを指摘しなかった</strong>。
+              気づいたのは、一覧を書き終えた後の確認のとき。決定を変えたら、それを<strong>前提にしていた理由やコメント</strong>が残っていないかを確かめる
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 127 -->
+    <article class="entry" id="e127">
+      <div class="entry-no">127</div>
+      <div class="entry-body">
+        <h2>詳細から戻ると、月と選んだ日が今日に戻る</h2>
+
+        <p>
+          12月の予定のある日を選び、一覧から詳細ページへ移り、ブラウザの「戻る」でカレンダーに戻ると、<strong>月は今月、選んだ日は今日</strong>に戻っていた。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">なぜ戻るのか</div>
+          <p>
+            別のページへ移ると、前のページの部品は<strong>画面から外されて捨てられ</strong>、<code>useState</code> の値も一緒に消える。戻るとページは一から作り直され、どの state も<strong>初期値</strong>から始まる（再読み込みでも同じ。データも取り直す）。
+            Next.js の <code>cacheComponents</code> を有効にすると、移った先から戻っても state が残る（React の <code>&lt;Activity&gt;</code> で、最大3つのページを隠して残す）が、このプロジェクトでは有効にしていない。
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">案</th><th scope="col">中身</th><th scope="col">考えること</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">(a) 受け入れる（採用）</th><td>戻ると今日に戻る</td><td>何も増えない</td></tr>
+              <tr><th scope="row">(b) 選んだ日を URL に入れる</th><td><code>/schedule?date=2026-12-03</code>。戻る・再読み込みでも残る</td><td><code>useSearchParams</code>、<code>&lt;Suspense&gt;</code>、URL の値（<code>?date=abc</code>）の検査が増える</td></tr>
+              <tr><th scope="row">(c) <code>cacheComponents</code> を有効にする</th><td>全ページで、戻ると state が残る</td><td>フォームの書きかけや開いたダイアログも残る。<strong>1つの画面のために全ページの動きを変える</strong>のは影響が大きすぎる</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Next.js の資料（<code>use-search-params.md</code>）によると、<code>useSearchParams</code> を <code>&lt;Suspense&gt;</code> で囲まずに使うと、<strong><code>npm run dev</code> では動くのに <code>npm run build</code> で失敗する</strong>。開発中に気づけない種類の問題。
+        </p>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：(a) を支える理由</div>
+          <dl class="wrong-right">
+            <dt>戻るを押した時点で、前とは違うものを選びたい可能性が高いので、今日に戻ってよい</dt>
+            <dd>
+              違うものを選ぶとしても、それが<strong>同じ月の近い日</strong>なら、元の場所が残っている方が早い（12月3日の後に12月10日を見たいなら、今は「次の月へ」と10日の2回、残っていれば1回）。「違うものを選びたい」は「今日に戻る」理由になっていなかった。
+              考え直した理由：予定のほとんどは今月に入るので、戻ったときに今月が出るのは<strong>元の月が残っているのと同じ</strong>。同じ月の中なら、次の日を押すのは<strong>どちらでも1回</strong>。手間が増えるのは月をまたぐときだけで、そのために URL の処理と確認を作るのは割に合わない
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 128 -->
+    <article class="entry" id="e128">
+      <div class="entry-no">128</div>
+      <div class="entry-body">
+        <h2>コミットメッセージの形と、確かめる手順</h2>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書いたもの</th><th scope="col">直したこと</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>…の予定一覧とエンプティステート</code></th><td>名詞で終わると、追加か修正か削除かが読めない。<strong>動詞で</strong>終える</td></tr>
+              <tr><th scope="row"><code>…を作成</code></th><td>「作成」は名詞（体言止め）。このアプリで「作成」は<strong>予定のデータを作る</strong>ことに読める。したのは画面に出すこと</td></tr>
+              <tr><th scope="row"><code>…持つように変更した</code></th><td>過去形。コミットは「<strong>当てると何が起きるか</strong>」を書くので現在形。「〜ように変更」は言葉が重なる</td></tr>
+            </tbody>
+          </table>
+        </div>
+<pre><code>feat: 選んだ日の予定一覧とエンプティステートを表示する
+refactor: 表示中の月をページからカレンダーに移動する</code></pre>
+
+        <div class="note warn">
+          <div class="note-label">コミットまでの手順で起きたこと</div>
+          <ul>
+            <li><code>git status</code> で <code>.env.local</code> が入っていないことを<strong>自分の目で</strong>確かめる。ほかの人が確かめても、この手順の代わりにならない</li>
+            <li><code>components/Calencar.tsx</code> と打ち間違えると、Git は <code>pathspec … did not match any files</code> で止まり、何も起きない。<strong>Tab キー</strong>でファイル名を補えば打ち間違えない</li>
+            <li><code>git diff --cached</code> の長い差分は、ページャーが1画面ずつ出す。途中で <code>q</code> を押すとそこで終わり、<strong>残りを見ないまま</strong>になる。後からなら <code>git show &lt;ハッシュ&gt; -- &lt;ファイル&gt;</code> で見られる</li>
+            <li>ターミナルの折り返しで、貼り付けた差分の空白がずれて見えることがある（<code>length=== 0</code>）。中身は <code>git show</code> で確かめた</li>
+          </ul>
         </div>
       </div>
     </article>
@@ -9848,6 +10218,7 @@ git push --force-with-lease               # GitHub 側を、作り直したコ�
           マージ＝公開なので、ナビゲーションのリンクは PR3 まで置かない。登録フォームは保存後に詳細へ移るので、PR1 に詳細ページを入れた。
           <br><strong>PR3 で一緒に直すもの</strong>（PR2 で追記）：予定の削除の後の行き先（今は仮にダッシュボード）をカレンダーに変える／予定の詳細・編集ページの「見つかりません」にカレンダーへ戻るリンクを足す。
           <br><strong>PR3 は2つに分けた</strong>（PR3-1 で追記）：表示の PR3-1 と、予定と組み合わせる PR3-2。上の「一緒に直すもの」とナビゲーションのリンクは PR3-2 で行う（決定記録の「カレンダー（PR3）を…分ける」）。
+          <br><strong>PR3-2 もさらに分けた</strong>（PR3-2 で追記）：PR3-2 は予定を出すところまで。ナビゲーションのリンクと上の「一緒に直すもの」は <strong>PR3-3</strong> で行う。「月の範囲で取る関数」は作らず、予定を全部取る（決定記録「予定は全部取る」）。
         </dd>
         <dt>画面ごとに決めること</dt>
         <dd>
@@ -9971,11 +10342,16 @@ git push --force-with-lease               # GitHub 側を、作り直したコ�
           日付の計算は間違えやすい。先にカレンダーを仕上げてから予定と組み合わせれば、表示がおかしいときに<strong>計算とデータのどちらを直せばよいか</strong>分かる。
           PR3-1 も、日付の並び（1日の曜日、月末、年またぎ）を画面で確かめられるので、「確かめられる単位」の条件を満たす。
         </dd>
+        <dt>PR3-2 で追記</dt>
+        <dd>
+          PR3-2 も2つに分けた。<b>PR3-2</b> 予定の取得・印・選んだ日の一覧・エンプティステート（予定を出す）<b>PR3-3</b> ナビゲーションのリンクと、仮のものの差し替え。
+          理由は同じ考え方で、レビューする人が1つの PR で<strong>1つの目的</strong>だけを見られるようにするため。PR3-3 は「カレンダーが完成してから入口を開ける」区切りになる。
+        </dd>
       </dl>
     </div>
 
     <div class="decision">
-      <h3>表示中の月は、1日にそろえた <code>Date</code> でページが持ち、月を変える関数を1つ渡す</h3>
+      <h3>表示中の月は、1日にそろえた <code>Date</code> で持つ（持つ場所は PR3-2 でページから Calendar に移した）</h3>
       <dl>
         <dt>捨てた案</dt>
         <dd>
@@ -9989,6 +10365,12 @@ git push --force-with-lease               # GitHub 側を、作り直したコ�
           <strong>1日（0時）にそろえる</strong>のは、31日のまま次の月を作ると月が飛ぶため。月を変えるときは <code>setMonth()</code> で書き換えず、<strong>新しい <code>Date</code> を作る</strong>（同じオブジェクトだと React が変化に気づかない）。
           (b) は、PR3-2 でページが表示中の月の予定を取るので、月を2か所で持つか、部品が Firestore に触ることになる（エントリ121）。
           (c) より、<code>setDisplayMonth</code> をそのまま渡し、計算を部品のボタンに書く方が短い。
+        </dd>
+        <dt>PR3-2 で覆した</dt>
+        <dd>
+          <strong>(b) Calendar が持つ</strong>に変えた。上の (b) を捨てた理由（ページが月の予定を取る）は、予定を全部取ると決めて消えた。代わりに立てた理由（月に予定が無いエンプティステートをページが判断する）も、そのエンプティステートを作らないと決めて消えた（エントリ126）。
+          今は月を使うのが Calendar だけなので、「state は使う部品たちに一番近い共通の親に置く」に従う。Calendar がボタンで <code>setDisplayMonth</code> を直接呼ぶので、(c) の「関数を渡す」話も無くなった。<code>Date</code> を1日にそろえる理由はそのまま。
+          選んだ日（<code>selectedDate</code>）はページと Calendar の両方が使うので、ページに残す（決定記録「選んだ日は今日から始め…」）。
         </dd>
       </dl>
     </div>
@@ -10021,6 +10403,103 @@ git push --force-with-lease               # GitHub 側を、作り直したコ�
         <dd>
           画面と関係のない<strong>計算だけ</strong>の処理なので、ページや部品から切り離す。同じ処理（<code>+ 1</code> や <code>padStart</code>）を2か所に書かない。
           マス1つは <code>Date | null</code> で表す（表示は <code>getDate()</code>、PR3-2 の予定との突き合わせは <code>formatYmd()</code> の両方に使える。日の数字や文字列だと、どちらかで組み立て直しが要る）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>予定は全部取る（月の範囲で取るのは、次のアプリで学ぶ）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 表示中の月の範囲（その月の1日以上、最終日以下）だけ取り、月を変えるたびに取り直す（一度は「勉強になる」として採用した）
+          <b>(b)</b> 同じ日の中の並びも Firestore に任せる（<code>date</code> と <code>startTime</code> の組み合わせの索引を作る）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          就活の予定はそこまで多くならないので、全部取っても読む量は小さく、Spark の上限にも遠い。月を変えても取り直さないので、読み込み中の表示も出ず、<strong>古い結果が後から届いて上書きする問題が起きない</strong>（エントリ122）。範囲の取得は、次のアプリで DB を自作するときに学ぶ。
+          同じ日の中の並びは、取った後に <code>localeCompare</code> で並べれば済むので、索引を作らない。
+        </dd>
+        <dt>考え直す条件</dt>
+        <dd>予定が数百件を大きく超え、ページを開くたびの読み取りが気になるようになったら、(a) を考え直す。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>選んだ日は今日から始め、月を変えても残し、一覧の見出しに日付を出す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 最初は何も選んでいない状態にする
+          <b>(b)</b> 月を変えたら、選んでいない状態に戻す（一度は採用した）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          今日を選んだ状態で始めると、日付を押せば下に予定が出ることが、見て分かる。
+          月を変えるたびに選んだ日を消すと、下の一覧が空になり、<strong>予定を見ながら月を進めたいとき</strong>に使いにくい（エントリ123）。
+          残すと、表示中の月と下の一覧の日が食い違うことがあるので、見出しに「<code>2026-11-15</code>の予定」と<strong>日付を出す</strong>。
+        </dd>
+        <dt>作り</dt>
+        <dd>
+          選んだ日はページと Calendar の両方が使うので、ページが持つ。予定のある日は、日付だけを重複なしで集めた <code>Set&lt;string&gt;</code> にして渡し、マスごとに <code>has</code> で調べる（知りたいのは「その日に予定があるか」だけ）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>カレンダーのマスは、共通の <code>Button</code> ではなく素の <code>&lt;button&gt;</code> にする</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 共通の <code>Button</code> を使う（4つの <code>variant</code> のどれかの見た目になる）</dd>
+        <dt>理由</dt>
+        <dd>
+          押せるマスは、キーボードでも移動して押せるように <code>&lt;div&gt;</code> ではなくボタンにする（<code>Tab</code> でマスに順番に移れることを確かめた）。
+          ただ、カレンダーのマスは、丸い枠や塗りの「<strong>操作のボタン</strong>」とは見た目も役割も違い、共通の <code>Button</code> には「選んだ日は背景を塗る」に合う見た目が無い。
+          決定記録「ボタンは4つの <code>variant</code> に限り…」の<strong>例外</strong>として素の <code>&lt;button type="button"&gt;</code> にし、理由をコードのコメントにも残した。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>カレンダーのエンプティステート：全体で0件は案内と導線、選んだ日に0件は一文、月に0件は何も出さない</h3>
+      <dl>
+        <dt>中身</dt>
+        <dd>
+          <b>(1)</b> 予定が1件も無い：「まだ予定がありません。最初の予定を登録しましょう！」と <code>/schedule/new</code> へのリンク。<strong>見出しは出さない</strong>。カレンダーは出したまま
+          <b>(2)</b> 選んだ日に予定が無い：見出しと「予定がありません」
+          <b>(3)</b> 表示中の月に予定が無い：何も出さない
+        </dd>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> (1) のとき、企業の一覧と同じくページ全体を案内に置き換える
+          <b>(b)</b> (1) のときも、見出し「〇〇の予定」を出す
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          (1) の文と導線は企業の一覧にそろえ、予定の登録ページの「先に企業を登録してください」と<strong>案内が順番につながる</strong>。カレンダーは予定が無くても日付を見る道具として使えるので、(a) にしない。
+          見出しは区画の名前で、(1) のときは区画全体が案内なので、1日の見出しは当てはまらず、本文と同じことを言い直すだけになる（(b) を捨てた。エントリ125）。
+          (3) は、点が無いことで見て分かる。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>詳細から戻ると、表示中の月と選んだ日が今日に戻ることを、いまは受け入れる</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> 選んだ日を URL に入れる（<code>/schedule?date=…</code>。<code>useSearchParams</code> と <code>&lt;Suspense&gt;</code>、URL の値の検査が要る）
+          <b>(b)</b> <code>cacheComponents</code> を有効にして、戻ったときに state を残す
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          予定のほとんどは今月に入るので、戻ったときに今月が出るのは、元の月が残っているのと同じ。同じ月の中なら、次の日を押す手間は<strong>どちらでも1回</strong>で、増えるのは月をまたぐときだけ。そのために URL の処理と確認を作るのは割に合わない（エントリ127）。
+          (b) は全ページの動きを変える（フォームの書きかけや開いたダイアログも残る）ので、1つの画面の問題に対して影響が大きすぎる。
+        </dd>
+        <dt>考え直す条件</dt>
+        <dd>
+          予定が月をまたいで入ることが多くなり、戻るたびに月を移り直すのが手間になったら、(a) を考え直す。
+          作るなら、PR3-3 の「削除の後にカレンダーへ戻す」「見つかりませんから戻るリンク」の行き先も <code>?date=…</code> にできる。
         </dd>
       </dl>
     </div>
