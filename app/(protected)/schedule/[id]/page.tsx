@@ -79,8 +79,8 @@ export default function SchedulePage() {
     setDeleteError("");
     try {
       await deleteSchedule(user.uid, paramsId);
-      // 今は仮でダッシュボード、PR3でカレンダーへの遷移に変える
-      router.push("/");
+      // 消した後に予定一覧があるカレンダーへ遷移する→削除した予定の詳細ページを履歴に残さないreplaceを採用
+      router.replace("/schedule");
       // 成功したら画面を離れる前提なのでtrueからfalseに戻さない
       setHasDeleted(true);
     } catch {
