@@ -15,6 +15,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
   // ローディングがfalse、ユーザー情報がない場合にloginページに遷移する処理
   useEffect(() => {
     if (!loading && user === null) {
+      // router.replaceは今いる履歴の1件を置き換える→「戻る」で入れないページに戻れないようにする
       router.replace("/login");
     }
   }, [user, loading, router])
