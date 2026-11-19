@@ -94,7 +94,7 @@ export default function SchedulePage() {
   if (error) return <div>{error}</div>;
   if (!schedule) return (
     <div>
-      <div>予定が見つかりません</div>
+      <div>見つかりません</div>
       <Link href="/schedule">カレンダーへ戻る</Link>
     </div>
   );
