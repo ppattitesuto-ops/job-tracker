@@ -95,7 +95,7 @@ export default function SchedulePage() {
   if (!schedule) return (
     <div>
       <div>予定が見つかりません</div>
-      {/* 今はまだカレンダーページを作っていないためリンクは置かない→PR3でカレンダーへ戻るリンクを足す */}
+      <Link href="/schedule">カレンダーへ戻る</Link>
     </div>
   );
 
