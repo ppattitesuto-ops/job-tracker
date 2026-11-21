@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-11-15</b></span>
-      <span>エントリ <b>128</b></span>
-      <span>決定記録 <b>62</b></span>
-      <span>進捗 <b>フェーズ3：予定と組み合わせる（PR3-2） → リンクと仮のものの差し替え（PR3-3）へ</b></span>
+      <span>最終更新 <b>2026-11-21</b></span>
+      <span>エントリ <b>132</b></span>
+      <span>決定記録 <b>65</b></span>
+      <span>進捗 <b>フェーズ3：仮のものの差し替え（PR3-3） → アプリ全体のナビゲーション（PR3-4）へ</b></span>
     </div>
   </header>
 
@@ -700,6 +700,10 @@
       <li><a href="#e126">月の state を Calendar に移す：理由が消えたら、決定を見直す</a></li>
       <li><a href="#e127">詳細から戻ると、月と選んだ日が今日に戻る</a></li>
       <li><a href="#e128">コミットメッセージの形と、確かめる手順</a></li>
+      <li><a href="#e129">削除した後の履歴：<code>router.push</code> と <code>router.replace</code></a></li>
+      <li><a href="#e130">小文字の <code>&lt;link&gt;</code>：中身を持てない要素と、<code>error.tsx</code></a></li>
+      <li><a href="#e131">ナビゲーションがどこにも無かった：PR を分け直す</a></li>
+      <li><a href="#e132">変更の持ち越しと、コミットの種別・言葉の選び方</a></li>
     </ol>
   </nav>
 
@@ -8843,6 +8847,191 @@ refactor: 表示中の月をページからカレンダーに移動する</code>
       </div>
     </article>
 
+    <!-- 129 -->
+    <article class="entry" id="e129">
+      <div class="entry-no">129</div>
+      <div class="entry-body">
+        <h2>削除した後の履歴：<code>router.push</code> と <code>router.replace</code></h2>
+
+        <p>
+          予定を削除した後の行き先を、仮のダッシュボード（決定記録52）からカレンダーに変えた。確かめるときに「戻る」を押すと、<strong>削除した予定の「見つかりません」</strong>が出た。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col"></th><th scope="col">履歴</th><th scope="col">削除した後の履歴</th><th scope="col">「戻る」を押すと</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>router.push</code></th><td><strong>1件足す</strong></td><td>カレンダー → 詳細（削除済み） → カレンダー</td><td>削除した予定の詳細が作り直され、取りに行くと無いので「見つかりません」</td></tr>
+              <tr><th scope="row"><code>router.replace</code></th><td>今の1件を<strong>置き換える</strong></td><td>カレンダー → カレンダー</td><td>削除する前に見ていたカレンダー（取り直すので、削除した予定は出ない）</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          削除した予定のページは、もう開いても意味が無いので、<strong>履歴に残さない</strong> <code>replace</code> にした。
+          <code>(protected)/layout.tsx</code> がログインしていない人を <code>/login</code> へ送る所でも、すでに <code>replace</code> を使っていた。「戻る」で<strong>入れないページ</strong>に戻らないようにするためで、同じ考え方。理由をコメントに足した（<code>docs:</code> のコミット）。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">同じ判断を、企業にも当てはめた</div>
+          <p>
+            企業の削除も <code>router.push("/companies")</code> で、同じことが起きていた。決めたことは1つ（削除した後は、そのページを履歴に残さない）なので、<strong>この PR で企業も直した</strong>。
+            1つの PR なら、レビューする人はその判断を1か所で見られ、<code>main</code> で予定と企業の動きが食い違う期間も無い。ブランチ名からは読み取れないので、コミットは分け、PR の本文に「同じ理由で企業も直した」と書く。
+          </p>
+          <p>
+            コメントは予定と同じ形にした（「〜へ遷移する→削除した〇〇の詳細ページを履歴に残さない replace を採用」）。理由を書かないと、後で読んだ人が「<code>push</code> の方が普通」と戻してしまう。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>企業の直しは、この PR の目的（カレンダーへ戻す）と違うので、別の PR にする</dt>
+            <dd>
+              学習者の「予定をこうしたから企業もそう直した、とわかりやすい」の方が筋が通っていた。<strong>判断が1つで、変更も1行ずつ</strong>なら、分けると判断のレビューが2か所に割れ、その間 <code>main</code> が食い違う。
+              「1つの PR に1つの目的」の「目的」は、<strong>ファイルや画面の単位ではなく、判断の単位</strong>で数えてよい
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </article>
+
+    <!-- 130 -->
+    <article class="entry" id="e130">
+      <div class="entry-no">130</div>
+      <div class="entry-body">
+        <h2>小文字の <code>&lt;link&gt;</code>：中身を持てない要素と、<code>error.tsx</code></h2>
+
+        <p>
+          予定が見つからないページに、カレンダーへ戻るリンクを置いた。<code>/schedule/abc</code>（存在しない ID）を開くと、リンクではなく <code>error.tsx</code> の「エラーが発生しました」が出た。
+        </p>
+        <pre><code>&lt;link href="/schedule"&gt;カレンダーへ戻る&lt;/link&gt;   // 小文字</code></pre>
+        <p>
+          小文字で始まるタグは <strong>HTML のタグ</strong>。HTML の <code>&lt;link&gt;</code> は <code>&lt;head&gt;</code> で CSS などを読み込む要素で、<code>&lt;br&gt;</code> や <code>&lt;img&gt;</code> と同じく<strong>中身を持てない</strong>（void element）。React は描画の途中で例外を投げ、Next.js の内側の仕組み（<code>ErrorBoundaryHandler</code>）が受け止めて <code>error.tsx</code> を出した。
+          使いたかったのは、import している Next.js の <strong><code>Link</code></strong>（大文字）。<code>&lt;calendarComponent&gt;</code> と同じ取り違え（エントリ120）。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">推測ではなく、エラーの文で確かめた</div>
+          <p>
+            <code>error.tsx</code> は <code>console.error(error)</code> で原因を出している。Console には次の文が出た。
+          </p>
+          <pre><code>Error: link is a void element tag and must neither have `children` nor use `dangerouslySetInnerHTML`.
+The above error occurred in the &lt;link&gt; component. It was handled by the &lt;ErrorBoundaryHandler&gt; error boundary.</code></pre>
+          <p>
+            <code>error.tsx</code> が受け止めるのは<strong>描画中の想定外の例外</strong>で、Firestore の取得の失敗（各ページの <code>try/catch</code>）とは別。今回はまさにその場面だった。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">typecheck も lint も止めなかった</div>
+          <p>
+            <code>&lt;link href="…"&gt;</code> は HTML として正しい書き方なので、型検査も lint も何も言わない。「中身を持てない」は、<strong>実行して描画するときにしか</strong>確かめられない。
+            削除の後は <code>replace</code> にしたので「戻る」ではこのページに来られない。<strong>存在しない ID を URL に直接入れて</strong>確かめたから見つかった。
+            原因を調べるために入れた <code>console.log(error)</code> は、調べ終わったら消す（残すと本番の Console にも出続ける）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 131 -->
+    <article class="entry" id="e131">
+      <div class="entry-no">131</div>
+      <div class="entry-body">
+        <h2>ナビゲーションがどこにも無かった：PR を分け直す</h2>
+
+        <p>
+          PR3-3 の準備でコードを見ると、<code>(protected)/layout.tsx</code> はログインを確かめて <code>children</code> を返すだけで、ダッシュボードにもサインアウトのボタンしか無かった。<strong>企業の一覧にも、URL を直接打たないとたどり着けない</strong>。
+          「ナビゲーションのリンクを置く」は「カレンダーへのリンクを1つ足す」ではなく、<strong>アプリ全体のナビゲーションを新しく作る</strong>ことだった。
+        </p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">PR</th><th scope="col">中身</th><th scope="col">影響の範囲</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">PR3-3</th><td>削除の後の行き先、「見つかりません」の戻るリンク（＋企業の削除の <code>replace</code>）</td><td>予定と企業の詳細・編集ページ</td></tr>
+              <tr><th scope="row">PR3-4</th><td>アプリ全体のナビゲーション（何を並べるか、どこに置くか、今いるページの示し方、サインアウトの置き場所）</td><td><strong>全ページ</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          学習者の理由は「目的を1つずつに分けた方が、レビューする側も分かりやすく、開発中も目的がはっきりする」。
+        </p>
+
+        <div class="note warn">
+          <div class="note-label">仕様書の書き漏れ：ナビゲーション</div>
+          <p>
+            仕様書（v4）の第4章「画面構成とルーティング設計」には、ページの一覧しか無い。画面どうしをどうつなぐか（ヘッダーに何を並べるか、サインアウトをどこに置くか）は<strong>どこにも書かれていない</strong>。
+            PR3-4 で決め、決定記録に残す（仕様書は書き換えない）。
+          </p>
+        </div>
+      </div>
+    </article>
+
+    <!-- 132 -->
+    <article class="entry" id="e132">
+      <div class="entry-no">132</div>
+      <div class="entry-body">
+        <h2>変更の持ち越しと、コミットの種別・言葉の選び方</h2>
+
+        <div class="note check">
+          <div class="note-label">ブランチを作る前に変更してしまったら</div>
+          <p>
+            <code>main</code> のまま予定の詳細ページを書き換えていた。<strong>コミットしていない変更は、どのブランチにも属していない</strong>（手元の作業中のファイルなだけ）。
+            そのまま <code>git switch -c feat/return-to-calendar</code> を実行すれば、変更は新しいブランチに持ち越される。新しいブランチは <code>main</code> と同じコミットから始まるので、ぶつからない。
+            <code>main</code> でコミットまでしていたら手順が増えていた。ブランチを作る前に <code>git status</code> で今どこにいるかを見る。
+          </p>
+        </div>
+
+        <div class="note talk">
+          <div class="note-label">後片付けの出力から読み取れること</div>
+          <ul>
+            <li><code>git switch main</code> の直後の「<code>up to date with 'origin/main'</code>」は、<strong>最後に GitHub と通信したとき</strong>の情報と比べた結果。マージは GitHub の上で起きたので、<code>git pull</code> で初めて新しいコミットが入った</li>
+            <li><code>git fetch --prune</code> の <code>[deleted]</code> は、GitHub 側でもう消えていたブランチの<strong>手元の写し</strong>（<code>remotes/origin/…</code>）を片付けたということ</li>
+            <li>zsh では <code>( )</code> に加えて <code>[id]</code> も「<code>i</code> か <code>d</code> の1文字」という<strong>パターン</strong>として読まれる。<code>[id]</code> の入ったパスも引用符で囲む</li>
+          </ul>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">コミット</th><th scope="col">種別</th><th scope="col">選んだ理由</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">予定を削除した後にカレンダーへ移る</th><td><code>feat</code></td><td>動きが変わるので <code>refactor</code> ではない。今の行き先は<strong>わざと置いた仮のもの</strong>で不具合ではないので <code>fix</code> でもない</td></tr>
+              <tr><th scope="row">layout の <code>replace</code> の理由</th><td><code>docs</code></td><td>画面にも動きにも出ないコメント</td></tr>
+              <tr><th scope="row">企業を削除した後に「戻る」で詳細に戻らない</th><td><code>fix</code></td><td>新しくできることは無い。「戻る」で消えたページに戻るのは<strong>望ましくない</strong>と決めたので、それを直す</td></tr>
+              <tr><th scope="row">見つからない時にカレンダーへ移れる</th><td><code>feat</code></td><td>行き止まりのページから<strong>移れるようになる</strong></td></tr>
+              <tr><th scope="row">「見つかりません」の文をそろえる</th><td><code>fix</code></td><td><strong>利用者が画面で読む文</strong>が変わるので <code>docs</code> ではない。ページごとにばらばらなのは直すべき不ぞろい</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正：別の意味に読める言葉</div>
+          <dl class="wrong-right">
+            <dt><code>feat: 削除した予定の履歴を残さない</code></dt>
+            <dd>「予定の<strong>変更履歴</strong>」とも読める（仕様書 9-2 に変更履歴の機能の候補がある）。残さないのはブラウザの履歴に入る<strong>ページ</strong>。しかも、いちばん大きな変化（移る先がカレンダーになった）が抜けていた。1行目に何が変わったか、本文にやり方と理由</dd>
+            <dt><code>fix: 企業を削除した後に企業一覧へ移るようにする</code></dt>
+            <dd>企業の一覧へは<strong>前から</strong>移っていた。変わったのは「戻る」の動きだけ。予定のコミットと形をそろえたくなっても、<strong>変わったことが違う</strong></dd>
+            <dt><code>feat: 予定がない場合にカレンダーへ移れるようにする</code></dt>
+            <dd>PR3-2 の「予定が1件も無い」エンプティステートの話に読める。「詳細・編集ページで」「見つからない時に」と、どこで・いつを書く</dd>
+            <dt><code>…カレンダーへ移れる</code>（「ようにする」を外した）</dt>
+            <dd>「移れる」は<strong>状態</strong>。コミットは何を<strong>変えた</strong>かを書くので「移れるようにする」</dd>
+          </dl>
+          <p>
+            <code>docs</code> の過去のコミットは「〜を更新」「〜を修正」と、<strong>どこの</strong>何を直したかまで書いている。「<code>replace</code> を使う理由を追記」だけでは、予定の詳細ページのコメントと区別がつかないので、「ログインを確認するレイアウトで」と場所を足した（「関数」ではなく、ファイルの役割どおり「レイアウト」）。
+          </p>
+        </div>
+
+        <div class="note fix">
+          <div class="note-label">誤解と訂正（講師側）</div>
+          <dl class="wrong-right">
+            <dt>予定が0件のアカウントは、開発サーバーでしか確かめていない</dt>
+            <dd>学習者は <code>npm run start</code> でも確かめていた。講師の思い込みで、PR #15 の本文の書き直しを求めていた</dd>
+          </dl>
+          <p>
+            一方、<code>npm run start</code> は<strong>最後にビルドしたもの</strong>を動かすので、ビルドし直さずに確かめると古いコードを見ることになる。PR3-3 では <code>.next</code> のビルドの時刻が最後のコミットより後であることを確かめた。
+          </p>
+        </div>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -10219,6 +10408,7 @@ refactor: 表示中の月をページからカレンダーに移動する</code>
           <br><strong>PR3 で一緒に直すもの</strong>（PR2 で追記）：予定の削除の後の行き先（今は仮にダッシュボード）をカレンダーに変える／予定の詳細・編集ページの「見つかりません」にカレンダーへ戻るリンクを足す。
           <br><strong>PR3 は2つに分けた</strong>（PR3-1 で追記）：表示の PR3-1 と、予定と組み合わせる PR3-2。上の「一緒に直すもの」とナビゲーションのリンクは PR3-2 で行う（決定記録の「カレンダー（PR3）を…分ける」）。
           <br><strong>PR3-2 もさらに分けた</strong>（PR3-2 で追記）：PR3-2 は予定を出すところまで。ナビゲーションのリンクと上の「一緒に直すもの」は <strong>PR3-3</strong> で行う。「月の範囲で取る関数」は作らず、予定を全部取る（決定記録「予定は全部取る」）。
+          <br><strong>PR3-3 と PR3-4 に分けた</strong>（PR3-3 で追記）：ナビゲーションはアプリのどこにも無く、作るのは「アプリ全体のナビゲーション」だった。PR3-3 は上の「一緒に直すもの」だけ（済み）、ナビゲーションは <strong>PR3-4</strong>（決定記録「PR3-3 と PR3-4 に分ける」）。
         </dd>
         <dt>画面ごとに決めること</dt>
         <dd>
@@ -10309,6 +10499,8 @@ refactor: 表示中の月をページからカレンダーに移動する</code>
         </dd>
         <dt>差し替え忘れの防止</dt>
         <dd>コードのコメントに「PR3 でカレンダーに移るように変える」と残し、決定記録48の PR3 の作業にも書いた。</dd>
+        <dt>PR3-3 で差し替えた</dt>
+        <dd>行き先をカレンダー（<code>/schedule</code>）に変え、「仮」のコメントも今の理由に書き換えた。あわせて <code>router.push</code> を <code>router.replace</code> にした（決定記録「削除した後は <code>router.replace</code> で移る」）。</dd>
       </dl>
     </div>
 
@@ -10501,6 +10693,57 @@ refactor: 表示中の月をページからカレンダーに移動する</code>
           予定が月をまたいで入ることが多くなり、戻るたびに月を移り直すのが手間になったら、(a) を考え直す。
           作るなら、PR3-3 の「削除の後にカレンダーへ戻す」「見つかりませんから戻るリンク」の行き先も <code>?date=…</code> にできる。
         </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>削除した後は <code>router.replace</code> で移る（予定も企業も）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>router.push</code> のまま（企業と同じ形。「戻る」で「見つかりません」は出るが、戻るリンクがあるので行き止まりにはならない）
+          <b>(b)</b> 予定だけを <code>replace</code> にし、企業は別の PR で直す
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          削除したデータのページは、開いても「見つかりません」になるだけなので、<strong>履歴に残さない</strong>（エントリ129）。ログインしていない人を <code>/login</code> へ送る所が <code>replace</code> なのと同じ考え方。
+          企業にも同じ判断を当てはめる。判断は1つ、変更も1行ずつなので、同じ PR に入れれば判断を1か所でレビューでき、<code>main</code> で予定と企業の動きが食い違う期間も無い（(b) を捨てた）。コミットは分け、PR の本文に書く。
+        </dd>
+        <dt>行き先</dt>
+        <dd>その種類の<strong>一覧</strong>。予定はカレンダー（<code>/schedule</code>）、企業は企業の一覧（<code>/companies</code>）。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>「見つかりません」の文をそろえ、その種類の一覧へ戻るリンクを置く</h3>
+      <dl>
+        <dt>中身</dt>
+        <dd>
+          予定の詳細・編集ページで、ID に当てはまる予定が無いときは「見つかりません」と「カレンダーへ戻る」を出す。企業のページの「見つかりません」「一覧ページへ戻る」と同じ形。
+          予定の詳細ページだけ「<strong>予定が</strong>見つかりません」だったので、ほかのページに合わせた（<code>fix</code>）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> すべて「〇〇が見つかりません」にする（何が見つからないかが文だけで分かるが、企業のページ2つも直すことになり、この PR の目的から離れる）</dd>
+        <dt>理由</dt>
+        <dd>何が見つからないかは、URL と「カレンダーへ戻る」のリンクから分かる。直すのが1行で済み、アプリ全体の文がそろう。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>PR3-3（仮のものの差し替え）と PR3-4（アプリ全体のナビゲーション）に分ける</h3>
+      <dl>
+        <dt>経緯</dt>
+        <dd>
+          ナビゲーションはアプリのどこにも無く、企業の一覧にも URL を直接打たないとたどり着けなかった（エントリ131）。<strong>仕様書（v4）にもナビゲーションの記述が無い</strong>（書き漏れ。第4章はページの一覧だけ）。
+        </dd>
+        <dt>捨てた案</dt>
+        <dd><b>(a)</b> 1つの PR にまとめる（今までの計画どおり）</dd>
+        <dt>理由</dt>
+        <dd>
+          差し替えは予定・企業のページの中だけの直しで、ナビゲーションは<strong>全ページ</strong>の変更。影響の範囲が違う。目的を1つずつに分けた方が、レビューする側も分かりやすく、開発中も目的がはっきりする。
+        </dd>
+        <dt>PR3-4 で決めること</dt>
+        <dd>何を並べるか、どこに置くか（<code>layout.tsx</code> か）、今いるページをどう示すか、サインアウトをどこに移すか。仕様書は書き換えず、決めたことをここに残す。</dd>
       </dl>
     </div>
   </section>
