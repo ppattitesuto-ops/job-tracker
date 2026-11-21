@@ -101,7 +101,8 @@ export default function CompanyPage() {
     setDeleteError("");
     try {
       await deleteCompany(user.uid, paramsId);
-      router.push("/companies");
+      // 消した後に企業一覧へ遷移する→削除した企業の詳細ページを履歴に残さないreplaceを採用
+      router.replace("/companies");
       // 成功したら画面を離れる前提なのでtrueからfalseに戻さない
       setHasDeleted(true);
     } catch {

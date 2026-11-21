@@ -62,7 +62,7 @@ export default function EditSchedulePage() {
   if (!editData) return (
     <div>
       <div>見つかりません</div>
-      {/* 今はまだカレンダーページを作っていないためリンクは置かない→PR3でカレンダーへ戻るリンクを足す */}
+      <Link href="/schedule">カレンダーへ戻る</Link>
     </div>
   );
 
