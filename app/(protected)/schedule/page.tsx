@@ -92,6 +92,8 @@ export default function CalendarPage() {
   } else {
     schedulesContent = (
       <div>
+        {/* 予定が0件の時は、エンプティステートが登録の入り口になる。だから、ここではデータがあるときだけ入り口を出す */}
+        <Link href="/schedule/new">予定を登録する</Link>
         <h2>{selectedDate}の予定</h2>
         {/* 選ばれた日に予定がある場合とない場合を出し分ける */}
         {selectedDateContent}
