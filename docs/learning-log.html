@@ -562,10 +562,10 @@
       誤解の記録こそが、後から見返したときに最も価値を持つため。
     </p>
     <div class="meta">
-      <span>最終更新 <b>2026-11-21</b></span>
-      <span>エントリ <b>132</b></span>
-      <span>決定記録 <b>65</b></span>
-      <span>進捗 <b>フェーズ3：仮のものの差し替え（PR3-3） → アプリ全体のナビゲーション（PR3-4）へ</b></span>
+      <span>最終更新 <b>2026-11-23</b></span>
+      <span>エントリ <b>134</b></span>
+      <span>決定記録 <b>67</b></span>
+      <span>進捗 <b>フェーズ3：登録の入口の修正 → アプリ全体のナビゲーション（PR3-4）へ</b></span>
     </div>
   </header>
 
@@ -704,6 +704,8 @@
       <li><a href="#e130">小文字の <code>&lt;link&gt;</code>：中身を持てない要素と、<code>error.tsx</code></a></li>
       <li><a href="#e131">ナビゲーションがどこにも無かった：PR を分け直す</a></li>
       <li><a href="#e132">変更の持ち越しと、コミットの種別・言葉の選び方</a></li>
+      <li><a href="#e133">登録の入口が、エンプティステートの中にしか無かった</a></li>
+      <li><a href="#e134"><code>main</code> の上での <code>push</code> と、ブランチの作り忘れ</a></li>
     </ol>
   </nav>
 
@@ -9032,6 +9034,92 @@ The above error occurred in the &lt;link&gt; component. It was handled by the &l
       </div>
     </article>
 
+    <!-- 133 -->
+    <article class="entry" id="e133">
+      <div class="entry-no">133</div>
+      <div class="entry-body">
+        <h2>登録の入口が、エンプティステートの中にしか無かった</h2>
+
+        <p>
+          ナビゲーション（PR3-4）の準備でリンクを探すと、<code>/companies/new</code> と <code>/schedule/new</code> へのリンクは、<strong>0件のときのエンプティステートの中だけ</strong>にあった。
+          1件登録すると入口が消え、<strong>2件目からは URL を直接打たないと登録できない</strong>。本番でも同じ状態だった。仕様書も、エンプティステートの導線（3-7）はあるが、データがあるときの登録の入口は書いていない（書き漏れ）。
+        </p>
+        <p>
+          ナビゲーションとは別の問題で、利用者が<strong>今できないこと</strong>なので、先に小さな PR（<code>fix/add-register-links</code>）で直した。
+          種別は、学習者の理由「登録リンクはすでにあるが、1つ登録すると使えなくなる。それを何個でも登録できるように直す」から <code>fix</code>。
+        </p>
+
+        <div class="note check">
+          <div class="note-label">入口は、どの状態でもちょうど1つ</div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">ページ</th><th scope="col">0件のときの作り</th><th scope="col">登録のリンクを置いた所</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">企業の一覧</th><td><strong>早期リターン</strong>でページ全体を案内に置き換える</td><td><code>&lt;h1&gt;</code> の直後。0件のときは早期リターンで終わるので、<strong>条件を足さずに</strong>データがあるときだけ出る</td></tr>
+                <tr><th scope="row">カレンダー</th><td>カレンダーは出したまま、下の区画だけを案内にする</td><td>外側の if の「0件ではない」側、<code>&lt;h2&gt;</code>（〇〇の予定）の前。今ある判断を使うので、<strong>同じ条件を2か所に書かない</strong>（エントリ125）</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <code>&lt;h1&gt;</code> の近くにいつも置くと、カレンダーでは0件のときに案内の「最初の予定を登録する」と<strong>同じリンクが2つ</strong>並ぶ。案内からリンクを消すと、仕様書 3-7 の「エンプティステートに登録画面への導線」から外れる。
+            リンクの文は「企業を登録する」「予定を登録する」（データがあるときに「最初の」は合わない）。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">直したこと</div>
+          <ul>
+            <li>コメントは「何をしたか」ではなく<strong>なぜデータがあるときだけ出すか</strong>（0件のときはエンプティステートが入口になる）を書く。書かないと、後で読んだ人が「上にいつも出せばいい」と動かす</li>
+            <li>「登録画面への<strong>ナビゲーション</strong>」は、PR3-4 のアプリ全体のナビゲーションと紛らわしいので「入口」にした</li>
+            <li>企業の一覧で、リンクが <code>&lt;h1&gt;</code> より前にあった。<code>&lt;h1&gt;</code> はページの題名なので<strong>中身のいちばん最初</strong>。題名より前にリンクがあると、何のページか分かる前にリンクが読まれる。カレンダーの方は、登録が特定の日の話ではないので、その日の区画（<code>&lt;h2&gt;</code>）の<strong>外</strong>に置く</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- 134 -->
+    <article class="entry" id="e134">
+      <div class="entry-no">134</div>
+      <div class="entry-body">
+        <h2><code>main</code> の上での <code>push</code> と、ブランチの作り忘れ</h2>
+
+        <div class="note fix">
+          <div class="note-label">後片付けで <code>pull</code> の代わりに <code>push</code> を打った</div>
+<pre><code>git switch main
+git push
+ ! [rejected]        main -&gt; main (fetch first)
+hint: Updates were rejected because the remote contains work that you do not have locally.</code></pre>
+          <p>
+            GitHub 側の <code>main</code> の方が新しかった（PR をマージした直後）ので、Git が断り、何も起きなかった。
+            もし手元の <code>main</code> にコミットが1つでもあったら、<strong>PR も Preview も通らずに本番へ</strong>出ていた（マージ＝公開）。<code>main</code> の上では <code>push</code> しない。
+            GitHub の設定で止めるかどうかは、未解決の問いに残した。
+          </p>
+        </div>
+
+        <div class="note warn">
+          <div class="note-label">ブランチを作る前に書き換えた（2回目）</div>
+          <p>
+            PR3-3 に続いて、今回もブランチを作る前に <code>main</code> の上でファイルを書き換えていた。コミットしていなかったので、<code>git switch -c fix/add-register-links</code> で持ち越せた（エントリ132）。
+            <strong>ファイルを書き換える前に <code>git status</code> の1行目で今いるブランチを見る</strong>、を手順に入れる。
+          </p>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">書いたもの</th><th scope="col">直したこと</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>feat/create-conpany-and-schedule</code></th><td><code>conpany</code> は打ち間違い。ブランチ名は PR の一覧やマージのコミットに<strong>ずっと残る</strong>。<code>create-…</code> は登録の機能そのものに読める。作るのは<strong>入口（リンク）</strong>なので <code>fix/add-register-links</code></td></tr>
+              <tr><th scope="row"><code>fix: 企業と予定をいつでも追加できるようにする</code></th><td>このアプリの言葉は「<strong>登録</strong>」（画面も仕様書も）。違う言葉だと別の操作かと迷う。「いつでも」より「<strong>1件登録した後も</strong>」の方が、何が壊れていたかが分かる</td></tr>
+            </tbody>
+          </table>
+        </div>
+<pre><code>fix: 企業と予定を1件登録した後も登録できるようにする</code></pre>
+        <p>
+          <code>git log --oneline 6</code> は <code>-</code> が抜けていて、<code>6</code> をコミットの名前として探し、<code>ambiguous argument</code> で止まった。件数は <code>-6</code>。
+        </p>
+      </div>
+    </article>
+
   </main>
 
   <section class="open">
@@ -9061,6 +9149,11 @@ The above error occurred in the &lt;link&gt; component. It was handled by the &l
         <strong>削除中に Esc を2回押してダイアログが閉じ、その削除が失敗したとき、失敗をどう見せるか。</strong>
         エラーはダイアログの中に出るので、閉じていると見えない（エントリ104）。2回目の Esc はブラウザの仕様で止められない。
         候補は、エラーをダイアログの外にも出す／失敗したときだけダイアログを開き直す／受け入れる（失敗すれば一覧に移らないので、何も起きなかったことには気づける）。
+      </li>
+      <li>
+        <strong><code>main</code> への直接の <code>push</code> を、GitHub の設定（branch protection rules）で止めるか。</strong>
+        マージ＝公開なので、<code>main</code> に直接送られたコミットは、PR のレビューも Preview の確認も通らずに本番へ出る。後片付けで <code>pull</code> の代わりに <code>push</code> を打ったことがある（エントリ134。手元に新しいコミットが無く、断られただけで済んだ）。
+        設定すれば、手違いでも GitHub 側が止める。1人で開発している今、どこまで縛るか（管理者も止めるか、など）と一緒に決める。
       </li>
     </ol>
     <p class="decisions-note" style="margin-top:1rem">
@@ -10744,6 +10837,45 @@ The above error occurred in the &lt;link&gt; component. It was handled by the &l
         </dd>
         <dt>PR3-4 で決めること</dt>
         <dd>何を並べるか、どこに置くか（<code>layout.tsx</code> か）、今いるページをどう示すか、サインアウトをどこに移すか。仕様書は書き換えず、決めたことをここに残す。</dd>
+        <dt>追記</dt>
+        <dd>PR3-4 の前に、登録の入口の抜けを直す小さな PR を入れた（決定記録「登録の入口の抜けを、ナビゲーションより先に直す」）。</dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>登録の入口の抜けを、ナビゲーション（PR3-4）より先に小さな PR で直す</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> PR3-4 に両方入れる
+          <b>(b)</b> 先にナビゲーション、その後に登録のリンク
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          登録のリンクは一覧の2ページだけの直しで、ナビゲーションは全ページの変更。目的ごとに PR を分けた方が、レビューする人が理解しやすい。
+          さらに、登録のリンクは利用者が<strong>今できないこと</strong>（2件目の登録）を直すもので、変更も小さい。ナビゲーションは決めることが多く時間がかかるので、その間ずっと登録できないままにしない（(b) を捨てた）。
+        </dd>
+      </dl>
+    </div>
+
+    <div class="decision">
+      <h3>登録のリンクは、データがあるときだけ一覧の見出しの近くに出す（0件のときはエンプティステートが入口）</h3>
+      <dl>
+        <dt>捨てた案</dt>
+        <dd>
+          <b>(a)</b> <code>&lt;h1&gt;</code> の近くにいつも置き、エンプティステートからリンクを消す（仕様書 3-7 の導線から外れる）
+          <b>(b)</b> <code>&lt;h1&gt;</code> の近くにいつも置き、エンプティステートのリンクも残す（カレンダーで0件のときに同じリンクが2つ並ぶ）
+        </dd>
+        <dt>理由</dt>
+        <dd>
+          予定がないときの入口はエンプティステートに任せ、あるときは見出しの近くに出せば、いつでも登録画面に行けて、<strong>どの状態でも入口はちょうど1つ</strong>（エントリ133）。
+          企業の一覧は早期リターンのおかげで条件を足さずに済み、カレンダーは今ある2段の if の外側の判断を使う。
+        </dd>
+        <dt>作り</dt>
+        <dd>
+          文は「企業を登録する」「予定を登録する」。企業の一覧は <code>&lt;h1&gt;</code> の直後、カレンダーは「0件ではない」側の <code>&lt;h2&gt;</code>（〇〇の予定）の前。
+          両方に「0件のときはエンプティステートが入口になる。だから、ここではデータがあるときだけ出す」とコメントを残した。
+        </dd>
       </dl>
     </div>
   </section>
